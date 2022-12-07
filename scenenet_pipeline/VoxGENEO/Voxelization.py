@@ -356,7 +356,9 @@ def centroid_reg_on_voxel(xyz:np.ndarray, labels:np.ndarray, tower_label:int, vo
 
     def count_towers(x):
         group = np.array(x)
-        return np.sum(group == tower_label)
+        keep = np.array(tower_label).reshape(-1)
+        count = np.isin(group, keep)
+        return np.sum(count)
 
     totals = voxs.groupby(["vz", "vx", "vy"]).agg({
                                                 'x' : 'mean',

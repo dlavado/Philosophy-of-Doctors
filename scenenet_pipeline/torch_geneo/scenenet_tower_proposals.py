@@ -23,7 +23,7 @@ import matplotlib.cm as cm
 from datetime import datetime
 from PIL import Image
 
-from datasets.ts40kv2 import ToFullDense, torch_TS40Kv2, ToTensor, Voxelization
+from datasets.ts40kv2 import xyz_ToFullDense, torch_TS40Kv2, ToTensor, Voxelization
 from models.SCENE_Net import SCENE_Net
 from models.geneo_loss import GENEO_Loss
 from observer_utils import *
@@ -47,7 +47,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # DATA_DIR = "/media/didi/TOSHIBA EXT/TS40K/"
 
 MODEL_DIR = os.path.join(ROOT_PROJECT, 'models_geneo')
-PICKLE_DIR = os.path.join(ROOT_PROJECT, "torch_geneo/models")
+PICKLE_PATH = os.path.join(ROOT_PROJECT, "torch_geneo/models")
 
 CSV_DIR = os.path.join(ROOT_PROJECT, "labelec_csvs")
 LAS_DIR = "/media/didi/TOSHIBA EXT/Labelec_LAS/"
@@ -101,7 +101,7 @@ def run_observer(model_path, tau=TAU, tag='latest'):
 
     print("\n\nLoading Data...")
     ts40k_loader = DataLoader(ts40k, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
-    geneo_loss = gnet_loss(torch.tensor([]), hist_path=PICKLE_DIR, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    geneo_loss = gnet_loss(torch.tensor([]), hist_path=PICKLE_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
 
     test_metrics = init_metrics(tau) 
     test_loss = 0
@@ -134,7 +134,7 @@ def examine_samples(model_path, tau=None, tag='loss'):
     print(f"\t with tau={tau} trying to optimize {tag}...")
 
     ts40k_loader = DataLoader(ts40k, batch_size=1, shuffle=True, num_workers=4)
-    geneo_loss = gnet_loss(torch.tensor([]), hist_path=PICKLE_DIR, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    geneo_loss = gnet_loss(torch.tensor([]), hist_path=PICKLE_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
     
     test_metrics = init_metrics(tau) 
     test_loss = 0
@@ -214,7 +214,7 @@ def process_samples(model_path, tau=None, tag='loss'):
         print(f"\t with tau={tau} trying to optimize {tag}...")
 
     # ts40k_loader = DataLoader(ts40k, batch_size=1, shuffle=True, num_workers=4)
-    geneo_loss = gnet_loss(torch.tensor([]), hist_path=PICKLE_DIR, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    geneo_loss = gnet_loss(torch.tensor([]), hist_path=PICKLE_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
     
     centroids = None
     centroids_file = os.path.join(CSV_DIR, 'centroids.csv')
@@ -342,14 +342,14 @@ if __name__ == "__main__":
     
     composed = Compose([Voxelization(vox_size=parser.vox_size, vxg_size=parser.vxg_size), 
                         ToTensor(), 
-                        ToFullDense()])
+                        xyz_ToFullDense()])
 
     ts40k = torch_TS40Kv2(dataset_path=data_path, split=parser.ts40k_split, transform=composed)
 
 
     composed_highres = Compose([Voxelization(vox_size=(0.5, 0.5, 0.5)), 
                         ToTensor(), 
-                        ToFullDense()])
+                        xyz_ToFullDense()])
 
     ts40k_highres = torch_TS40Kv2(dataset_path=data_path, split=parser.ts40k_split, transform=composed_highres)
 

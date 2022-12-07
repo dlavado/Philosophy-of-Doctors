@@ -17,9 +17,8 @@ import matplotlib.cm as cm
 from datetime import datetime
 from PIL import Image
 
-from datasets.ts40k import torch_TS40K
 from torch_geneo.models.SCENE_Net import SCENE_Net, SCENE_Net_Class
-from models.geneo_loss import PICKLE_DIR, GENEO_Loss, GENEO_Loss_Class
+from torch_geneo.models.geneo_loss import PICKLE_PATH, GENEO_Loss, GENEO_Loss_Class
 
 import sys
 import time
@@ -309,6 +308,22 @@ def visualize_batch(vox_input:torch.Tensor=None, gt:torch.Tensor=None, pred:torc
         Vox.visualize_pred_vs_gt(pred[idx].numpy().astype(np.int), 
                                 gt[idx].numpy().astype(np.int))
 
+
+def temperature_scaling(model_path, gnet_class, ts40k_val, batch_size, mode="TempScaling"):
+    from scenenet_pipeline.Calibration.temperature_scaling import ModelWithTemperature
+
+  
+    gnet, _ = load_state_dict(model_path, gnet_class, model_tag='FBetaScore')
+    
+    # --- Dataset Initialization ---
+    ts40k_val_loader = DataLoader(ts40k_val, batch_size=batch_size, shuffle=True, num_workers=4)
+
+
+    # --- Temperature Scaling ---
+
+    scaled_model = ModelWithTemperature(gnet)
+    print(f"\n\nInitializing Temperature Scaling...")
+    scaled_model.set_temperature(ts40k_val_loader)
 
 class EarlyStopping():
     def __init__(self, tolerance=10, metric='loss', min_delta=0):

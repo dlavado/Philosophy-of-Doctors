@@ -24,7 +24,7 @@ ROOT_PROJECT = "/home/didi/VSCode/lidar_thesis"
 DATA_SAMPLE_DIR = ROOT_PROJECT + "/Data_sample"
 SAVE_DIR = ROOT_PROJECT + "/dataset/torch_dataset"
 
-PICKLE_DIR = os.path.join(ROOT_PROJECT, "torch_geneo/models")
+PICKLE_PATH = os.path.join(ROOT_PROJECT, "torch_geneo/models")
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -42,7 +42,7 @@ def load_pickle(filename):
 class GENEO_Loss(torch.nn.Module):
    
 
-    def __init__(self, targets:torch.Tensor, hist_path=PICKLE_DIR, alpha=1, rho=1, epsilon=0.1, gamma=1) -> None:
+    def __init__(self, targets:torch.Tensor, hist_path=PICKLE_PATH, alpha=1, rho=1, epsilon=0.1, gamma=1) -> None:
         """
         GENEO Loss is a custom loss for GENEO_Net that takes into account data imbalance
         w.r.t. regression and punishes convex coefficient that fall out of admissible values
@@ -210,7 +210,7 @@ class GENEO_Loss(torch.nn.Module):
 
 class GENEO_Loss_Class(GENEO_Loss):
 
-    def __init__(self, targets: torch.Tensor, hist_path=PICKLE_DIR, alpha=1, rho=1, epsilon=0.1, gamma=1) -> None:
+    def __init__(self, targets: torch.Tensor, hist_path=PICKLE_PATH, alpha=1, rho=1, epsilon=0.1, gamma=1) -> None:
         super().__init__(targets, hist_path, alpha, rho, epsilon, gamma)
 
         self.bce = torch.nn.BCELoss()

@@ -26,7 +26,7 @@ from EDA import EDA_utils as eda
 from SemKITTI_API.auxiliary.laserscan import SemLaserScan
 
 from VoxGENEO import Voxelization as Vox
-from datasets.torch_transforms import ToFullDense, ToTensor
+from datasets.torch_transforms import ToFullDense, ToTensor, Voxelization
 
 import os
 
@@ -93,64 +93,6 @@ class ToTensor:
         return torch.from_numpy(pts.astype(np.float)), \
                torch.from_numpy(labels.astype(np.float))
     
-
-class ToFullDense:
-    """
-    Transforms a Regression Dataset into a Belief Dataset.
-
-    Essentially, any voxel that has tower points is given a belief of 1,
-    in order to maximze the towers' geometry.
-    For the input, the density is notmalized to 1, so empty voxels have a value
-    of 0 and 1 otherwise.
-
-    It requires a discretization of raw LiDAR Point Clouds in Torch format.
-    """
-
-    def __call__(self, sample:torch.Tensor):
-        dense, labels = sample
-
-        return (dense > 0).to(dense), (labels > 0).to(labels) #full dense
-
-
-class Voxelization:
-
-    def __init__(self, pole_label, vox_size:Tuple[int]=None, vxg_size:Tuple[int]=None) -> None:
-        """
-        Voxelizes raw LiDAR 3D point points in `numpy` (N, 3) format 
-        according to the provided discretization
-
-        Parameters
-        ----------
-        `vox_size` - Tuple of 3 Ints:
-            Size of the voxels to dicretize the point clouds
-        `vxg_size` - Tuple of 3 Ints:
-            Size of the voxelgrid used to discretize the point clouds
-
-        One of the two parameters need to be provided, `vox_size` takes priority
-
-        Returns
-        -------
-        A Voxelized 3D point cloud in Density/Probability mode
-        """
-        
-        if vox_size is None and vxg_size is None:
-            ValueError("Voxel size or Voxelgrid size must be provided")
-
-
-        self.vox_size = vox_size
-        self.vxg_size = vxg_size
-        self.pole_label = pole_label
-
-
-    def __call__(self, sample:np.ndarray):
-        
-        pts, labels = sample
-
-        voxeled_xyz = Vox.hist_on_voxel(pts, voxel_dims=self.vox_size, voxelgrid_dims=self.vxg_size)
-        voxeled_gt = Vox.reg_on_voxel(pts, labels, self.pole_label, voxel_dims=self.vox_size, voxelgrid_dims=self.vxg_size)
-
-        return voxeled_xyz[None], voxeled_gt[None] # vox-point-density, vox-tower-prob
-
 
 
 class semKITTIv2(Dataset):
@@ -401,7 +343,8 @@ def main():
     vxg_size  = (64, 64, 256)
     vox_size = (0.5, 0.5, 0.2) #only use vox_size after training or with batch_size = 1
     composed = Compose([Voxelization([pole_label], vxg_size=vxg_size, vox_size=vox_size), 
-                        ToTensor(), ToFullDense()])
+                        ToTensor(), 
+                        ToFullDense()])
     
     semK = semKITTIv2(dataset_path=NEW_SEMK_PATH, split='train', transform=composed)
 

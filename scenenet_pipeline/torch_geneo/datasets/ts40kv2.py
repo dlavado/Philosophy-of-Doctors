@@ -21,7 +21,7 @@ from tqdm import tqdm
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 from EDA import EDA_utils as eda
-from datasets.torch_transforms import ToFullDense, ToTensor
+from torch_geneo.datasets.torch_transforms import ToFullDense, Voxelization, ToTensor
 
 from VoxGENEO import Voxelization as Vox
 
@@ -174,50 +174,11 @@ def build_data_samples(data_dirs:List[str], save_dir=os.getcwd(), tower_radius=T
 
 
 
-class Voxelization:
-
-    def __init__(self, vox_size:Tuple[int]=None, vxg_size:Tuple[int]=None) -> None:
-        """
-        Voxelizes raw LiDAR 3D point points in `numpy` (N, 3) format 
-        according to the provided discretization
-
-        Parameters
-        ----------
-        `vox_size` - Tuple of 3 Ints:
-            Size of the voxels to dicretize the point clouds
-        `vxg_size` - Tuple of 3 Ints:
-            Size of the voxelgrid used to discretize the point clouds
-
-        One of the two parameters need to be provided, `vox_size` takes priority
-
-        Returns
-        -------
-        A Voxelized 3D point cloud in Density/Probability mode
-        """
-        
-        if vox_size is None and vxg_size is None:
-            ValueError("Voxel size or Voxelgrid size must be provided")
-
-
-        self.vox_size = vox_size
-        self.vxg_size = vxg_size
-
-
-    def __call__(self, sample:np.ndarray):
-        
-        pts, labels = sample
-
-        voxeled_xyz = Vox.centroid_hist_on_voxel(pts, voxel_dims=self.vox_size, voxelgrid_dims=self.vxg_size)
-        voxeled_gt = Vox.centroid_reg_on_voxel(pts, labels, eda.POWER_LINE_SUPPORT_TOWER, voxel_dims=self.vox_size, voxelgrid_dims=self.vxg_size)
-
-        assert np.array_equal(voxeled_xyz[:-1], voxeled_gt[:-1])
-
-        return voxeled_xyz[None, :-1], voxeled_xyz[None, -1], voxeled_gt[None, -1] # xyz-vox-centroid, vox-point-density, vox-tower-prob
 
 
 class torch_TS40Kv2(Dataset):
 
-    def __init__(self, dataset_path, split='samples', transform=ToTensor()):
+    def __init__(self, dataset_path, split='samples', centroid=False, transform=ToTensor()):
         """
         Initializes the TS40K dataset
 
@@ -229,6 +190,9 @@ class torch_TS40Kv2(Dataset):
         `split` - str:
             split of the dataset to access 
             split \in [samples, train, val, test] 
+
+        `centroid` - bool:
+            Includes xyz mean coordinate for each voxel
         
         `transform` - (None, torch.Transform) :
             transformation to apply to the point clouds
@@ -240,7 +204,7 @@ class torch_TS40Kv2(Dataset):
         self.data_split = {
             'samples' : [0.0, 1.0],   # 100%
             'train' :   [0.0, 0.2],   # 20%
-            'val' :     [0.2, 0.4],   # 20%
+            'val' :     [0.2, 0.22],   # 20%
             'test' :    [0.4, 1.0]    # 60%
         }
         
@@ -306,24 +270,26 @@ def main():
     DATA_SAMPLE_DIR = os.path.join(ROOT_PROJECT, "Data_sample")
     #EXT_DIR = "/media/didi/TOSHIBA EXT/LIDAR/"
     EXT_DIR = "/media/didi/TOSHIBA EXT/TS40K/"
-    SAVE_DIR = os.path.join(ROOT_PROJECT, "dataset/torch_dataset")
-
-    DATA_COORD_DIR = os.path.join(ROOT_PROJECT, "dataset/coord_dataset")
 
     #build_data_samples([EXT_DIR, DATA_SAMPLE_DIR], SAVE_DIR)
 
     #composed = Compose([ToTensor(), AddPad((3, 3, 3, 3, 3, 3))])
     vxg_size  = (64, 64, 64)
     vox_size = (0.5, 0.5, 0.5) #only use vox_size after training or with batch_size = 1
-    composed = Compose([Voxelization(vxg_size=vxg_size), 
-                        ToTensor(), ToFullDense()])
+    composed = Compose([Voxelization([eda.POWER_LINE_SUPPORT_TOWER], vxg_size=vxg_size), 
+                        ToTensor(), 
+                        ToFullDense(apply=(True, False))])
     
     ts40k = torch_TS40Kv2(dataset_path=EXT_DIR, split='val', transform=composed)
 
     print(len(ts40k))
 
-    xyz, vox, vox_gt = ts40k[0]
+    print(ts40k[0])
+    vox, vox_gt = ts40k[0]
     print(vox.shape, vox_gt.shape)
+
+    Vox.plot_voxelgrid(torch.squeeze(vox))
+    Vox.plot_voxelgrid(torch.squeeze(vox_gt))
 
     # Hyper parameters
     NUM_EPOCHS = 5
