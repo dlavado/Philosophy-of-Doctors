@@ -18,7 +18,7 @@ from datetime import datetime
 from PIL import Image
 
 from torch_geneo.models.SCENE_Net import SCENE_Net, SCENE_Net_Class
-from torch_geneo.models.geneo_loss import PICKLE_PATH, GENEO_Loss, GENEO_Loss_Class
+from scenenet_pipeline.torch_geneo.models.geneo_loss import HIST_PATH, GENEO_Loss, GENEO_Loss_BCE
 
 import sys
 import time
@@ -168,21 +168,24 @@ def plot_metric(metric:np.ndarray, save_dir:str, title:str, legend=Union[List[st
 ##################
 
 
-def transform_batch(batch):
+def transform_forward(batch, device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
     return batch[0].to(device), batch[1].to(device)
+
+def transform_metrics(pred:torch.Tensor, target:torch.Tensor):
+    return torch.flatten(pred), torch.flatten(target).to(torch.int)
 
 
 def process_batch(gnet, batch, geneo_loss, opt, metrics, requires_grad=True):
-    batch = transform_batch(batch)
+    batch = transform_forward(batch)
     loss, pred = forward(gnet, batch, geneo_loss, opt, requires_grad)
     if metrics is not None:
-        gt = batch[1].to(device)
-        # if torch.any((gt > 0) & (gt < 1)): # it has tower probabilities
-        #     gt = Vox.prob_to_label(gt, gt_tau)
-        metrics(torch.flatten(pred), torch.flatten(gt).to(torch.int))
+        pred, targets = transform_metrics(pred, batch[1])
+        metrics(pred, targets)
     return loss, pred
 
-def forward(gnet:SCENE_Net, batch, geneo_loss:GENEO_Loss, opt : Union[torch.optim.Optimizer, None], requires_grad=True) -> Tuple[torch.Tensor, torch.Tensor]:
+
+
+def forward(gnet:torch.nn.Module, batch, geneo_loss:torch.nn.Module, opt : Union[torch.optim.Optimizer, None], requires_grad=True) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Computes a forward pass of `gnet` with data `batch`, loss `geneo_loss` and optimizer `opt`.
 
@@ -270,7 +273,6 @@ def load_state_dict(model_path, gnet_class, model_tag='loss', kernel_size=None) 
     return None, None
 
 
-
 def visualize_batch(vox_input:torch.Tensor=None, gt:torch.Tensor=None, pred:torch.Tensor=None, idx:int=None, tau=0.7):
     print(f"Showing random sample in batch...\n")
     batch_size = pred.shape[0]
@@ -309,9 +311,7 @@ def visualize_batch(vox_input:torch.Tensor=None, gt:torch.Tensor=None, pred:torc
                                 gt[idx].numpy().astype(np.int))
 
 
-def temperature_scaling(model_path, gnet_class, ts40k_val, batch_size, mode="TempScaling"):
-    from scenenet_pipeline.Calibration.temperature_scaling import ModelWithTemperature
-
+def scnet_calibration(model_path, gnet_class, ts40k_val, batch_size, mode="TempScaling"):
   
     gnet, _ = load_state_dict(model_path, gnet_class, model_tag='FBetaScore')
     
@@ -320,10 +320,23 @@ def temperature_scaling(model_path, gnet_class, ts40k_val, batch_size, mode="Tem
 
 
     # --- Temperature Scaling ---
+    if mode == 'TempScaling':
+        from scenenet_pipeline.calibration.temperature_scaling import ModelWithTemperature
+        scaled_model = ModelWithTemperature(gnet)
+        print(f"\n\nInitializing Temperature Scaling...")
+        scaled_model.set_temperature(ts40k_val_loader)
+    elif mode == 'LogRegression':
+        from scenenet_pipeline.calibration import log_regression
+        import functools
+        #in_features = functools.reduce(lambda x,y: x*y, (64, 64, 64)) #too much memory
+        in_features = 2048
+        log_regression.calibrate(gnet, in_features, ts40k_val_loader, 100)
+    else:
+        ValueError(f"Mode {mode} is not Implemented; Available Modes = [TempScaling, LogRegression]")
 
-    scaled_model = ModelWithTemperature(gnet)
-    print(f"\n\nInitializing Temperature Scaling...")
-    scaled_model.set_temperature(ts40k_val_loader)
+
+
+
 
 class EarlyStopping():
     def __init__(self, tolerance=10, metric='loss', min_delta=0):

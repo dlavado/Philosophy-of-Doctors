@@ -24,7 +24,7 @@ ROOT_PROJECT = "/home/didi/VSCode/lidar_thesis"
 DATA_SAMPLE_DIR = ROOT_PROJECT + "/Data_sample"
 SAVE_DIR = ROOT_PROJECT + "/dataset/torch_dataset"
 
-PICKLE_PATH = os.path.join(ROOT_PROJECT, "torch_geneo/models")
+HIST_PATH = os.path.join(ROOT_PROJECT, "torch_geneo/models")
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -42,7 +42,7 @@ def load_pickle(filename):
 class GENEO_Loss(torch.nn.Module):
    
 
-    def __init__(self, targets:torch.Tensor, hist_path=PICKLE_PATH, alpha=1, rho=1, epsilon=0.1, gamma=1) -> None:
+    def __init__(self, targets:torch.Tensor, hist_path=HIST_PATH, alpha=1, rho=1, epsilon=0.1, gamma=1) -> None:
         """
         GENEO Loss is a custom loss for GENEO_Net that takes into account data imbalance
         w.r.t. regression and punishes convex coefficient that fall out of admissible values
@@ -122,18 +122,21 @@ class GENEO_Loss(torch.nn.Module):
 
             hist_count = org_idxs.apply_(lambda x : hist_count[x] if present_idxs[x] else 0)
 
-        #min_count = torch.min(hist_count)
-        #count_normed = (hist_count - min_count) / (torch.max(hist_count) - min_count)
+        # min_count = torch.min(hist_count)
+        # count_normed = (hist_count - min_count) / (torch.max(hist_count) - min_count)
         if plot:
             print(f"hist_count = {list(zip(hist_range.numpy(), hist_count.numpy()))}")
             sns.displot(y, bins=hist_range.numpy(), kde=True)
         return hist_count, hist_range
 
         
-    def get_dens_target(self, y:torch.Tensor):
+    def get_dens_target(self, y:torch.Tensor, calc_weights = False):
         """
         Returns the density of each value in y following the `hist_frequency_estimation` result.
         """
+
+        if calc_weights:
+            self.freqs, self.ranges = self.hist_frequency_estimation(y)
 
         closest_idx = torch.abs(torch.unsqueeze(y, -1) - self.ranges).argmin(dim=-1)
 
@@ -158,7 +161,7 @@ class GENEO_Loss(torch.nn.Module):
 
     def cvx_loss(self, cvx_coeffs:torch.nn.ParameterDict):
         """
-        Penalizes non-positive convex parameters;FBetaScore
+        Penalizes non-positive convex parameters;
         The last cvx coefficient is calculated in function of the previous ones: phi_n = 1 - sum_i^N-1(phi_i)
 
         This results from the the relaxation of the cvx restriction: sum(cvx_coeffs) == 1
@@ -189,10 +192,10 @@ class GENEO_Loss(torch.nn.Module):
 
     def forward(self, y_pred:torch.Tensor, y_gt:torch.Tensor, cvx_coeffs:torch.nn.ParameterDict, geneo_params:torch.nn.ParameterDict):
 
-        exp_y_pred, exp_y_gt = torch.broadcast_tensors(y_pred, y_gt) ## ensures equal dims;
+        exp_y_pred, exp_y_gt = torch.broadcast_tensors(y_pred, y_gt) ## ensures equal dims
         weights_y_gt = self.get_weight_target(exp_y_gt)
 
-        dense_loss = torch.mean(self.gamma * weights_y_gt * (exp_y_gt - exp_y_pred)**2) ## weight_function * squared error
+        dense_loss = torch.sum(self.gamma * weights_y_gt * (exp_y_gt - exp_y_pred)**2) ## weight_function * squared error
 
         if len(cvx_coeffs) == 0:
             cvx_l = 0
@@ -208,9 +211,9 @@ class GENEO_Loss(torch.nn.Module):
         return dense_loss + cvx_l + geneo_l
 
 
-class GENEO_Loss_Class(GENEO_Loss):
+class GENEO_Loss_BCE(GENEO_Loss):
 
-    def __init__(self, targets: torch.Tensor, hist_path=PICKLE_PATH, alpha=1, rho=1, epsilon=0.1, gamma=1) -> None:
+    def __init__(self, targets: torch.Tensor, hist_path=HIST_PATH, alpha=1, rho=1, epsilon=0.1, gamma=1) -> None:
         super().__init__(targets, hist_path, alpha, rho, epsilon, gamma)
 
         self.bce = torch.nn.BCELoss()

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-import Calibration.metrics as metrics
+import calibration.metrics as metrics
 
 class ConfidenceHistogram(metrics.MaxProbCELoss):
 

@@ -15,12 +15,12 @@ from tqdm import tqdm
 from matplotlib import pyplot as plt
 import matplotlib.cm as cm
 from datetime import datetime
-from PIL import Image
 
 from datasets.ts40kv2 import torch_TS40Kv2
 from datasets.torch_transforms import Voxelization, ToTensor, ToFullDense
-from torch_geneo.models.SCENE_Net import SCENE_Net, SCENE_Net_Class
-from models.geneo_loss import PICKLE_PATH, GENEO_Loss, GENEO_Loss_Class
+from torch_geneo.models.SCENE_Net import SCENE_Net
+from scenenet_pipeline.torch_geneo.criterions.w_mse import HIST_PATH
+from scenenet_pipeline.torch_geneo.criterions.geneo_loss import GENEO_Loss, GENEO_Loss_BCE
 from observer_utils import *
 
 import sys
@@ -30,7 +30,7 @@ from pathlib import Path
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 
-from Calibration.plot_calibration import ConfidenceHistogram, ReliabilityDiagram
+from calibration.plot_calibration import ConfidenceHistogram, ReliabilityDiagram
 from EDA import EDA_utils as eda
 from VoxGENEO import Voxelization as Vox
 import argparse
@@ -45,7 +45,7 @@ TS40K_PATH = os.path.join(EXT_PATH, 'TS40K/')
 SCNET_PIPELINE = os.path.join(ROOT_PROJECT, 'scenenet_pipeline')
 
 SAVED_SCNETS_PATH = os.path.join(SCNET_PIPELINE, 'torch_geneo/saved_scnets')
-PICKLE_PATH = os.path.join(SCNET_PIPELINE, "torch_geneo/models")
+HIST_PATH = os.path.join(SCNET_PIPELINE, "torch_geneo/models")
 FREQ_SAMPLES = os.path.join(SCNET_PIPELINE, "dataset/freq_samples")
 
 TAU=0.65
@@ -104,7 +104,7 @@ def process_batch(gnet:SCENE_Net, batch, geneo_loss:GENEO_Loss, opt : Union[torc
         gt = batch[1].to(device)
         # if torch.any((gt > 0) & (gt < 1)): # it has tower probabilities
         #     gt = Vox.prob_to_label(gt, gt_tau)
-        metrics(torch.flatten(pred), torch.flatten(gt).to(torch.int))
+        metrics(torch.flatten(pred), torch.flatten(gt > 0).to(torch.int))
     return loss, pred
 
 
@@ -291,7 +291,7 @@ def train_observer(tau=TAU):
 
     # --- Loss and Optimizer ---
     torch.autograd.set_detect_anomaly(True)
-    geneo_loss = gnet_loss(torch.tensor([]), hist_path=PICKLE_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    geneo_loss = gnet_loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
     
 
     # --- Train GENEO Net ---
@@ -314,7 +314,6 @@ def train_observer(tau=TAU):
     torch.save(state_dict, MODEL_PATH)
 
 
-
 def testing_observer(model_path, tau=TAU, tag='latest'):
 
     # --- Load Best Model ---
@@ -323,7 +322,7 @@ def testing_observer(model_path, tau=TAU, tag='latest'):
 
     print("Load Testing Data...")
     ts40k_test_loader = DataLoader(ts40k_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
-    geneo_loss = gnet_loss(torch.tensor([]), hist_path=PICKLE_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    geneo_loss = gnet_loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
 
     test_metrics = init_metrics(tau) 
     test_loss = 0
@@ -357,7 +356,7 @@ def visualize_thresholding(model_path, taus):
 
     print("Load Testing Data...")
     ts40k_test_loader = DataLoader(ts40k_test, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
-    geneo_loss = gnet_loss(torch.tensor([]), hist_path=PICKLE_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    geneo_loss = gnet_loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
 
     for batch in tqdm(ts40k_test_loader, desc=f"..."):
         loss, pred  = process_batch(gnet, batch, geneo_loss, None, None, requires_grad=False)
@@ -481,7 +480,7 @@ def examine_samples(model_path, data_path, tau=None, tag='loss'):
     print(f"\t with tau={tau} trying to optimize {tag}...")
 
     ts40k_loader = DataLoader(ts40k, batch_size=1, shuffle=True, num_workers=4)
-    geneo_loss = GENEO_Loss(torch.tensor([]), hist_path=PICKLE_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    geneo_loss = GENEO_Loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
     
     test_metrics = init_metrics(tau) 
     test_loss = 0
@@ -671,7 +670,7 @@ if __name__ == "__main__":
     opt_class = torch.optim.RMSprop
 
     if parser.bce_loss:
-        gnet_loss = GENEO_Loss_Class
+        gnet_loss = GENEO_Loss_BCE
     else:
         gnet_loss = GENEO_Loss
 
@@ -724,18 +723,17 @@ if __name__ == "__main__":
             state_dict['model_props']['test_results'] = {}              
             
 
-        
+
 
     pp.pprint(state_dict['model_props'])
-    # print()
-    # input("Stop?")
-    
-    # update_testing_results(META_DIR)
-    # find_best_gnet(META_DIR)
-    # input("Stop?")
+
+   
+    ###############################################################
+    #                     Model Calibration                       #
+    ###############################################################
 
 
-    temperature_scaling(MODEL_PATH)
+    scnet_calibration(MODEL_PATH, gnet_class, ts40k_val, parser.batch_size, mode='LogRegression')
     input("Continue?")
 
 
@@ -755,10 +753,7 @@ if __name__ == "__main__":
                     tau = 0.7 # default
                 else:
                     tau = None
-                #examine_tag = examine_tag.strip()
             
-            #test_metrics, loss = testing_observer(MODEL_PATH, tau, tag=parser.model_tag)
-
             examine_samples(MODEL_PATH, TS40K_PATH, tau=tau, tag=parser.model_tag)
 
     ###############################################################
@@ -768,9 +763,6 @@ if __name__ == "__main__":
     if not parser.no_train:
         train_observer()
 
-        # with torch.no_grad():
-        #     #plot_gt_pred_corr(MODEL_PATH)
-
 
     ###############################################################
     #                       Thresholding                          #
@@ -779,12 +771,6 @@ if __name__ == "__main__":
         taus_size=20
         testing_model_tag = parser.model_tag
         thresholding(META_MODEL_PATH, state_dict, taus_size=taus_size)
-        # best_tau = state_dict['model_props'].get('best_tau', TAU)
-
-        # if isinstance(best_tau, dict):
-        #     tau = best_tau['loss']
-        # else:
-        #     tau = best_tau
 
         for metric in ['loss', 'F1Score', 'FBetaScore', 'Precision', 'latest']:
             
@@ -796,8 +782,8 @@ if __name__ == "__main__":
 
             if not parser.vis:
                 state_dict['model_props']['test_results'][metric] = {'loss' : test_loss,
-                                                                        'tau': tau,
-                                                                        **test_res}
+                                                                     'tau': tau,
+                                                                      **test_res}
 
         if parser.vis:
             taus = torch.linspace(0.5, 0.95, taus_size)

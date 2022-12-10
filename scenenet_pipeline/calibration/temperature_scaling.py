@@ -7,6 +7,8 @@ import torch
 from torch import nn, optim
 from torch.nn import functional as F
 
+from scenenet_pipeline.torch_geneo.criterions.w_mse import WeightedMSE
+
 
 class ModelWithTemperature(nn.Module):
     """
@@ -54,8 +56,10 @@ class ModelWithTemperature(nn.Module):
         We're going to set it to optimize NLL.
         valid_loader (DataLoader): validation set loader
         """
+
         self.cuda()
-        nll_criterion = nn.CrossEntropyLoss().cuda()
+        w_class = torch.tensor([1e-5, 1000], dtype=torch.double)
+        nll_criterion = nn.CrossEntropyLoss(w_class).cuda()
         ece_criterion = _ECELoss().cuda()
 
         # First: collect all the logits and labels for the validation set
@@ -86,6 +90,7 @@ class ModelWithTemperature(nn.Module):
             loss = nll_criterion(self.temperature_scale(logits), labels)
             loss.backward()
             return loss
+
         optimizer.step(eval)
 
         # Calculate NLL and ECE after temperature scaling

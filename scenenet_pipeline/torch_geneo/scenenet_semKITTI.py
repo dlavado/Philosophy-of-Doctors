@@ -29,7 +29,7 @@ sys.path.insert(1, '../..')
 
 from datasets.semKITTI import semKITTI, Voxelization, ToTensor, ToFullDense, semKITTIv2
 from torch_geneo.models.SCENE_Net import SCENE_Net
-from models.geneo_loss import PICKLE_PATH, GENEO_Loss, GENEO_Loss_Class
+from scenenet_pipeline.torch_geneo.criterions.geneo_loss import PICKLE_PATH, GENEO_Loss, GENEO_Loss_BCE
 from observer_utils import *
 
 
@@ -45,7 +45,7 @@ SEMK_DATA_PATH = os.path.join(EXT_DIR, 'SemKITTI/dataset')
 SNET_PIPELINE_PATH = os.path.join(ROOT_PROJECT, 'scenenet_pipeline')
 
 META_PATH = os.path.join(SNET_PIPELINE_PATH, 'snet_semK_models')
-PICKLE_PATH = os.path.join(SNET_PIPELINE_PATH, "torch_geneo/models")
+HIST_PATH = os.path.join(SNET_PIPELINE_PATH, "torch_geneo/models")
 FREQ_SAMPLES = os.path.join(SNET_PIPELINE_PATH, "dataset/freq_samples")
 
 TAU=0.7
@@ -292,7 +292,7 @@ def train_observer(tau=TAU):
 
     # --- Loss and Optimizer ---
     torch.autograd.set_detect_anomaly(True)
-    geneo_loss = gnet_loss(torch.tensor([]), hist_path=PICKLE_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    geneo_loss = gnet_loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
     
 
     # --- Train GENEO Net ---
@@ -324,7 +324,7 @@ def testing_observer(model_path, tau=TAU, tag='latest'):
 
     print("Load Testing Data...")
     semK_test_loader = DataLoader(semK_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
-    geneo_loss = gnet_loss(torch.tensor([]), hist_path=PICKLE_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    geneo_loss = gnet_loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
 
     test_metrics = init_metrics(tau) 
     test_loss = 0
@@ -358,7 +358,7 @@ def visualize_thresholding(model_path, taus):
 
     print("Load Testing Data...")
     semK_test_loader = DataLoader(semK_test, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
-    geneo_loss = gnet_loss(torch.tensor([]), hist_path=PICKLE_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    geneo_loss = gnet_loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
 
     for batch in tqdm(semK_test_loader, desc=f"..."):
         loss, pred  = process_batch(gnet, batch, geneo_loss, None, None, requires_grad=False)
@@ -483,7 +483,7 @@ def examine_samples(model_path, data_path, tau=None, tag='loss'):
     print(f"\t with tau={tau} trying to optimize {tag}...")
 
     semK_loader = DataLoader(semK, batch_size=1, shuffle=True, num_workers=4)
-    geneo_loss = GENEO_Loss(torch.tensor([]), hist_path=PICKLE_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    geneo_loss = GENEO_Loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
     
     test_metrics = init_metrics(tau) 
     test_loss = 0
@@ -664,7 +664,7 @@ if __name__ == "__main__":
     opt_class = torch.optim.RMSprop
 
     if parser.bce_loss:
-        gnet_loss = GENEO_Loss_Class
+        gnet_loss = GENEO_Loss_BCE
     else:
         gnet_loss = GENEO_Loss
 

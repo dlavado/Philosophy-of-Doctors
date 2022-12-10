@@ -33,7 +33,7 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 
 from torch_geneo.models.SCENE_Net import SCENE_Net
-from torch_geneo.models.geneo_loss import GENEO_Loss
+from scenenet_pipeline.torch_geneo.models.geneo_loss import GENEO_Loss
 from torch_geneo.datasets.ts40kv2 import torch_TS40Kv2
 from torch_geneo.datasets.torch_transforms import Voxelization, ToTensor, ToFullDense
 from torch_geneo.observer_utils import *
@@ -48,7 +48,7 @@ TS40K_PATH = os.path.join(EXT_PATH, 'TS40K/')
 SCNET_PIPELINE = os.path.join(ROOT_PROJECT, 'scenenet_pipeline')
 
 SAVED_SCNETS_PATH = os.path.join(SCNET_PIPELINE, 'torch_geneo/saved_scnets')
-PICKLE_PATH = os.path.join(SCNET_PIPELINE, "torch_geneo/models")
+HIST_PATH = os.path.join(SCNET_PIPELINE, "torch_geneo/models")
 FREQ_SAMPLES = os.path.join(SCNET_PIPELINE, "dataset/freq_samples")
 
 

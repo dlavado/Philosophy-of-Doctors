@@ -282,8 +282,8 @@ if __name__ == "__main__":
     from pathlib import Path
     from datasets.ts40k import ToFullDense, torch_TS40K, ToTensor
     from torchvision.transforms import Compose
-    from torch_geneo.models.geneo_loss import PICKLE_PATH
-    from torch_geneo.models.geneo_loss import GENEO_Loss
+    from scenenet_pipeline.torch_geneo.models.geneo_loss import HIST_PATH
+    from scenenet_pipeline.torch_geneo.models.geneo_loss import GENEO_Loss
     from torch.utils.data import DataLoader
     from tqdm import tqdm
     from torch_geneo.observer_utils import forward, process_batch, init_metrics, visualize_batch
@@ -302,7 +302,7 @@ if __name__ == "__main__":
     ts40k = torch_TS40K(dataset_path=SAVE_DIR, split='test', transform=composed)
 
     ts40k_loader = DataLoader(ts40k, batch_size=1, shuffle=True, num_workers=4)
-    geneo_loss = GENEO_Loss(torch.tensor([]), hist_path=PICKLE_PATH, alpha=1, rho=3, epsilon=0.1)
+    geneo_loss = GENEO_Loss(torch.tensor([]), hist_path=HIST_PATH, alpha=1, rho=3, epsilon=0.1)
     tau=0.65
     test_metrics = init_metrics(tau) 
     test_loss = 0
