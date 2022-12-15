@@ -6,6 +6,7 @@ import shutil
 from typing import Any, List, Mapping, Tuple, Union
 import torch
 import torch.nn.functional as F
+from torchmetrics import MeanSquaredError
 from torchvision.transforms import Compose
 from torch.utils.data import DataLoader
 import pandas as pd
@@ -18,9 +19,10 @@ from datetime import datetime
 
 from datasets.ts40kv2 import torch_TS40Kv2
 from datasets.torch_transforms import Voxelization, ToTensor, ToFullDense
-from torch_geneo.models.SCENE_Net import SCENE_Net
+from scenenet_pipeline.torch_geneo.criterions.quant_loss import QuantileGENEOLoss, QuantileLoss
+from torch_geneo.models.SCENE_Net import SCENE_Net, SCENENetQuantile
 from scenenet_pipeline.torch_geneo.criterions.w_mse import HIST_PATH
-from scenenet_pipeline.torch_geneo.criterions.geneo_loss import GENEO_Loss, GENEO_Loss_BCE
+from scenenet_pipeline.torch_geneo.criterions.geneo_loss import GENEO_Loss
 from observer_utils import *
 
 import sys
@@ -30,7 +32,6 @@ from pathlib import Path
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 
-from calibration.plot_calibration import ConfidenceHistogram, ReliabilityDiagram
 from EDA import EDA_utils as eda
 from VoxGENEO import Voxelization as Vox
 import argparse
@@ -38,10 +39,9 @@ import argparse
 ROOT_PROJECT = Path(os.path.abspath(__file__)).parents[2].resolve()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-EXT_PATH = "/media/didi/TOSHIBA EXT/"
-#EXT_PATH = "/home/d.lavado/" #cluster data dir
+#EXT_PATH = "/media/didi/TOSHIBA EXT/"
+EXT_PATH = "/home/d.lavado/" #cluster data dir
 TS40K_PATH = os.path.join(EXT_PATH, 'TS40K/')
-
 
 SCNET_PIPELINE = os.path.join(ROOT_PROJECT, 'scenenet_pipeline')
 
@@ -67,7 +67,7 @@ def arg_parser():
     parser.add_argument("--bce_loss", action='store_true') # use BCELoss
 
     # Model Loading
-    parser.add_argument("--tuning", action='store_true') # Inits a new model with the model in --load_model
+    parser.add_argument("--tuning", action='store_true', default=True) # Inits a new model with the model in --load_model
     parser.add_argument("--load_model", type=str, default=None) # 'latest' or path or index
     parser.add_argument("--model_tag", type=str, default='loss') # tag of the model to load
     parser.add_argument("--model_date", type=str, default='today')
@@ -88,39 +88,28 @@ def arg_parser():
 
     return parser.parse_args()
 
-# def transform_batch(batch):
-#     vxg, gt = batch[0].to(device, non_blocking=True), batch[1].to(device, non_blocking=True)
-#     batch = (vxg[:, :, -1], gt[:, :, -1])
-#     return batch
 
-def transform_batch(batch):
+def transform_forward(batch, device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
     return batch[0].to(device), batch[1].to(device)
 
+def transform_metrics(pred:torch.Tensor, target:torch.Tensor):
+    return torch.flatten(pred, start_dim=1), torch.flatten(target, start_dim=1).to(torch.int)
 
-def process_batch(gnet:SCENE_Net, batch, geneo_loss:GENEO_Loss, opt : Union[torch.optim.Optimizer, None], metrics:Union[MetricCollection, None], requires_grad=True):
-    batch = transform_batch(batch)
+
+def process_batch(gnet, batch, geneo_loss, opt, metrics, requires_grad=True):
+    batch = transform_forward(batch)
     loss, pred = forward(gnet, batch, geneo_loss, opt, requires_grad)
     if metrics is not None:
-        gt = batch[1].to(device)
-        metrics(torch.flatten(pred), torch.flatten(gt > 0).to(torch.int))
+        pred, targets = transform_metrics(pred, batch[1])
+        metrics(pred, targets)
     return loss, pred
 
 
-def training_loop(gnet:SCENE_Net, train_loader, val_loader, geneo_loss, opt:torch.optim.Optimizer, tau=TAU):
+def training_loop(gnet:SCENENetQuantile, train_loader, val_loader, geneo_loss, opt:torch.optim.Optimizer, tau=TAU):
 
     # ---- Model Checkpoint ---
     if parser.load_model is not None:
-        gnet, chkp = load_state_dict(MODEL_PATH, gnet_class, parser.model_tag, kernel_size=None)
-
-        opt = opt_class(gnet.parameters(), lr=LR)
-        #opt.load_state_dict(chkp['optimizer_state_dict'])
-        state_dict['models'][parser.model_tag] = chkp
-
-        for k, v in chkp.items():
-            if not isinstance(v, dict):
-                print(f"{k}: {v}")
-
-        if parser.tuning:
+        if parser.tuning: # or we are tuning the current model
             chkp_epoch = 0
         else: # else we are resuming training
             chkp_epoch = chkp['epoch']
@@ -138,17 +127,23 @@ def training_loop(gnet:SCENE_Net, train_loader, val_loader, geneo_loss, opt:torc
     # early_stopping = EarlyStopping(tolerance=25, metric=early_metric)
 
 
-    train_metrics = init_metrics(tau)
+    train_metrics = None
     if parser.val:
-        val_metrics = init_metrics(tau)
+        val_metrics = None
 
     # `plot_metrics` saves the train/val metric results and loss for each epoch for later plotting
     init = torch.zeros((NUM_EPOCHS, 1 + parser.val), device=device)
-    plot_metrics = dict([(met, torch.clone(init)) for met in train_metrics])
+    if train_metrics is not None:
+        plot_metrics = dict([(met, torch.clone(init)) for met in train_metrics])
+    else:
+        plot_metrics = {}
     plot_metrics['loss'] = init
 
     # `best_train_metrics` saves the best training metrics to update the run's state_dict
-    best_train_metrics = dict([(met, 0) for met in train_metrics])
+    if train_metrics is not None:
+        best_train_metrics = dict([(met, 0) for met in train_metrics])
+    else:
+        best_train_metrics = {}
     best_train_metrics['loss'] = 1e10
 
     # --- Training Loop ---
@@ -170,35 +165,37 @@ def training_loop(gnet:SCENE_Net, train_loader, val_loader, geneo_loss, opt:torc
         #scheduler.step()
         
         # --- Calculate avg loss / metrics of train and validation loops ---
-        train_res = train_metrics.compute()  
-        train_loss = train_loss / len(train_loader)
         print(f"Epoch {epoch+1} / {NUM_EPOCHS}:\n")
+        train_loss = train_loss / len(train_loader)
         print(f"\t(threshold = {tau})")
         print(f"\ttrain_loss = {train_loss:.5f};")
-        for met in train_res: 
-            print(f"\t{met} = {train_res[met]};")
+        if train_metrics is not None:
+            train_res = train_metrics.compute()  
+            for met in train_res: 
+                print(f"\t{met} = {train_res[met]};")
 
         if parser.val:
-            val_res = val_metrics.compute()
             val_loss = val_loss / len(val_loader)
             print(f"\tval_loss = {val_loss:.5f};")
-            for met in val_res:
-                print(f"\t{met} = {val_res[met]:.5f};")
+            if val_metrics is not None:
+                val_res = val_metrics.compute()
+                for met in val_res:
+                    print(f"\t{met} = {val_res[met]:.5f};")
 
         # --- Save Best Model ---
+        if train_metrics is not None:
+            for metric in train_res:
+                if train_res[metric] >=  best_train_metrics[metric]:
+                    state_dict['models'][metric] = {
+                        'loss' : train_loss,
+                        'epoch': epoch,
+                        'tau' : tau,
+                        **train_res,
+                        'model_state_dict': gnet.state_dict(),
+                        'optimizer_state_dict': opt.state_dict(),
+                    }
 
-        for metric in train_res:
-            if train_res[metric] >=  best_train_metrics[metric]:
-                state_dict['models'][metric] = {
-                    'loss' : train_loss,
-                    'epoch': epoch,
-                    'tau' : tau,
-                    **train_res,
-                    'model_state_dict': gnet.state_dict(),
-                    'optimizer_state_dict': opt.state_dict(),
-                }
-
-                best_train_metrics[metric] = train_res[metric]
+                    best_train_metrics[metric] = train_res[metric]
 
         state_dict['models']['latest'] = {
                 'loss' : train_loss,
@@ -222,13 +219,12 @@ def training_loop(gnet:SCENE_Net, train_loader, val_loader, geneo_loss, opt:torc
             best_train_metrics['loss'] = train_loss
             
 
-        # for name, param in gnet.named_parameters():
-        #     print(f"{name} = {param.item():.4f}")
-        # print("\n")
-
-        for name, param in gnet.get_cvx_coefficients().items():
-            print(f"{name} = {param.item():.4f}")
+        for name, param in gnet.named_parameters():
+            if 'lambda' in name:
+                print(f"{name} = {param.item():.4f}")
         print("\n")
+
+
         # --- Update GENEO Parameter Tracker ---
         params = gnet.get_dict_parameters()
         epoch_params = pd.DataFrame({'epoch': np.full(len(gnet.get_dict_parameters()), epoch+1), 'name': params.keys(), 'value': params.values()})
@@ -272,7 +268,6 @@ def train_observer(tau=TAU):
 
 
     if parser.load_model is None:
-
         # --- Model Initialization ---
         geneos = {'cy': parser.cy,
                   'cone':parser.cone,
@@ -280,17 +275,19 @@ def train_observer(tau=TAU):
                }
                
         state_dict['model_props']['geneos_used'] = geneos
-        gnet = gnet_class(geneo_num=geneos, kernel_size=kernel_size).to(device)
-        opt = opt_class(gnet.parameters(), lr=LR)
+        
+        gnet = gnet_class(geneo_num=geneos, kernel_size=kernel_size, model_path=None).to(device)
     else:
-        # both loaded from state_dict
-        gnet = None
-        opt = None
+        gnet = gnet_class(kernel_size=kernel_size, model_path=MODEL_PATH).to(device)
+    
+    opt = opt_class(gnet.parameters(), lr=LR)
 
     # --- Loss and Optimizer ---
     torch.autograd.set_detect_anomaly(True)
-    geneo_loss = gnet_loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
-    
+
+
+    # In case hist_estimation needs to be calculated again, hist_path be None
+    geneo_loss = gnet_loss(ts40k_train[0][1], hist_path=None, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
 
     # --- Train GENEO Net ---
     plot_metrics, gnet_params, best_metrics = training_loop(gnet, ts40k_train_loader, ts40k_val_loader, geneo_loss, opt, tau)
@@ -366,104 +363,6 @@ def visualize_thresholding(model_path, taus):
             visualize_batch(vox, gt, pred, idx, tau)
 
 
-def thresholding(model_dir, state_dict, taus_size=10):
-
-    model_path = os.path.join(model_dir, 'gnet.pt')
-
-    roc = np.empty((taus_size, 5))
-
-    best_loss = 1e10
-    best_tau_loss = 0
-    taus = torch.linspace(0.0, 0.95, taus_size)
-    for i, tau in enumerate(taus):
-        print(f"\n\n\nTesting for threshold = {tau}")
-        with torch.no_grad():
-            test_metrics, loss = testing_observer(model_path, tau, tag=testing_model_tag)
-        pre = test_metrics['Precision']
-        rec= test_metrics['Recall']
-        f1 = test_metrics['F1Score']
-        fbeta = test_metrics['FBetaScore']
-        roc[i] = [pre, rec, f1, fbeta, tau]
-
-        if loss <= best_loss:
-            best_loss =  loss
-            best_tau_loss = tau
-
-    np.save(open('thresholding.npy', 'wb'), roc)
-    input("Stop?")
-    
-    # --- Plot ROC ---
-    plt.close()
-    fig = plt.figure()
-    ax = plt.subplot(111)
-    rem_axis(ax, ['top', 'right'])  
-    colours = cm.jet(np.linspace(0, 1, taus_size))
-    for row, c in zip(roc, colours):
-        #x, y = (row[:2] - min_val) / (max_val - min_val)
-        x, y = row[:2]
-        ax.scatter(x, y, label=f"{np.round(row[-1], decimals=3)}", color=c)
-    plt.xlabel('Precision')
-    plt.ylabel('Recall')
-    # Shrink current axis by 20%
-    box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-    ax.set_xlim([0, np.max(roc[:, :2])])
-    ax.set_ylim([0, np.max(roc[:, :2])])
-    plt.title(f"Precision-Recall Curve")
-    plt.savefig(os.path.join(model_dir, f"ROC.png"))
-
-    plt.close()
-    fig = plt.figure()
-    ax = plt.subplot(111)
-    rem_axis(ax, ['top', 'right'])  
-    plt.plot(roc[:, -1], roc[:, 2])
-    xmax = roc[:, -1][np.argmax(roc[:, 2])]
-    ymax = np.max(roc[:, 2])
-    label= "x={:.3f}, y={:.3f}".format(xmax, ymax)
-    plt.annotate(label, # this is the text
-                (xmax,ymax), # these are the coordinates parser.add_argument("--val", action="store_true")to position the label
-                textcoords="offset points", # how to position the text
-                xytext=(0,10), # distance from text to points (x,y)
-                ha='center') # horizontal alignment can be left, right or center
-    plt.xlabel('Threshold')
-    plt.ylabel('F1_Score')
-    plt.title(f"F1_Score per threshold")
-    plt.savefig(os.path.join(model_dir, f"F1_Score_threshold.png"))
-
-    plt.close()
-    fig = plt.figure()
-    ax = plt.subplot(111)
-    rem_axis(ax, ['top', 'right'])  
-    plt.plot(roc[:, -1], roc[:, 3])
-    xmax = roc[:, -1][np.argmax(roc[:, 3])]
-    ymax = np.max(roc[:, 3])
-    label= "x={:.3f}, y={:.3f}".format(xmax, ymax)
-    plt.annotate(label, # this is the text
-                (xmax,ymax), # these are the coordinates parser.add_argument("--val", action="store_true")to position the label
-                textcoords="offset points", # how to position the text
-                xytext=(0,10), # distance from text to points (x,y)
-                ha='center') # horizontal alignment can be left, right or center
-    plt.xlabel('Threshold')
-    plt.ylabel('FBetaScore')
-    plt.title(f"FBetaScore(beta = {0.5}) per threshold")
-    plt.savefig(os.path.join(model_dir, f"FBetaScore_threshold.png"))
-
-    if parser.vis:
-        visualize_thresholding(model_path, taus)
-
-    print(f"\n\nBest tau = {best_tau_loss}")
-    max_metrics = np.argmax(roc, axis=0)
-
-    if not parser.vis:
-        state_dict['model_props']["best_tau"] = {'loss' : best_tau_loss,
-                                                'Precision' : roc[max_metrics[0], -1],
-                                                'Recall': roc[max_metrics[1], -1],
-                                                'F1Score' : roc[max_metrics[2], -1],
-                                                'FBetaScore':roc[max_metrics[3], -1]
-                                                }
-
-
 def examine_samples(model_path, data_path, tau=None, tag='loss'):
 
     gnet, _ = load_state_dict(model_path, gnet_class, tag, kernel_size=kernel_size)
@@ -498,12 +397,12 @@ def examine_samples(model_path, data_path, tau=None, tag='loss'):
         pre = test_res['Precision']
         rec = test_res['Recall']
 
-        if preds is None and gts is None:
-            preds = torch.flatten(pred)
-            gts = torch.flatten(labels)
-        else:
-            preds = torch.concat((preds, torch.flatten(pred)))
-            gts = torch.concat((gts, torch.flatten(labels)))
+        # if preds is None and gts is None:
+        #     preds = torch.flatten(pred)
+        #     gts = torch.flatten(labels)
+        # else:
+        #     preds = torch.concat((preds, torch.flatten(pred)))
+        #     gts = torch.concat((gts, torch.flatten(labels)))
 
         if False:
             print(f"Precision = {pre}")
@@ -514,60 +413,30 @@ def examine_samples(model_path, data_path, tau=None, tag='loss'):
 
         test_metrics.reset()
 
-    preds = preds.reshape(-1, 1).cpu().numpy()
-    gts = gts.cpu().numpy()
+    # preds = preds.reshape(-1, 1).cpu().numpy()
+    # gts = gts.cpu().numpy()
 
-    aux = np.concatenate((preds, gts[:,None]), axis=1)
-    # aux = aux[aux[:, 0] > 0] # disregard zero predictions
-    # aux = aux[aux[:, 1] > 0] # disregard zero targets
-    preds, gts = aux[:, 0], aux[:, 1]
-    preds = preds[:, None]
-    print(preds.shape)
+    # aux = np.concatenate((preds, gts[:,None]), axis=1)
+    # # aux = aux[aux[:, 0] > 0] # disregard zero predictions
+    # # aux = aux[aux[:, 1] > 0] # disregard zero targets
+    # preds, gts = aux[:, 0], aux[:, 1]
+    # preds = preds[:, None]
+    # print(preds.shape)
 
-    hist = ConfidenceHistogram()
-    hist = hist.plot(preds, gts, n_bins=20, logits=False)
-    hist.show()
-    dia = ReliabilityDiagram()
-    dia = dia.plot(preds, gts, n_bins=20, logits=False)
-    dia.show()
+    # hist = ConfidenceHistogram()
+    # hist = hist.plot(preds, gts, n_bins=20, logits=False)
+    # hist.show()
+    # dia = ReliabilityDiagram()
+    # dia = dia.plot(preds, gts, n_bins=20, logits=False)
+    # dia.show()
 
-    input("?")
+    # input("?")
 
     test_loss = test_loss /  len(ts40k_loader)
     test_res = test_metrics.compute()
     print(f"\ttest_loss = {test_loss:.3f};")
     for met in test_res:
         print(f"\t{met} = {test_res[met]:.3f};")
-
-
-
-def update_testing_results(models_root):
-     for root, _, files in os.walk(models_root):
-
-        if 'gnet.pt' in files: # root contains a gnet model
-            model_path = os.path.join(root, 'gnet.pt')
-            state_dict = torch.load(model_path)
-
-            if 'model_props' not in state_dict.keys() or 'test_results' not in state_dict['model_props'].keys():
-                continue
-            print(f"\n\n\nUpdating {root}...")
-            with torch.no_grad():
-                taus_size=20
-                thresholding(root, state_dict, taus_size=taus_size)
-                best_tau = state_dict['model_props'].get('best_tau', TAU)
-                if isinstance(best_tau, dict):
-                    tau = best_tau['loss']
-                else:
-                    tau = best_tau
-                test_res, test_loss = testing_observer(model_path, tau=tau, tag=testing_model_tag)
-
-                if not parser.vis:
-                    state_dict['model_props']['test_results'] = {'loss' : test_loss,
-                                                                'tau': tau,
-                                                                **test_res}
-
-                torch.save(state_dict, model_path)
-
 
 
 
@@ -664,13 +533,10 @@ if __name__ == "__main__":
     
 
     # --- Model Definition ---
-    gnet_class = SCENE_Net
+    gnet_class = SCENENetQuantile
     opt_class = torch.optim.RMSprop
 
-    if parser.bce_loss:
-        gnet_loss = GENEO_Loss_BCE
-    else:
-        gnet_loss = GENEO_Loss
+    gnet_loss = QuantileGENEOLoss
 
 
     # --- Define State Dict ---
@@ -723,18 +589,6 @@ if __name__ == "__main__":
 
 
 
-    pp.pprint(state_dict['model_props'])
-
-   
-    ###############################################################
-    #                     Model Calibration                       #
-    ###############################################################
-
-
-    scnet_calibration(MODEL_PATH, gnet_class, ts40k_val, parser.batch_size, mode='LogRegression')
-    input("Continue?")
-
-
     ###############################################################
     #                   Examining Samples                         #
     ###############################################################
@@ -762,36 +616,9 @@ if __name__ == "__main__":
         train_observer()
 
 
-    ###############################################################
-    #                       Thresholding                          #
-    ###############################################################
-    with torch.no_grad():
-        taus_size=20
-        testing_model_tag = parser.model_tag
-        thresholding(META_MODEL_PATH, state_dict, taus_size=taus_size)
-
-        for metric in ['loss', 'F1Score', 'FBetaScore', 'Precision', 'latest']:
-            
-            tau = state_dict['model_props']['best_tau'][metric] if metric != 'latest' else TAU
-
-            print(metric, tau)
-
-            test_res, test_loss = testing_observer(MODEL_PATH, tau=tau, tag=metric)
-
-            if not parser.vis:
-                state_dict['model_props']['test_results'][metric] = {'loss' : test_loss,
-                                                                     'tau': tau,
-                                                                      **test_res}
-
-        if parser.vis:
-            taus = torch.linspace(0.5, 0.95, taus_size)
-            visualize_thresholding(MODEL_PATH, taus)
-        else:
-            torch.save(state_dict, MODEL_PATH)
-
     chkp = torch.load(MODEL_PATH)
-    pp.pprint(chkp['models'].keys())
-    pp.pprint(chkp['model_props'])
+    # pp.pprint(chkp['models'].keys())
+    # pp.pprint(chkp['model_props'])
 
     ###############################################################
     #                   Saving Run Config                         #

@@ -28,11 +28,14 @@ class ModelWithLogCalibration(nn.Module):
             pred = self.model(x)
 
         pred = torch.flatten(pred, dim=1) # cuz linear model need flattened data; dim 0 is the batch dim
+
         # kinda jank I know
-        pred = torch.sort(pred, dim=1, descending=True)[:self.out_f] # we select the highest proababities to regress
+        pred, idxs = torch.sort(pred, dim=1, descending=True)
+        pred, idxs  = pred[:, :self.out_f], idxs[:, self.out_f] # we select the highest probabilities to regress
+        # pred = pred[torch.randperm(pred.shape[1])] #shuffle prediction
 
         outputs = torch.sigmoid(self.linear(pred))
-        return outputs
+        return outputs, idxs
 
 
     def init_metrics(self, device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
@@ -76,11 +79,11 @@ def forward(model:torch.nn.Module, batch, criterion:torch.nn.Module, opt: Union[
     
     # --- Forward pass ---
     #start = time.time()
-    pred = model(input)
+    pred, idxs = model(input)
     #end = time.time()
     #print(f"Prediction inference time: {end - start}")
 
-    loss = criterion(pred, target) 
+    loss = criterion(pred, target[:, idxs]) 
 
     # --- Backward pass ---
     if requires_grad:
@@ -106,7 +109,6 @@ def calibrate(model:nn.Module, in_feat, val_loader, epochs,
         for e in tqdm(range(epochs), desc=f"Calibrating..."):
 
             for input, target in val_loader:
-
                     
                 mse_loss, pred = process_batch(model, (input, target), mse_criterion, optimizer, metrics)
                 

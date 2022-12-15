@@ -183,8 +183,6 @@ def process_batch(gnet, batch, geneo_loss, opt, metrics, requires_grad=True):
         metrics(pred, targets)
     return loss, pred
 
-
-
 def forward(gnet:torch.nn.Module, batch, geneo_loss:torch.nn.Module, opt : Union[torch.optim.Optimizer, None], requires_grad=True) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Computes a forward pass of `gnet` with data `batch`, loss `geneo_loss` and optimizer `opt`.
@@ -329,7 +327,7 @@ def scnet_calibration(model_path, gnet_class, ts40k_val, batch_size, mode="TempS
         from scenenet_pipeline.calibration import log_regression
         import functools
         #in_features = functools.reduce(lambda x,y: x*y, (64, 64, 64)) #too much memory
-        in_features = 2048
+        in_features = 1024
         log_regression.calibrate(gnet, in_features, ts40k_val_loader, 100)
     else:
         ValueError(f"Mode {mode} is not Implemented; Available Modes = [TempScaling, LogRegression]")

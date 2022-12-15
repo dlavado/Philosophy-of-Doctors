@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import sys
+import os
+
 
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
@@ -15,19 +17,58 @@ from VoxGENEO import Voxelization as Vox
 from torch_geneo.geneos import GENEO_kernel_torch, cylinder, cone, neg_sphere
 
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-# GENEO-Layer
+def load_state_dict(model_path, gnet_class, model_tag='loss', kernel_size=None):
+    """
+    Returns SCENE-Net model and model_checkpoint
+    """
+    # print(model_path)
+    # --- Load Best Model ---
+    if os.path.exists(model_path):
+        run_state_dict = torch.load(model_path)
+        if model_tag == 'loss' and 'best_loss' in run_state_dict['models']:
+            model_tag = 'best_loss'
+        if model_tag in run_state_dict['models']:
+            if kernel_size is None:
+                kernel_size = run_state_dict['model_props'].get('kernel_size', (9, 6, 6))
+            gnet = gnet_class(run_state_dict['model_props']['geneos_used'], 
+                              kernel_size=kernel_size, 
+                              plot=False)
+            print(f"Loading Model in {model_path}")
+            model_chkp = run_state_dict['models'][model_tag]
+
+            try:
+                gnet.load_state_dict(model_chkp['model_state_dict'])
+            except RuntimeError: 
+                for key in list(model_chkp['model_state_dict'].keys()):
+                    model_chkp['model_state_dict'][key.replace('phi', 'lambda')] = model_chkp['model_state_dict'].pop(key) 
+                gnet.load_state_dict(model_chkp['model_state_dict'])
+            return gnet, model_chkp
+        else:
+            ValueError(f"{model_tag} is not a valid key; run_state_dict contains: {run_state_dict['models'].keys()}")
+    else:
+        ValueError(f"Invalid model path: {model_path}")
+
+    return None, None
+
+
+###############################################################
+#                         GENEO Layer                         #
+###############################################################
 
 class GENEO_Layer(nn.Module):
 
-    def __init__(self, geneo_class:GENEO_kernel_torch.GENEO_kernel_torch, kernel_size:tuple=None, smart=False):
-        super().__init__()  
+    def __init__(self, geneo_class:GENEO_kernel_torch.GENEO_kernel_torch, kernel_size:tuple=None, smart=False,
+                 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
+        super(GENEO_Layer, self).__init__()  
 
         self.geneo_class = geneo_class
 
         self.init_from_config(smart)
+
+        self.device=device
 
         if kernel_size is not None:
             self.kernel_size = kernel_size
@@ -43,7 +84,6 @@ class GENEO_Layer(nn.Module):
             config = self.geneo_class.geneo_random_config()
             if config['plot']:
                 print("Random GENEO Initialization...")
-
 
         self.name = config['name']
         self.kernel_size = config['kernel_size']
@@ -70,30 +110,52 @@ class GENEO_Layer(nn.Module):
 
     def compute_kernel(self) -> torch.Tensor:
         geneo = self.geneo_class(self.name, self.kernel_size, plot=self.plot, **self.geneo_params)
-        kernel = geneo.kernel.to(device, dtype=torch.double)
+        kernel = geneo.kernel.to(self.device, dtype=torch.double)
         return kernel.view(1, *kernel.shape)
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         geneo = self.geneo_class(self.name, self.kernel_size, plot=self.plot, **self.geneo_params)
 
-        kernel = geneo.kernel.to(device, dtype=torch.double)
+        kernel = geneo.kernel.to(self.device, dtype=torch.double)
         
         return F.conv3d(x, kernel.view(1, 1, *kernel.shape), padding='same')
 
 
 
-# SCENE-Net
+###############################################################
+#                         SCENE-Net                           #
+###############################################################
 
 class SCENE_Net(nn.Module):
 
-    def __init__(self, geneo_num=None, kernel_size=None, plot=False):
-        super().__init__()
+    def __init__(self, geneo_num=None, kernel_size=None, plot=False,
+                device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
+        """
+        Instantiates a SCENE-Net Module with specific GENEOs and their respective cvx coefficients.
+
+
+        Parameters
+        ----------
+        `geneo_num` - dict:
+            Mappings that contain the number of GENEOs of each kind (the key) to initialize
+        
+        `kernel_size` - tuple/list:
+            3 elem array with the kernel_size dimensions to discretize the GENEOs in (z, x, y) format
+
+        `plot` - bool:
+            if True plot information about the Module; It's propagated to submodules
+
+        `device` - str:
+            device where to load the Module.
+        """
+        super(SCENE_Net, self).__init__()
+
+        self.device = device
 
         if geneo_num is None:
-
-            self.sizes = {'cy':1, 
-                          'cone': 1, 
-                          'neg': 1}
+            self.sizes = {'cy'  : 1, 
+                        'cone': 1, 
+                        'neg' : 1}
         else:
             self.sizes = geneo_num
 
@@ -120,23 +182,22 @@ class SCENE_Net(nn.Module):
         num_lambdas = sum(self.sizes.values())
         lambda_init_max = 0.6 #2 * 1/num_lambdas
         lambda_init_min =  0 #-1/num_lambdas # for testing purposes
-        self.lambdas = (lambda_init_max - lambda_init_min)*torch.rand(num_lambdas, device=device, dtype=torch.float) + lambda_init_min
+        self.lambdas = (lambda_init_max - lambda_init_min)*torch.rand(num_lambdas, device=self.device, dtype=torch.float) + lambda_init_min
         self.lambdas = [nn.Parameter(lamb) for lamb in self.lambdas]
-       
+    
         self.lambda_names = [f'lambda_{key}_{i}' for key, val in self.sizes.items() for i in range(val)]
         self.last_lambda = self.lambda_names[torch.randint(0, num_lambdas, (1,))[0]]
         if plot:
             print(f"last cvx_coeff: {self.last_lambda}")
 
-        #updating last lambda
+        # Updating last lambda
         self.lambdas_dict = dict(zip(self.lambda_names, self.lambdas)) # last cvx_coeff is equal to 1 - sum(lambda_i)
         self.lambdas_dict[self.last_lambda] = nn.Parameter(1 - sum(self.lambdas_dict.values()) + self.lambdas_dict[self.last_lambda], requires_grad=False)
-        # print(self.lambda_names)
-        # assert len(self.lambdas) == len(self.lambda_names) == len(self.geneos)
-        # assert np.isclose(sum(self.lambdas_dict.values()).data.item(), 1), sum(self.lambdas_dict.values()).data.item()
+        
         self.lambdas_dict = nn.ParameterDict(self.lambdas_dict)
 
-        print(f"Total Number of train. params = {self.get_num_total_params()}")
+        if plot:
+            print(f"Total Number of train. params = {self.get_num_total_params()}")
 
     def get_geneo_nums(self):
         return self.sizes
@@ -158,11 +219,6 @@ class SCENE_Net(nn.Module):
         kernels = torch.stack([self.geneos[geneo].compute_kernel() for geneo in self.geneos])
         conv = F.conv3d(x, kernels, padding='same')
 
-        # print(kernels.shape)
-        # print(x.shape)
-        # print(conv.shape)
-        # print(conv[:, [0]].shape)
-
         conv_pred = torch.zeros_like(x)
 
         for i, g_name in enumerate(self.geneos):
@@ -173,55 +229,88 @@ class SCENE_Net(nn.Module):
             else:
                 conv_pred += self.lambdas_dict[f'lambda_{g_name}']*conv[:, [i]]
 
-            # print(f"{g_name}: {self.lambdas_dict[f'lambda_{g_name}']}")
-            # Vox.plot_voxelgrid((self.lambdas_dict[f'lambda_{g_name}']*conv[:, i][0]).cpu().detach().numpy(), title=f'{g_name} observation output')
-        
-        #print(self.lambdas_dict[self.last_lambda])
-
-        #conv_pred = self.lambdas_dict['lambda_cy']*conv[:, 0] + self.lambdas_dict['lambda_cone']*conv[:, 1] + self.lambda_neg*conv[:, 2]
-        # Vox.plot_voxelgrid(conv[0, 0].cpu().detach().numpy()) # cylinder convolution
-
-        #print(conv_pred.shape)
-        #Vox.plot_voxelgrid(conv_pred[0].cpu().detach().numpy())
-
-        if False:
-            #Vox.plot_voxelgrid(x[0][0].cpu().detach())
-
-            print(f"min/max conv_pred values = {torch.min(conv_pred):.4f} ; {torch.max(conv_pred):.4f}")
-            cvx_explore = conv_pred[0][0].cpu().detach()
-            print(cvx_explore.shape)
-
-            Vox.plot_voxelgrid(cvx_explore)
-        
-            # plt.hist(torch.flatten(conv_pred[conv_pred != 0]).cpu().detach().numpy())
-            # plt.title("Distribution of values of Observer")
-            # plt.show()
-            # plt.hist(torch.flatten(torch.tanh(conv_pred[conv_pred != 0])).cpu().detach().numpy())
-            # plt.title("Distribution of values of Observer + tanh")
-            # plt.show()
-            # plt.hist(torch.flatten(torch.sigmoid(conv_pred[conv_pred != 0])).cpu().detach().numpy())
-            # plt.title("Distribution of values of Observer + sig")
-            # plt.show()
-            # plt.hist(torch.flatten(torch.relu(torch.tanh(conv_pred[conv_pred != 0]))).cpu().detach().numpy())
-            # plt.title("Distribution of values of Observer + tanh + relu")
-            # plt.show()
-            # pred_tanh = torch.tanh(cvx_explore)
-            # pred_sig = torch.sigmoid(cvx_explore)
-            # #Vox.plot_voxelgrid(cvx_explore, color_mode='ranges')
-            # Vox.plot_voxelgrid(torch.where(pred_tanh >= 0.7, pred_tanh, torch.tensor(0.0, dtype=torch.double)), color_mode='ranges')
-            # Vox.plot_voxelgrid(torch.where(pred_sig >= 0.7, pred_sig, torch.tensor(0.0, dtype=torch.double)), color_mode='ranges')
-            # Vox.plot_voxelgrid(torch.where((cvx_explore >= 0.8), cvx_explore, torch.tensor(0.0, dtype=torch.double)), color_mode='ranges')
-            # Vox.plot_voxelgrid(torch.where((cvx_explore >= 0.0) & (cvx_explore <= 0.4) & (cvx_explore != 0), cvx_explore, torch.tensor(0.0, dtype=torch.double)), color_mode='ranges')
-            # Vox.plot_voxelgrid(torch.where((cvx_explore >= 0.0) & (cvx_explore <= 0.4) & (cvx_explore != 0), cvx_explore, torch.tensor(0.0, dtype=torch.double)), color_mode='ranges')
-
-
         conv_pred = torch.relu(torch.tanh(conv_pred))
-
-        #Vox.plot_voxelgrid(conv_pred[0][0].cpu().detach().numpy())
 
         return conv_pred
 
-import os
+
+
+###############################################################
+#                     SCENE-Net Quantile                      #
+###############################################################
+class SCENENetQuantile(nn.Module):
+    """
+    Quantile Regressor powered by SCENE-Net architecture.
+    Since SCENE-Net is domain specific, we create an ensemble of SCENE-Nets, one per quantile.
+    """
+
+    def __init__(self, geneo_num=None, kernel_size=None, qs=torch.tensor([0.1, 0.5, 0.9]), plot=False, model_path=None,
+                 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')) -> None:
+        """
+        Instantiates a Quantile SCENE-Net Module with specific GENEOs and their respective cvx coefficients.
+
+
+        Parameters
+        ----------
+        `geneo_num` - dict:
+            Mappings that contain the number of GENEOs of each kind (the key) to initialize
+        
+        `kernel_size` - tuple/list:
+            3 elem array with the kernel_size dimensions to discretize the GENEOs in (z, x, y) format
+
+        `qs` - torch.tensor:
+            target quantiles to approximate
+
+        `plot` - bool:
+            if True plot information about the Module; It's propagated to submodules
+        
+        `model_path` - Path/str:
+            if .pt file exists, it loads the existing model into this instance
+
+        `device` - str:
+            device where to load the Module.
+        """
+        super(SCENENetQuantile, self).__init__()
+
+        if model_path is not None:
+            # loads SCENE-Nets from a pre-existing model
+            self.scnets = nn.ModuleList([load_state_dict(model_path, SCENE_Net, 'FBetaScore', kernel_size)[0] 
+                                            for _ in range(len(qs))]).to(device)
+        else:
+            self.scnets = nn.ModuleList([SCENE_Net(geneo_num, kernel_size, plot) for _ in range(len(qs))]).to(device)
+
+        self.qs = qs  
+        self.device = device
+
+        print(f"Total Number of train. params = {self.get_num_total_params()}")
+        
+
+    def get_num_total_params(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
+
+    def get_dict_parameters(self):
+        return dict([(n, param.data.item()) for n, param in self.named_parameters()])
+
+    def get_cvx_coefficients(self):
+        return [scnet.get_cvx_coefficients() for scnet in self.scnets]
+    
+    def get_geneo_params(self):
+        return [scnet.get_geneo_params() for scnet in self.scnets]
+
+    def forward(self, x:torch.Tensor):
+        x_shape = x.shape # [B, 1, *vxg_size]
+        pred = torch.empty((x_shape[0], len(self.qs), *x_shape[2:]), device=self.device)
+
+        for i, _ in enumerate(self.qs):
+            # pred comes in shape = [B, 1, *vxg_size]
+            pred_q = self.scnets[i].forward(x)
+            pred[:, i] = torch.squeeze(pred_q, dim=1)
+
+        return pred
+
+
+
+
 
 class SCENE_Net_Class(nn.Module):
 
@@ -280,29 +369,44 @@ if __name__ == "__main__":
     import sys
     import os
     from pathlib import Path
-    from datasets.ts40k import ToFullDense, torch_TS40K, ToTensor
+    from datasets.ts40kv2 import ToFullDense, torch_TS40Kv2, ToTensor
     from torchvision.transforms import Compose
-    from scenenet_pipeline.torch_geneo.models.geneo_loss import HIST_PATH
-    from scenenet_pipeline.torch_geneo.models.geneo_loss import GENEO_Loss
+    from torch_geneo.criterions.quant_loss import QuantileGENEOLoss
+    from torch_geneo.criterions.w_mse import HIST_PATH 
     from torch.utils.data import DataLoader
     from tqdm import tqdm
     from torch_geneo.observer_utils import forward, process_batch, init_metrics, visualize_batch
     import torchvision.models as models
     from torch.profiler import profile, record_function, ProfilerActivity
 
+    EXT_PATH = "/media/didi/TOSHIBA EXT/"
+    TS40K_PATH = os.path.join(EXT_PATH, 'TS40K/')
 
-    ROOT_PROJECT = str(Path(os.getcwd()).parent.absolute().parent.absolute())
-    print(ROOT_PROJECT)
-    SAVE_DIR = ROOT_PROJECT + "/dataset/torch_dataset"
+    MODEL_PATH = "/home/didi/VSCode/soa_scenenet/scenenet_pipeline/torch_geneo/saved_scnets/models_geneo/2022-08-04 16:29:24.530075/gnet.pt"
 
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    gnet = SCENENetQuantile(None, (9, 6, 6), model_path=MODEL_PATH)
 
-    gnet = SCENE_Net(None, (9, 6, 6)).to(device)
+    for name, param in gnet.named_parameters():
+        print(f"{name} = {param.item():.4f}")
+    print("\n")
+
+    input("?")
+
 
     composed = Compose([ToTensor(), ToFullDense()])
-    ts40k = torch_TS40K(dataset_path=SAVE_DIR, split='test', transform=composed)
+    ts40k = torch_TS40Kv2(dataset_path=TS40K_PATH, split='test', transform=composed)
 
     ts40k_loader = DataLoader(ts40k, batch_size=1, shuffle=True, num_workers=4)
-    geneo_loss = GENEO_Loss(torch.tensor([]), hist_path=HIST_PATH, alpha=1, rho=3, epsilon=0.1)
+    geneo_loss = QuantileGENEOLoss(torch.tensor([]), hist_path=HIST_PATH, alpha=1, rho=3, epsilon=0.1)
+    tau=0.65
+    test_metrics = init_metrics(tau) 
+    test_loss = 0
+    composed = Compose([ToTensor(), ToFullDense()])
+    ts40k = torch_TS40Kv2(dataset_path=TS40K_PATH, split='test', transform=composed)
+
+    ts40k_loader = DataLoader(ts40k, batch_size=1, shuffle=True, num_workers=4)
+    geneo_loss = QuantileGENEOLoss(torch.tensor([]), hist_path=HIST_PATH, alpha=1, rho=3, epsilon=0.1)
     tau=0.65
     test_metrics = init_metrics(tau) 
     test_loss = 0

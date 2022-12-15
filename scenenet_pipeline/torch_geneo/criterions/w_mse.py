@@ -23,7 +23,7 @@ HIST_PATH = os.path.join(ROOT_PROJECT, 'scenenet_pipeline/torch_geneo/criterions
 
 class WeightedMSE(torch.nn.Module):
 
-    def __init__(self, targets:torch.Tensor, hist_path=HIST_PATH, alpha=1, rho=1, epsilon=0.1, gamma=1) -> None:
+    def __init__(self, targets:torch.Tensor, hist_path=None, alpha=1, rho=1, epsilon=0.1, gamma=1) -> None:
         """
 
         Weighted MSE criterion.
@@ -65,7 +65,7 @@ class WeightedMSE(torch.nn.Module):
             self.freqs, self.ranges = load_pickle(self.pik_name)
         else:
             print("calculating histogram estimation...")
-            self.freqs, self.ranges = self.hist_frequency_estimation(torch.flatten(targets))
+            self.freqs, self.ranges = self.hist_frequency_estimation(torch.flatten(targets), plot=False)
             save_pickle((self.freqs, self.ranges), f"{os.path.join('.', 'hist_estimation.pickle')}")
         self.freqs = self.freqs.to(self.device)
         self.ranges = self.ranges.to(self.device)
@@ -87,7 +87,7 @@ class WeightedMSE(torch.nn.Module):
             number of ranges to use when aggregating the values of y
 
         `plot` - bool:
-            plots the calculated historgram and shows the true count for each range
+            plots the calculated histogram and shows the true count for each range
 
         Returns
         -------
@@ -98,24 +98,19 @@ class WeightedMSE(torch.nn.Module):
             the employed ranges
         """
 
-        hist_range = torch.linspace(0, 1, hist_len, device=self.device) # the probabilities go from 0 to 1, with hist_len bins
+        hist_range = torch.linspace(0, 1, hist_len + 1, device=self.device)[:-1] # the probabilities go from 0 to 1, with hist_len bins
         y = y.to(self.device)
-        hist_idxs = torch.abs(torch.unsqueeze(y, -1) - hist_range).argmin(dim=-1) # calculates which bin each value of y belongs to
-        hist_count = torch.bincount(hist_idxs) # counts the occurence of value in hist_idxs
+        # calculates which bin each value of y belongs to
+        #       y are multiplied by hist_len in order to retrieve their decimal bin
+        hist_idxs = (hist_len*y).to(torch.int)
+        hist_count = torch.bincount(hist_idxs, minlength=hist_len) # counts the occurrence of value in hist_idxs
 
-        if len(hist_count) < hist_len: # this happens when not all idxs in the hist have y values near them
-            # These idxs are filled with zero in this case
-            count_idxs = torch.unique(hist_idxs)
-            org_idxs = torch.arange(hist_len).to(self.device)
-            present_idxs = (org_idxs[:, None] == count_idxs).any(dim=1)
-
-            hist_count = org_idxs.apply_(lambda x : hist_count[x] if present_idxs[x] else 0)
-
-        # min_count = torch.min(hist_count)
-        # count_normed = (hist_count - min_count) / (torch.max(hist_count) - min_count)
         if plot:
-            print(f"hist_count = {list(zip(hist_range.numpy(), hist_count.numpy()))}")
-            sns.displot(y, bins=hist_range.numpy(), kde=True)
+            print(f"Histogram Bin /\t Count")
+            step = hist_range[1] - hist_range[0]
+            for i in range(len(hist_range)):
+                print(f"[{hist_range[i]:.3f}, {hist_range[i] + step:.3f}[ : {hist_count[i]}")
+                
         return hist_count, hist_range
 
     def get_dens_target(self, y:torch.Tensor, calc_weights = False):
@@ -126,14 +121,16 @@ class WeightedMSE(torch.nn.Module):
         if calc_weights:
             self.freqs, self.ranges = self.hist_frequency_estimation(y)
 
-        closest_idx = torch.abs(torch.unsqueeze(y, -1) - self.ranges).argmin(dim=-1)
+        # hist bin that each y belongs to
+        hist_idx = torch.abs(torch.unsqueeze(y, -1) - self.ranges).argmin(dim=-1)
 
         for idx in range(len(self.freqs)):
-            closest_idx[closest_idx == idx] = self.freqs[idx]
-        # f = self.freqs.cpu()
-        # target_freq = closest_idx.cpu().apply_(lambda x: f[x])
+            # we replace the idx with its corresponding frequency
+            hist_idx[hist_idx == idx] = self.freqs[idx]
+
+        freq_min, freq_max = torch.min(self.freqs), torch.max(self.freqs)
        
-        target_dens = closest_idx / torch.sum(self.freqs)
+        target_dens = (hist_idx - freq_min) / (freq_max - freq_min)
         return target_dens
 
     def get_weight_target(self, y:torch.Tensor):
@@ -145,10 +142,20 @@ class WeightedMSE(torch.nn.Module):
         y_dens = self.get_dens_target(y)
         weights = torch.max(1 - self.alpha*y_dens, torch.full_like(y_dens, self.epsilon, device=self.device))
 
-        return weights / torch.mean(weights)
+        return weights / torch.mean(weights) # weights should have a mean of 1 to not directly influence the learning rate
 
     def forward(self, y_pred:torch.Tensor, y_gt:torch.Tensor):
         exp_y_pred, exp_y_gt = torch.broadcast_tensors(y_pred, y_gt) ## ensures equal dims
         weights_y_gt = self.get_weight_target(exp_y_gt)
 
-        return torch.sum(self.gamma * weights_y_gt * (exp_y_gt - exp_y_pred)**2) ## weight_function * squared error
+        return torch.mean(self.gamma * weights_y_gt * (exp_y_gt - exp_y_pred)**2) ## weight_function * squared error
+
+
+
+if __name__ == "__main__":
+
+    target = torch.randint(0, 8, (10,), dtype=torch.int64) / 8
+    print(target)
+
+    w_mse = WeightedMSE(target, hist_path=None)
+
