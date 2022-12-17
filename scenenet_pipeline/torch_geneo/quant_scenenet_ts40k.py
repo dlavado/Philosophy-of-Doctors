@@ -173,6 +173,8 @@ def training_loop(gnet:SCENENetQuantile, train_loader, val_loader, geneo_loss, o
             train_res = train_metrics.compute()  
             for met in train_res: 
                 print(f"\t{met} = {train_res[met]};")
+        else:
+            train_res = {}
 
         if parser.val:
             val_loss = val_loss / len(val_loader)
@@ -181,21 +183,22 @@ def training_loop(gnet:SCENENetQuantile, train_loader, val_loader, geneo_loss, o
                 val_res = val_metrics.compute()
                 for met in val_res:
                     print(f"\t{met} = {val_res[met]:.5f};")
+            else:
+                val_res = {}
 
         # --- Save Best Model ---
-        if train_metrics is not None:
-            for metric in train_res:
-                if train_res[metric] >=  best_train_metrics[metric]:
-                    state_dict['models'][metric] = {
-                        'loss' : train_loss,
-                        'epoch': epoch,
-                        'tau' : tau,
-                        **train_res,
-                        'model_state_dict': gnet.state_dict(),
-                        'optimizer_state_dict': opt.state_dict(),
-                    }
+        for metric in train_res:
+            if train_res[metric] >=  best_train_metrics[metric]:
+                state_dict['models'][metric] = {
+                    'loss' : train_loss,
+                    'epoch': epoch,
+                    'tau' : tau,
+                    **train_res,
+                    'model_state_dict': gnet.state_dict(),
+                    'optimizer_state_dict': opt.state_dict(),
+                }
 
-                    best_train_metrics[metric] = train_res[metric]
+                best_train_metrics[metric] = train_res[metric]
 
         state_dict['models']['latest'] = {
                 'loss' : train_loss,
@@ -233,15 +236,15 @@ def training_loop(gnet:SCENENetQuantile, train_loader, val_loader, geneo_loss, o
         # --- Update Loss/Metric Tracker
         if parser.val:
             plot_metrics['loss'][epoch] = torch.tensor([train_loss, val_loss])
-            for metric in train_metrics:
+            for metric in train_res:
                 plot_metrics[metric][epoch] = torch.tensor([train_res[metric], val_res[metric]])
         else:
             plot_metrics['loss'][epoch] = train_loss[None, ...]
-            for metric in train_metrics:
+            for metric in train_res:
                 plot_metrics[metric][epoch] = train_res[metric][None, ...]
 
-        if torch.sum(plot_metrics['FBetaScore']) == 0 and epoch >= 50:
-            break # early stop if metrics remain null after 50 epochs
+        # if torch.sum(plot_metrics['FBetaScore']) == 0 and epoch >= 50:
+        #     break # early stop if metrics remain null after 50 epochs
         
         # early stopping
         # early_stopping(train_res[early_metric])
@@ -249,8 +252,9 @@ def training_loop(gnet:SCENENetQuantile, train_loader, val_loader, geneo_loss, o
         #     print("We are at epoch:", epoch)
         #     break
         
-        train_metrics.reset()
-        if parser.val:
+        if train_metrics is not None:
+            train_metrics.reset()
+        if parser.val and val_metrics is not None:
             val_metrics.reset()
         
         if chkp_epoch % 10 == 0:

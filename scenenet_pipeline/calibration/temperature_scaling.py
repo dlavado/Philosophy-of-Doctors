@@ -58,7 +58,7 @@ class ModelWithTemperature(nn.Module):
         """
 
         self.cuda()
-        w_class = torch.tensor([1e-5, 1000], dtype=torch.double)
+        w_class = torch.tensor([1e-5, 100], dtype=torch.double)
         nll_criterion = nn.CrossEntropyLoss(w_class).cuda()
         ece_criterion = _ECELoss().cuda()
 
@@ -67,11 +67,13 @@ class ModelWithTemperature(nn.Module):
         labels_list = []
         with torch.no_grad():
             for input, label in valid_loader:
+
                 label = self.target_to_label(label, 0.3)
+                
                 input = input.cuda()
-                # logits = self.model(input)
                 probs = self.model(input)
                 logits = self.prob_to_logit(probs)
+
                 logits_list.append(logits)
                 labels_list.append(label)
             logits = torch.cat(logits_list).cuda()

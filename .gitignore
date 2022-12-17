@@ -1,0 +1,6 @@
+papers/*
+Pickles/*
+.ipynb_checkpoints/*
+.vscode/*
+*pycache*
+dummy_res/*
