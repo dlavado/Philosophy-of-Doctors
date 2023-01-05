@@ -639,7 +639,7 @@ if __name__ == "__main__":
     vox_size = (0.5, 0.5, 0.5) # only use vox_size after training or with batch_size = 1
     composed = Compose([Voxelization([eda.POWER_LINE_SUPPORT_TOWER], vxg_size=vxg_size, vox_size=None),
                         ToTensor(), 
-                        ToFullDense(apply=(True, False))])
+                        ToFullDense(apply=(True, True))])
 
     ts40k_train = torch_TS40Kv2(dataset_path=TS40K_PATH, split=parser.ts40k_split, transform=composed)
     
@@ -731,7 +731,8 @@ if __name__ == "__main__":
     ###############################################################
 
 
-    scnet_calibration(MODEL_PATH, gnet_class, ts40k_val, parser.batch_size, mode='LogRegression')
+    #scnet_calibration(MODEL_PATH, gnet_class, ts40k_val, parser.batch_size, mode='LogRegression')
+    scnet_calibration(MODEL_PATH, gnet_class, ts40k_val, parser.batch_size, mode='TempScaling')
     input("Continue?")
 
 

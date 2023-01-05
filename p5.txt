@@ -1,5 +1,10 @@
 DI Cluster: 
 pE5?3&jP5mxpDf9v
 
+
+rsync -Prav d.lavado@dicluster:soa_scenenet/scenenet_pipeline/torch_geneo/saved_scnets/ ./scenenet_pipeline/torch_geneo/saved_scnets
+
+rsync -Prav .  d.lavado@dicluster:soa_scenenet
+
 Clip pwd : 
 N9GrhJy5M9yEhe#

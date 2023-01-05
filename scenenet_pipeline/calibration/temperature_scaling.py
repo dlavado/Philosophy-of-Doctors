@@ -24,29 +24,29 @@ class ModelWithTemperature(nn.Module):
         self.temperature = nn.Parameter(torch.ones(1) * 1.5)
 
     def prob_to_logit(self, prob:torch.Tensor):
-        sm = torch.concat([1 - prob, prob], dim=1)
-        sm[sm == 0] == 1e-30
-        return torch.log(sm/(1-sm))
 
-
-    def target_to_label(self, target, threshold):
-        true_target = (target >= threshold).to(torch.long)
-        return torch.squeeze(true_target, dim=1)
+        return torch.log(prob / (1 - prob)) + 1e-10
 
 
     def forward(self, input, prob=True):
+      
         probs = self.model(input)
+        probs = torch.flatten(probs)
         logits = self.prob_to_logit(probs) if prob else probs
+
         assert not torch.any(torch.isinf(logits)) 
+
         return self.temperature_scale(logits)
+
+
 
     def temperature_scale(self, logits):
         """
         Perform temperature scaling on logits
         """
         # Expand temperature to match the size of logits
-        temperature = self.temperature.unsqueeze(1).expand(logits.shape)
-        return logits / temperature
+        temperature = self.temperature.expand(logits.shape)
+        return torch.sigmoid(logits / temperature)
     
 
     # This function probably should live outside of this class, but whatever
@@ -56,10 +56,11 @@ class ModelWithTemperature(nn.Module):
         We're going to set it to optimize NLL.
         valid_loader (DataLoader): validation set loader
         """
+        from scenenet_pipeline.calibration.plot_calibration import ConfidenceHistogram, ReliabilityDiagram
 
         self.cuda()
-        w_class = torch.tensor([1e-5, 100], dtype=torch.double)
-        nll_criterion = nn.CrossEntropyLoss(w_class).cuda()
+        # w_class = torch.tensor([1e-5, 100], dtype=torch.float)
+        nll_criterion = nn.BCELoss().cuda()
         ece_criterion = _ECELoss().cuda()
 
         # First: collect all the logits and labels for the validation set
@@ -68,38 +69,52 @@ class ModelWithTemperature(nn.Module):
         with torch.no_grad():
             for input, label in valid_loader:
 
-                label = self.target_to_label(label, 0.3)
-                
+                #label = self.target_to_label(label, 0)
+                label = torch.flatten(label).cuda()
                 input = input.cuda()
+
                 probs = self.model(input)
+                probs = torch.flatten(probs).to(torch.float) # column vector
                 logits = self.prob_to_logit(probs)
 
                 logits_list.append(logits)
                 labels_list.append(label)
+
             logits = torch.cat(logits_list).cuda()
             labels = torch.cat(labels_list).cuda()
 
         # Calculate NLL and ECE before temperature scaling
-        before_temperature_nll = nll_criterion(logits, labels).item()
-        before_temperature_ece = ece_criterion(logits, labels).item()
+        before_temperature_nll = nll_criterion(torch.sigmoid(logits), labels.to(torch.float)).item()
+        before_temperature_ece = ece_criterion(logits.reshape(-1, 1), labels).item()
         print('Before temperature - NLL: %.3f, ECE: %.3f' % (before_temperature_nll, before_temperature_ece))
 
         # Next: optimize the temperature w.r.t. NLL
-        optimizer = optim.LBFGS([self.temperature], lr=0.01, max_iter=50)
+        optimizer = optim.SGD([self.temperature], lr=0.01)
 
-        def eval():
-            optimizer.zero_grad()
-            loss = nll_criterion(self.temperature_scale(logits), labels)
-            loss.backward()
-            return loss
-
-        optimizer.step(eval)
+ 
+        optimizer.zero_grad()
+        loss = nll_criterion(self.temperature_scale(logits), labels.to(torch.float))
+        loss.backward()
+        optimizer.step()
 
         # Calculate NLL and ECE after temperature scaling
-        after_temperature_nll = nll_criterion(self.temperature_scale(logits), labels).item()
-        after_temperature_ece = ece_criterion(self.temperature_scale(logits), labels).item()
+        preds = self.temperature_scale(logits)
+        print(preds.shape)
+        print(labels.shape)
+        after_temperature_nll = nll_criterion(preds, labels.to(torch.float)).item()
+        after_temperature_ece = ece_criterion(preds, labels).item()
         print('Optimal temperature: %.3f' % self.temperature.item())
         print('After temperature - NLL: %.3f, ECE: %.3f' % (after_temperature_nll, after_temperature_ece))
+
+        preds = torch.flatten(preds).detach().cpu().numpy()
+        labels = torch.flatten(labels).detach().cpu().numpy()
+
+        hist = ConfidenceHistogram()
+        hist = hist.plot(preds, labels, n_bins=20, logits=False, title='ConfidenceHistogram')
+        hist.savefig('ConfidenceHistogram.png')
+        dia = ReliabilityDiagram()
+        dia = dia.plot(preds, labels, n_bins=20, logits=False, title='ReliabilityDiagram')
+        dia.savefig('ReliabilityDiagram.png')
 
         return self
 

@@ -39,8 +39,8 @@ import argparse
 ROOT_PROJECT = Path(os.path.abspath(__file__)).parents[2].resolve()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-#EXT_PATH = "/media/didi/TOSHIBA EXT/"
-EXT_PATH = "/home/d.lavado/" #cluster data dir
+EXT_PATH = "/media/didi/TOSHIBA EXT/"
+#EXT_PATH = "/home/d.lavado/" #cluster data dir
 TS40K_PATH = os.path.join(EXT_PATH, 'TS40K/')
 
 SCNET_PIPELINE = os.path.join(ROOT_PROJECT, 'scenenet_pipeline')
@@ -67,7 +67,7 @@ def arg_parser():
     parser.add_argument("--bce_loss", action='store_true') # use BCELoss
 
     # Model Loading
-    parser.add_argument("--tuning", action='store_true', default=True) # Inits a new model with the model in --load_model
+    parser.add_argument("--tuning", action='store_true') # Inits a new model with the model in --load_model
     parser.add_argument("--load_model", type=str, default=None) # 'latest' or path or index
     parser.add_argument("--model_tag", type=str, default='loss') # tag of the model to load
     parser.add_argument("--model_date", type=str, default='today')
@@ -93,7 +93,7 @@ def transform_forward(batch, device = torch.device('cuda' if torch.cuda.is_avail
     return batch[0].to(device), batch[1].to(device)
 
 def transform_metrics(pred:torch.Tensor, target:torch.Tensor):
-    return torch.flatten(pred, start_dim=1), torch.flatten(target, start_dim=1).to(torch.int)
+    return torch.flatten(pred), torch.flatten(target).to(torch.int)
 
 
 def process_batch(gnet, batch, geneo_loss, opt, metrics, requires_grad=True):
@@ -257,7 +257,7 @@ def training_loop(gnet:SCENENetQuantile, train_loader, val_loader, geneo_loss, o
         if parser.val and val_metrics is not None:
             val_metrics.reset()
         
-        if chkp_epoch % 10 == 0:
+        if epoch % 5 == 0:
             torch.save(state_dict, MODEL_PATH)
 
     return plot_metrics, gnet_params, best_train_metrics
@@ -266,9 +266,8 @@ def training_loop(gnet:SCENENetQuantile, train_loader, val_loader, geneo_loss, o
 def train_observer(tau=TAU):
 
     print("Loading TS40K dataset...")
-    ts40k_train_loader = DataLoader(ts40k_train, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
-
-    ts40k_val_loader = DataLoader(ts40k_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
+    ts40k_train_loader = DataLoader(ts40k_train, batch_size=BATCH_SIZE, shuffle=True)
+    ts40k_val_loader = DataLoader(ts40k_val, batch_size=BATCH_SIZE, shuffle=True)
 
 
     if parser.load_model is None:
@@ -291,7 +290,7 @@ def train_observer(tau=TAU):
 
 
     # In case hist_estimation needs to be calculated again, hist_path be None
-    geneo_loss = gnet_loss(ts40k_train[0][1], hist_path=None, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    geneo_loss = loss_criterion(ts40k_train[0][1], hist_path=None, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
 
     # --- Train GENEO Net ---
     plot_metrics, gnet_params, best_metrics = training_loop(gnet, ts40k_train_loader, ts40k_val_loader, geneo_loss, opt, tau)
@@ -320,8 +319,8 @@ def testing_observer(model_path, tau=TAU, tag='latest'):
     print(f"Tag '{tag}' Loss = {chkp['loss']}")
 
     print("Load Testing Data...")
-    ts40k_test_loader = DataLoader(ts40k_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
-    geneo_loss = gnet_loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    ts40k_test_loader = DataLoader(ts40k_val, batch_size=BATCH_SIZE, shuffle=True)
+    geneo_loss = loss_criterion(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
 
     test_metrics = init_metrics(tau) 
     test_loss = 0
@@ -354,8 +353,8 @@ def visualize_thresholding(model_path, taus):
     gnet, _ = load_state_dict(model_path, gnet_class, parser.model_tag, kernel_size=kernel_size)
 
     print("Load Testing Data...")
-    ts40k_test_loader = DataLoader(ts40k_test, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
-    geneo_loss = gnet_loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    ts40k_test_loader = DataLoader(ts40k_test, batch_size=BATCH_SIZE, shuffle=True)
+    geneo_loss = loss_criterion(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
 
     for batch in tqdm(ts40k_test_loader, desc=f"..."):
         loss, pred  = process_batch(gnet, batch, geneo_loss, None, None, requires_grad=False)
@@ -367,39 +366,31 @@ def visualize_thresholding(model_path, taus):
             visualize_batch(vox, gt, pred, idx, tau)
 
 
-def examine_samples(model_path, data_path, tau=None, tag='loss'):
+def examine_samples(model_path, data_path, tag='loss'):
 
     gnet, _ = load_state_dict(model_path, gnet_class, tag, kernel_size=kernel_size)
 
     ts40k = torch_TS40Kv2(dataset_path=data_path, split='val', transform=composed)
 
-    st_dict = torch.load(model_path)
-    if tau is None:
-        tau = st_dict['model_props']['best_tau'][tag]
-
     print(f"\n\nExamining samples with model {model_path.split('/')[-2]}")
-    print(f"\t with tau={tau} trying to optimize {tag}...")
 
-    ts40k_loader = DataLoader(ts40k, batch_size=1, shuffle=True, num_workers=4)
-    geneo_loss = GENEO_Loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    ts40k_loader = DataLoader(ts40k, batch_size=1, shuffle=True)
+    geneo_loss = loss_criterion(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
     
-    test_metrics = init_metrics(tau) 
+    test_metrics = None
     test_loss = 0
 
-    gts = None
-    preds = None
+    # gts = None
+    # preds = None
  
     # --- Test Loop ---
     for i in tqdm(range(0, 100)):
-        # print(f"Examining TS40K Sample {i}...")
+        print(f"Examining TS40K Sample {i}...")
         pts, labels = ts40k[i]
         batch = pts[None], labels[None]
         loss, pred = process_batch(gnet, batch, geneo_loss, None, test_metrics, requires_grad=False)
         test_loss += loss
 
-        test_res = test_metrics.compute()
-        pre = test_res['Precision']
-        rec = test_res['Recall']
 
         # if preds is None and gts is None:
         #     preds = torch.flatten(pred)
@@ -408,14 +399,12 @@ def examine_samples(model_path, data_path, tau=None, tag='loss'):
         #     preds = torch.concat((preds, torch.flatten(pred)))
         #     gts = torch.concat((gts, torch.flatten(labels)))
 
-        if False:
-            print(f"Precision = {pre}")
-            print(f"Recall = {rec}")
-            vox, gt = transform_batch(batch)
-            visualize_batch(vox, gt, pred, tau=tau)
+        if True:
+            visualize_quantiles(batch[0], pred)
             input("\n\nPress Enter to continue...")
 
-        test_metrics.reset()
+        if test_metrics is not None:
+            test_metrics.reset()
 
     # preds = preds.reshape(-1, 1).cpu().numpy()
     # gts = gts.cpu().numpy()
@@ -436,11 +425,13 @@ def examine_samples(model_path, data_path, tau=None, tag='loss'):
 
     # input("?")
 
-    test_loss = test_loss /  len(ts40k_loader)
-    test_res = test_metrics.compute()
+    test_loss = test_loss / len(ts40k_loader)
     print(f"\ttest_loss = {test_loss:.3f};")
-    for met in test_res:
-        print(f"\t{met} = {test_res[met]:.3f};")
+
+    if test_metrics is not None:
+        test_res = test_metrics.compute()
+        for met in test_res:
+            print(f"\t{met} = {test_res[met]:.3f};")
 
 
 
@@ -505,7 +496,7 @@ if __name__ == "__main__":
         META_TODAY = aux_date_path
         META_MODEL_PATH = aux_meta_model_path
         MODEL_PATH = os.path.join(META_MODEL_PATH, "gnet.pt")
-    
+
 
     # --- Dataset Initialization ---
     vxg_size = (64, 64, 64)
@@ -533,25 +524,25 @@ if __name__ == "__main__":
     EPSILON = parser.epsilon # min value of dense_loss
     gt_tau = 0.5 # default ground-truth threshold 
 
-    kernel_size = (9, 6 ,6) if parser.k_size is None else tuple(*parser.k_size)
+    kernel_size = (9, 6, 6) if parser.k_size is None else tuple(*parser.k_size)
     
 
     # --- Model Definition ---
     gnet_class = SCENENetQuantile
     opt_class = torch.optim.RMSprop
 
-    gnet_loss = QuantileGENEOLoss
+    loss_criterion = QuantileGENEOLoss
 
 
     # --- Define State Dict ---
-    if parser.load_model is None:
+    if parser.load_model is None or parser.tuning:
         state_dict = {
             'model_props' : {'geneos_used' : {'cy': parser.cy,
                                               'cone':parser.cone,
                                               'neg':parser.neg
                                             },
-                            'GENEO-Net Class' : gnet_class,
-                            'GENEO_Net Loss' : gnet_loss,
+                            'Model Class' : gnet_class,
+                            'Loss Criterion' : loss_criterion,
                             'opt_class' : opt_class,
                             'kernel_size': kernel_size,
                             'epsilon': EPSILON,
@@ -571,75 +562,46 @@ if __name__ == "__main__":
                         'latest':   {'loss' : 1e10,
                                     },
                     },
-
-        }
-    else:
-
-        state_dict = torch.load(MODEL_PATH)
-
-        if parser.tuning and not parser.vis:
-            state_dict['run_config'] = {'batch_size' : BATCH_SIZE,
-                                        'num_epochs' : NUM_EPOCHS,
-                                        'num_samples' : NUM_SAMPLES,
-                                        'learning_rate': LR
-                                        },
-
-            state_dict['model_props']['kernel_size'] = kernel_size
-            state_dict['model_props']['epsilon'] = EPSILON
-            state_dict['model_props']['alpha'] = ALPHA
-            state_dict['model_props']['rho'] = RHO
-            state_dict['model_props']['test_results'] = {}              
+        }       
             
-
-
 
     ###############################################################
     #                   Examining Samples                         #
     ###############################################################
 
     if parser.vis:
-        with torch.no_grad():
-            examine_tag = input("Insert metric/value for threshold: ")
-            try:
-                # its a value
-                tau = float(examine_tag)
-            except ValueError:
-                # its a metric
-                if examine_tag == '':
-                    tau = 0.7 # default
-                else:
-                    tau = None
-            
-            examine_samples(MODEL_PATH, TS40K_PATH, tau=tau, tag=parser.model_tag)
+        chkp = torch.load(MODEL_PATH)
+        pp.pprint(chkp['models'].keys())
+        pp.pprint(chkp['model_props'])
+
+        with torch.no_grad():    
+            examine_samples(MODEL_PATH, TS40K_PATH, tag=parser.model_tag)
 
     ###############################################################
     #                   Training GENEO-NET                        #
     ###############################################################
 
-    if not parser.no_train:
+    elif not parser.no_train:
         train_observer()
+        chkp = torch.load(MODEL_PATH)
 
 
-    chkp = torch.load(MODEL_PATH)
-    # pp.pprint(chkp['models'].keys())
-    # pp.pprint(chkp['model_props'])
+        ###############################################################
+        #                   Saving Run Config                         #
+        ###############################################################
 
-    ###############################################################
-    #                   Saving Run Config                         #
-    ###############################################################
+        text_file = open(os.path.join(META_MODEL_PATH, 'model_props.txt'), "w")
 
-    text_file = open(os.path.join(META_MODEL_PATH, 'model_props.txt'), "w")
+        text_file.write(pp.pformat(chkp['models'].keys()))
+        text_file.write('\n\n\n' + '#'*100+'\n'+'#'*100 + '\n\n\n')
+        if parser.no_train:
+            text_file.write(f"FINE TUNED FROM MODEL: {parser.load_model} ; {parser.model_date} ; {parser.model_tag} ;")
+        else:
+            text_file.write(pp.pformat(chkp['run_config']))
+        text_file.write('\n\n\n' + '#'*100+'\n'+'#'*100 + '\n\n\n')
+        text_file.write(pp.pformat(chkp['model_props']))
 
-    text_file.write(pp.pformat(chkp['models'].keys()))
-    text_file.write('\n\n\n' + '#'*100+'\n'+'#'*100 + '\n\n\n')
-    if parser.no_train:
-        text_file.write(f"FINE TUNED FROM MODEL: {parser.load_model} ; {parser.model_date} ; {parser.model_tag} ;")
-    else:
-        text_file.write(pp.pformat(chkp['run_config']))
-    text_file.write('\n\n\n' + '#'*100+'\n'+'#'*100 + '\n\n\n')
-    text_file.write(pp.pformat(chkp['model_props']))
-
-    text_file.close()
+        text_file.close()
 
 
     # %%

@@ -82,6 +82,7 @@ def plot_voxelgrid(grid:Union[np.ndarray, torch.Tensor], color_mode='density', t
     
     uq_classes = np.unique(xyz[:, -1])
     class_colors = np.empty((len(uq_classes), 3))
+
     if color_mode == 'density': #colored according to 'coolwarm' scheme
         
         for i, c in enumerate(uq_classes):
@@ -91,18 +92,22 @@ def plot_voxelgrid(grid:Union[np.ndarray, torch.Tensor], color_mode='density', t
             else:
                 class_colors[i] = [1, 1-c, 1-c]
     
-    # meant to be used only when `grid` contains probabilistic values
+    # meant to be used only when `grid` contains values \in [0, 1]
     elif color_mode == 'ranges': #colored according to the ranges of values in `grid`
         import matplotlib.cm as cm
         r = 10
-        lin = np.linspace(0, 1, r)
+        lin = np.linspace(0, 1, r) 
         # color for each range
         color_ranges = cm.jet(lin) # shape = (r, 4); 4 = (r, g, b, a)
-        color_ranges[0] = [1, 1, 1, 1] # [0, 0.111] -> force color white 
+        color_ranges[0] = [1, 1, 1, 0] # [0, 0.111] -> force color white 
 
+        xyz = np.delete(xyz, np.arange(0, len(xyz))[xyz[:, -1] < lin[1]], axis=0) # voxels with the color white are eliminated for a better visual
+        uq_classes = np.unique(xyz[:, -1])
+    
         # idx in `color_ranges` for each `uq_classes`
-        color_idxs = np.argmin(np.abs(np.expand_dims(uq_classes, -1) - lin), axis=-1) # len == len(uq_classes)
+        color_idxs = np.argmin(np.abs(np.expand_dims(uq_classes, -1) - lin - 0.05), axis=-1) # len == len(uq_classes)
 
+        class_colors = np.empty((len(uq_classes), 3))
         for i, c in enumerate(uq_classes): 
             class_colors[i] = color_ranges[color_idxs[i]][:-1]
 
@@ -114,12 +119,29 @@ def plot_voxelgrid(grid:Union[np.ndarray, torch.Tensor], color_mode='density', t
     else:
         ValueError(f"color_mode must be in ['coolwarm', 'ranges']; got {color_mode}")
 
-
+   
     pcd = eda.np_to_ply(xyz[:, :-1])
     eda.color_pointcloud(pcd, xyz[:, -1], class_color=class_colors)
 
     eda.visualize_ply([pcd], window_name=title)
 
+
+def plot_quantile_uncertainty(vxg:Union[np.ndarray, torch.Tensor], legend=False):
+
+    assert len(vxg.shape) == 4, print(f"Inadmissible shape: {vxg.shape}") #vxg should have shape: Q, VXG_Z, VXG_X, VXG_Y
+    assert vxg.shape[0] >= 2 # the plot requires at least two quantile predictions
+
+    # `grid` holds the difference between quantiles to plot.
+    # The higher the difference, higher the uncertainty.
+    grid = vxg[-1] - vxg[0] # -1 is the 90th quantile and 0 is the 10th Quantile
+    plot_voxelgrid(grid, color_mode='ranges', title='Aletoric Uncertainty through Quantiles', visual=legend) 
+
+
+
+
+###############################################################
+#                  Voxelization Functions                     #
+###############################################################
 
 def hist_on_voxel(xyz, voxelgrid_dims =(64, 64, 64), voxel_dims=None):
     """

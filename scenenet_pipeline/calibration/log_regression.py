@@ -26,13 +26,13 @@ class ModelWithLogCalibration(nn.Module):
         with torch.no_grad():
             pred = self.model(x)
 
-        pred = torch.flatten(pred, start_dim=1) # cuz linear model need flattened data; dim 0 is the batch dim
-
+        pred = torch.flatten(pred) # cuz linear model need flattened data;
         # kinda jank I know
-        pred, idxs = torch.sort(pred, dim=1, descending=True)
-        pred, idxs  = pred[:, :self.out_f], idxs[:, :self.out_f] # we select the highest probabilities to regress
+        pred, idxs = torch.sort(pred, descending=True)
+        pred, idxs  = pred[:self.out_f], idxs[:self.out_f] # we select the highest probabilities to regress
 
-        outputs = torch.sigmoid(self.linear(pred.to(torch.float)))
+        outputs = torch.sigmoid(self.linear(pred.to(torch.float))) 
+        
         return outputs, idxs
 
 
@@ -42,22 +42,33 @@ class ModelWithLogCalibration(nn.Module):
                     MeanSquaredError()
         ]).to(device)
 
+##################
+
 def transform_forward(batch, device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
     return batch[0].to(device), batch[1].to(device)
+
+
+def transform_binary_classification(batch, device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
+    pred = torch.unsqueeze(torch.flatten(batch[0]).reshape(-1, 1), dim=1) # shape = N, C (C=1)
+    pred = torch.concat([1 - pred, pred], dim=1)
+
+    return  pred.to(device), torch.flatten(batch[1]).to(device)
 
 
 def calibrate(model:nn.Module, in_feat, val_loader, epochs, 
               device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
         
         log_model = ModelWithLogCalibration(model.to(device), in_feat).to(device)
-        mse_criterion = WeightedMSE(torch.tensor([]), hist_path=HIST_PATH).to(device)
+        mse_criterion = WeightedMSE(torch.tensor([]), hist_path=HIST_PATH).to(device) 
+        bce_criterion = nn.BCELoss().to(device)
         ece_criterion = _ECELoss().to(device)
 
-        optimizer = optim.RMSprop(log_model.linear.parameters())
+        optimizer = optim.RMSprop(log_model.parameters())
 
         for e in tqdm(range(epochs), desc=f"Calibrating..."):
             ece = 0
             mse = 0
+            bce = 0
 
             for input, target in val_loader:
                 
@@ -65,24 +76,30 @@ def calibrate(model:nn.Module, in_feat, val_loader, epochs,
                 input, target = transform_forward((input, target))
                 pred, idxs = log_model(input)
 
-                target = torch.flatten(target, start_dim=1)
-                target = torch.concat([target[i, idxs[i, :in_feat]].reshape(1, -1) for i in range(target.shape[0])], dim=0)
+                target = torch.flatten(target)[idxs]
+                # target = torch.concat([target[i, idxs[i, :in_feat]].reshape(1, -1) for i in range(target.shape[0])], dim=0)
+
+                # print(f"Unique Target values: {torch.unique(target)}")
+                # print(f"Unique Prediction values: {torch.unique(pred)}")
 
                 mse_loss = mse_criterion(pred, target) 
+                bce_loss = bce_criterion(pred.to(torch.float), target.to(torch.float))
 
                 # --- Backward pass ---
                 optimizer.zero_grad()
-                mse_loss.backward()
+                bce_loss.backward()
                 optimizer.step()
 
                 target = target.to(device)
                 ece_loss = ece_criterion(torch.flatten(pred).reshape(-1, 1), torch.flatten(target))
                 ece += ece_loss
                 mse += mse_loss
+                bce += bce_loss
 
             print(f"\n\nEpoch {e} / {epochs}:")
-            print(f"\t\tWeighted MSE Loss: {mse / len(val_loader)}")
-            print(f"\t\tECE Loss: {ece.item() / len(val_loader)}")
+            print(f"\t\tMSE Loss: {mse / len(val_loader):.5f}")
+            print(f"\t\tBCE Loss: {bce / len(val_loader):.5f}")
+            print(f"\t\tECE Loss: {ece.item() / len(val_loader):.5f}")
 
         
         # Calibration Diagrams
@@ -95,7 +112,6 @@ def calibrate(model:nn.Module, in_feat, val_loader, epochs,
         dia = ReliabilityDiagram()
         dia = dia.plot(pred, target, n_bins=20, logits=False, title='ReliabilityDiagram')
         dia.savefig('ReliabilityDiagram.png')
-
 
 
 

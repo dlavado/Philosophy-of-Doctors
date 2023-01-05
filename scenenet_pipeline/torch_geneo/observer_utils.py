@@ -271,42 +271,70 @@ def load_state_dict(model_path, gnet_class, model_tag='loss', kernel_size=None) 
     return None, None
 
 
-def visualize_batch(vox_input:torch.Tensor=None, gt:torch.Tensor=None, pred:torch.Tensor=None, idx:int=None, tau=0.7):
-    print(f"Showing random sample in batch...\n")
+
+def to_numpy(tensor:torch.Tensor, device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
+    """
+    Turns a torch Tensor to numpy
+    """
+    if device != 'cpu':
+        return tensor.detach().cpu().numpy()
+    else:
+        return tensor.detach().numpy()
+
+
+def plot_voxelgrid(tensor:torch.Tensor, title="", color_mode='density', device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
+    if tensor is None:
+        ValueError("Tensor is None")
+    if len(tensor[tensor > 0]) == 0:
+        print("Empty Tensor")
+    else:
+    
+        Vox.plot_voxelgrid(to_numpy(torch.squeeze(tensor), device), color_mode=color_mode, title=title)
+
+def visualize_batch(vox_input:torch.Tensor=None, gt:torch.Tensor=None, pred:torch.Tensor=None, idx:int=None, tau=0.7,
+                    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
+
+    #print(f"Showing random sample in batch...\n")
     batch_size = pred.shape[0]
-    # print(vox_input.shape)
-    # print(batch_size)
+    
+    # selecting random sample from batch
     if idx is None:
-        idx = np.random.randint(0, batch_size, size=1)[0] # random sample from batch
-    if vox_input is not None:
-        vox_input = torch.squeeze(vox_input, dim=1)
-        print(f"Plotting Input...")
-        if device != 'cpu':
-            Vox.plot_voxelgrid(vox_input[idx].cpu().numpy(), title='Input Voxelgrid')
-        else:
-            Vox.plot_voxelgrid(vox_input[idx].numpy(), title='Input Voxelgrid')
+        idx = np.random.randint(0, batch_size, size=1)[0]
+    
+    plot_voxelgrid(vox_input[idx], title='Input Voxelgrid')
+
+    plot_voxelgrid(pred[idx], color_mode='ranges', title='GENEO-Net Probability Prediction')
+    plot_voxelgrid(Vox.prob_to_label(pred[idx], tau), title='GENEO-Net Prediction')
+
+    visualize_classification(pred[idx], gt[idx], tau, device)
+
+
+def visualize_classification(pred:torch.Tensor=None, gt:torch.Tensor=None, tau=0.7, 
+                            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
+
     if pred is not None:
-        pred = torch.squeeze(pred, dim=1)
+        pred = torch.squeeze(pred)
         if len(pred[pred > 0]) == 0:
             print(f"Prediction is Empty!")
-        else:
-            print(f"Plotting Regression Prediction...")
-            p = pred[idx].detach()
-            if device != 'cpu':
-                p = p.cpu()
-            p = p.numpy()
-            Vox.plot_voxelgrid(p, color_mode='ranges', title='GENEO-Net Probability Prediction')
-            print(f"Plotting Tower Prediction...")
-            Vox.plot_voxelgrid(Vox.prob_to_label(p, tau), title='GENEO-Net Prediction')
+    else:
+        ValueError(f"Prediction is None")
     
-    if pred is not None and gt is not None:
-        gt = torch.squeeze(gt, dim=1)
-        pred = Vox.prob_to_label(pred, tau)
-        if device != 'cpu':
-            pred = pred.cpu()
-            gt = gt.cpu()
-        Vox.visualize_pred_vs_gt(pred[idx].numpy().astype(np.int), 
-                                gt[idx].numpy().astype(np.int))
+    if gt is None:
+         ValueError(f"Ground Truth is None")
+
+    gt = torch.squeeze(gt)
+    pred = Vox.prob_to_label(pred, tau)
+    pred, gt = to_numpy(pred, device), to_numpy(gt, device)
+
+    Vox.visualize_pred_vs_gt(pred.astype(np.int), gt.astype(np.int))
+
+
+def visualize_quantiles(vox_input:torch.Tensor=None, pred:torch.Tensor=None,
+                        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
+
+    plot_voxelgrid(vox_input, title='Input Voxelgrid')
+    Vox.plot_quantile_uncertainty(to_numpy(torch.squeeze(pred), device), legend=True)
+
 
 
 def scnet_calibration(model_path, gnet_class, ts40k_val, batch_size, mode="TempScaling"):
@@ -327,8 +355,8 @@ def scnet_calibration(model_path, gnet_class, ts40k_val, batch_size, mode="TempS
         from scenenet_pipeline.calibration import log_regression
         import functools
         #in_features = functools.reduce(lambda x,y: x*y, (64, 64, 64)) #too much memory
-        in_features = 1024
-        log_regression.calibrate(gnet, in_features, ts40k_val_loader, 100)
+        in_features = 1000
+        log_regression.calibrate(gnet, in_features, ts40k_val_loader, epochs=50)
     else:
         ValueError(f"Mode {mode} is not Implemented; Available Modes = [TempScaling, LogRegression]")
 
