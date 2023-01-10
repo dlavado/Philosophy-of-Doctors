@@ -9,10 +9,12 @@ import numpy as np
 
 import sys
 
+from scenenet_pipeline.torch_geneo.geneos import arrow
+
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 from VoxGENEO import Voxelization as Vox
-from torch_geneo.geneos import GENEO_kernel_torch, cylinder, cone, neg_sphere
+from torch_geneo.geneos import GENEO_kernel_torch, cylinder, neg_sphere
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -110,7 +112,7 @@ class GENEONet(nn.Module):
 
             elif key == 'cone':
                 for i in range(self.sizes[key]):
-                    self.geneos[f'{key}_{i}'] = GENEO_Layer(cone.cone_kernel, kernel_size=kernel_size)
+                    self.geneos[f'{key}_{i}'] = GENEO_Layer(arrow.cone_kernel, kernel_size=kernel_size)
 
             elif key == 'neg':
                 for i in range(self.sizes[key]):

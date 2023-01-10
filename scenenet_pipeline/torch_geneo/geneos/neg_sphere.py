@@ -89,9 +89,9 @@ class neg_sphere_kernel(GENEO_kernel_torch):
         # vol = torch.prod(torch.tensor(rand_config['kernel_size']))
 
         geneo_params = {
-            'radius' : torch.randint(1, rand_config['kernel_size'][1], (1,))[0] / 2 ,
-            'neg_factor': torch.randint(2, 20, (1,))[0], #float \in [0, 10]
-            'sigma' : torch.randint(5, 10, (1,))[0] / 5 #float \in [1, 2]
+            'radius' : torch.randint(1, rand_config['kernel_size'][1], (1,))[0], #int \in [1, kernel_size[1]] ,
+            'neg_factor': torch.randint(1, 10, (1,))[0]/10, #float \in [0, 1]
+            'sigma' : torch.randint(5, 10, (1,))[0] / 10 #float \in [0, 1]
         }
 
         rand_config['geneo_params'] = geneo_params
@@ -147,7 +147,7 @@ class neg_sphere_kernel(GENEO_kernel_torch):
         # idxs.requires_grad_()
 
         kernel = self.gaussian(idxs)
-        kernel = self.sum_zero(kernel) - self.neg_factor / self.volume
+        kernel = self.sum_zero(kernel) - self.neg_factor
         kernel = torch.t(kernel).view(self.kernel_size)            
 
         if plot:
@@ -155,6 +155,60 @@ class neg_sphere_kernel(GENEO_kernel_torch):
             print(f"kernel sum = {torch.sum(kernel)}")
             Vox.plot_voxelgrid(kernel.detach().cpu().numpy())
         return kernel
+
+class negSpherev2(neg_sphere_kernel):
+
+    def __init__(self, name, kernel_size, **kwargs):
+        super().__init__(name, kernel_size, **kwargs)
+
+
+    def gaussian(self, x:torch.Tensor, rad=None, sig=None, epsilon=1e-8) -> torch.Tensor:
+        shape = torch.tensor(self.kernel_size, dtype=torch.float, device=self.device, requires_grad=True)
+        center = (shape - 1) / 2
+
+        if rad is None:
+            rad = self.radius
+        if sig is None:
+            sig = self.sigma
+
+        x_c = x - center # Nx2
+        x_c_norm = torch.linalg.norm(x_c, dim=1, keepdim=True) # Nx1
+        gauss_dist = x_c_norm**2 #- (self.radius + epsilon)**2 
+
+        return sig*torch.exp((gauss_dist**2) * (-1 / (2*(rad + epsilon)**2)))
+
+    # def sum_zero(self, tensor:torch.Tensor) -> torch.Tensor:
+    #     return tensor - (torch.sum(tensor) - 1) / self.volume 
+    
+    
+ 
+    def compute_kernel(self, plot=False):
+
+        idxs = torch.stack(
+                torch.meshgrid(torch.arange(self.kernel_size[0], dtype=torch.float, device=self.device, requires_grad=True),
+                            torch.arange(self.kernel_size[1], dtype=torch.float, device=self.device, requires_grad=True), 
+                            torch.arange(self.kernel_size[2], dtype=torch.float, device=self.device, requires_grad=True)
+                            )
+            ).T.reshape(-1, 3)
+
+        # idxs = list(itertools.product(list(range(self.kernel_size[0])), list(range(self.kernel_size[1])), list(range(self.kernel_size[2]))))
+        # idxs = torch.from_numpy(np.array([*idxs], dtype=np.float)).to(self.device) # (z*x*y, 3) 
+        # idxs.requires_grad_()
+
+        # kernel = -1*self.gaussian(idxs)
+        # kernel = self.sum_zero(kernel) - self.neg_factor
+        kernel = self.gaussian(idxs)
+        kernel = self.sum_zero(kernel)
+        kernel = (-self.neg_factor)*torch.relu(kernel)
+        kernel = torch.t(kernel).view(self.kernel_size)            
+
+        if plot:
+            print(f"kernel shape = {kernel.shape}")
+            print(f"kernel sum = {torch.sum(kernel)}")
+            Vox.plot_voxelgrid(kernel.detach().cpu().numpy())
+        return kernel
+
+    
 
 
 def sphere3D():
@@ -198,23 +252,18 @@ if __name__ == "__main__":
     ts40k = torch_TS40K(dataset_path=SAVE_DIR, transform=ToTensor())
 
     vox, vox_gt = ts40k[2]
+    vox, vox_gt = vox.to(torch.float), vox_gt.to(torch.float)
     print(vox.shape)
     # Vox.plot_voxelgrid(vox.numpy()[0])
     # Vox.plot_voxelgrid(vox_gt.numpy()[0])
 
-    # %%
-    sphere3D()
 
-    # %%
-
-    print(neg_sphere_kernel.geneo_random_config())
-    print(GENEO_kernel_torch.geneo_random_config())
     
     # %%
 
-    sphere = neg_sphere_kernel('cy', (6, 6, 6), radius=torch.tensor(3), 
-                                                sigma=torch.tensor(0.5), 
-                                                neg_factor=torch.tensor(0.1))
+    sphere = negSpherev2('cy', (6, 6, 6), radius=torch.tensor(3), 
+                                          sigma=torch.tensor(1), 
+                                          neg_factor=torch.tensor(1))
     kernel = sphere.compute_kernel(True)
 
     #cy.visualize_kernel()

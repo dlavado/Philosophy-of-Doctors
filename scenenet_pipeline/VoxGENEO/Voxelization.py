@@ -118,7 +118,6 @@ def plot_voxelgrid(grid:Union[np.ndarray, torch.Tensor], color_mode='density', t
 
     else:
         ValueError(f"color_mode must be in ['coolwarm', 'ranges']; got {color_mode}")
-
    
     pcd = eda.np_to_ply(xyz[:, :-1])
     eda.color_pointcloud(pcd, xyz[:, -1], class_color=class_colors)

@@ -11,14 +11,10 @@ from torchviz import make_dot
 import pandas as pd
 import numpy as np
 import os
-from tqdm import tqdm
 from matplotlib import pyplot as plt
-import matplotlib.cm as cm
-from datetime import datetime
 from PIL import Image
 
-from torch_geneo.models.SCENE_Net import SCENE_Net, SCENE_Net_Class
-from scenenet_pipeline.torch_geneo.models.geneo_loss import HIST_PATH, GENEO_Loss, GENEO_Loss_BCE
+from torch_geneo.models.SCENE_Net import SCENE_Net
 
 import sys
 import time
@@ -306,10 +302,10 @@ def visualize_batch(vox_input:torch.Tensor=None, gt:torch.Tensor=None, pred:torc
     plot_voxelgrid(pred[idx], color_mode='ranges', title='GENEO-Net Probability Prediction')
     plot_voxelgrid(Vox.prob_to_label(pred[idx], tau), title='GENEO-Net Prediction')
 
-    visualize_classification(pred[idx], gt[idx], tau, device)
+    visualize_regression(pred[idx], gt[idx], tau, device)
 
 
-def visualize_classification(pred:torch.Tensor=None, gt:torch.Tensor=None, tau=0.7, 
+def visualize_regression(pred:torch.Tensor=None, gt:torch.Tensor=None, tau=0.7, 
                             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
 
     if pred is not None:

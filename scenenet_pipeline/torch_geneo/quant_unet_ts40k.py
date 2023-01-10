@@ -297,7 +297,7 @@ def train_observer(tau=TAU):
     ts40k_val_loader = DataLoader(ts40k_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
 
 
-    unet = model_class(1, 3).to(device)
+    unet = model_class(1, 3, mode='bilinear').to(device)
     opt = opt_class(unet.parameters(), lr=LR)
 
     # --- Loss and Optimizer ---
@@ -386,7 +386,7 @@ def examine_samples(model_path, data_path, tag='loss'):
     print(f"\n\nExamining samples with model {model_path.split('/')[-2]}")
 
     ts40k_loader = DataLoader(ts40k, batch_size=1, shuffle=True, num_workers=4)
-    geneo_loss = loss_criterion(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    loss_function = loss_criterion(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
     
     test_metrics = None
     test_loss = 0
@@ -399,7 +399,7 @@ def examine_samples(model_path, data_path, tag='loss'):
         print(f"Examining TS40K Sample {i}...")
         pts, labels = ts40k[i]
         batch = pts[None], labels[None]
-        loss, pred = process_batch(unet, batch, geneo_loss, None, test_metrics, requires_grad=False)
+        loss, pred = process_batch(unet, batch, loss_function, None, test_metrics, requires_grad=False)
         test_loss += loss
 
 
@@ -411,8 +411,14 @@ def examine_samples(model_path, data_path, tag='loss'):
         #     gts = torch.concat((gts, torch.flatten(labels)))
 
         if True:
-            assert torch.all(pred[-1] >= pred[0]) # all the values in the 90th are >= than the 10th quantile
+            pred = pred[0] # removes batch dim
+            # assert torch.all(pred[-1] >= pred[0]) # all the values in the 90th are >= than the 10th quantile
+        
             visualize_quantiles(batch[0], pred)
+            plot_voxelgrid(torch.squeeze(labels), title="Ground Truth", color_mode='ranges')
+
+
+            #Vox.visualize_pred_vs_gt(to_numpy(pred[-1] - pred[0], 'cuda'), to_numpy(torch.squeeze(labels), 'cpu'), plot=False)
             input("\n\nPress Enter to continue...")
 
         if test_metrics is not None:

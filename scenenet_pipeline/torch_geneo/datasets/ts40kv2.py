@@ -204,7 +204,7 @@ class torch_TS40Kv2(Dataset):
         self.data_split = {
             'samples' : [0.0, 1.0],   # 100%
             'train' :   [0.0, 0.2],   # 20%
-            'val' :     [0.2, 0.22],   # 20%
+            'val' :     [0.2, 0.2],   # 20%
             'test' :    [0.4, 1.0]    # 60%
         }
         
@@ -252,7 +252,7 @@ class torch_TS40Kv2(Dataset):
                 sample = (npy[None, :, 0:-1], npy[None, :, -1]) # xyz-coord (1, N, 3); label (1, N) 
         
         except:
-            print(f"Corrupted or Empty Sample")
+            print(f"Corrupted or Empty Sample: {idx}")
 
             if self.transform:
                 sample = (np.zeros((100, 3)), np.zeros(100))

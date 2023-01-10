@@ -231,6 +231,7 @@ class cylinder_kernel(GENEO_kernel_torch):
         # assert floor_idxs.requires_grad
 
         floor_vals = self.gaussian(floor_idxs)
+        
         floor_vals = self.sum_zero(floor_vals)
         floor_vals = torch.t(floor_vals).view(self.kernel_size[1:])            
         #assert floor_vals.requires_grad
@@ -261,7 +262,7 @@ class cylinder_kernel(GENEO_kernel_torch):
         geneo_params = {
             'radius' : torch.randint(1, rand_config['kernel_size'][1], (1,))[0] / 2 ,
             'sigma' : torch.randint(5, 10, (1,))[0] / 5 #float \in [1, 2]
-        }
+        }   
 
         rand_config['geneo_params'] = geneo_params
         rand_config['name'] = 'cylinder'
@@ -289,6 +290,54 @@ class cylinder_kernel(GENEO_kernel_torch):
 
 
 
+class cylinderv2(cylinder_kernel):
+
+    def __init__(self, name, kernel_size, plot=False, **kwargs):
+        super().__init__(name, kernel_size, plot, **kwargs)
+
+
+    def gaussian(self, x:torch.Tensor, epsilon=1e-8) -> torch.Tensor:
+        center = torch.tensor([(self.kernel_size[1]-1)/2, (self.kernel_size[2]-1)/2], dtype=torch.float, device=self.device, requires_grad=True)
+
+        x_c = x - center # Nx2
+        x_c_norm = torch.linalg.norm(x_c, dim=1, keepdim=True) # Nx1
+        gauss_dist = x_c_norm**2 #- (self.radius + epsilon)**2 
+
+        return self.sigma*torch.exp((gauss_dist**2) * (-1 / (2*(self.radius + epsilon)**2)))
+
+
+    def compute_kernel(self, plot=False):
+
+        floor_idxs = torch.stack(
+                torch.meshgrid(torch.arange(self.kernel_size[1], dtype=torch.float, device=self.device, requires_grad=True), 
+                            torch.arange(self.kernel_size[2], dtype=torch.float, device=self.device, requires_grad=True))
+            ).T.reshape(-1, 2)
+
+        # floor_idxs = list(itertools.product(list(range(self.kernel_size[1])), list(range(self.kernel_size[2]))))
+        # floor_idxs = torch.from_numpy(np.array([*floor_idxs], dtype=np.float)).to(self.device) # (x*y, 2) 
+        # floor_idxs.requires_grad_()
+        # assert floor_idxs.requires_grad
+
+        floor_vals = self.gaussian(floor_idxs)
+        floor_vals = self.sum_zero(floor_vals)
+        floor_vals = torch.t(floor_vals).view(self.kernel_size[1:])            
+        #assert floor_vals.requires_grad
+    
+        kernel = torch.tile(floor_vals, (self.kernel_size[0], 1, 1))
+        # assert kernel.shape == self.kernel_size
+        # assert kernel.requires_grad
+        # assert torch.equal(kernel[0], floor_vals)
+        # assert torch.sum(kernel) <= 1e-10 or torch.sum(kernel) <= -1e-10 # weight sum == 0
+
+        if plot:
+            print(f"floor values = {floor_vals.shape}; {type(floor_vals)}")
+            print(f"kernel shape = {kernel.shape}")
+            print(f"kernel sum = {torch.sum(kernel)}")
+            print(floor_vals)
+            Vox.plot_voxelgrid(kernel.cpu().detach().numpy())
+        return kernel 
+
+
 
 def plot_R2func(func, lim_x1, lim_x2, cmap=cm.coolwarm):
     x1_lin = np.linspace(lim_x1[0], lim_x1[1], 100)
@@ -305,14 +354,13 @@ if __name__ == "__main__":
 
     ROOT_PROJECT = "/home/didi/VSCode/lidar_thesis"
 
-    DATA_SAMPLE_DIR = ROOT_PROJECT + "/Data_sample"
     SAVE_DIR = ROOT_PROJECT + "/dataset/torch_dataset"
-    print(DATA_SAMPLE_DIR)
 
     #build_data_samples([DATA_SAMPLE_DIR], SAVE_DIR)
     ts40k = torch_TS40K(dataset_path=SAVE_DIR, transform=ToTensor())
 
     vox, vox_gt = ts40k[2]
+    vox, vox_gt = vox.to(torch.float), vox_gt.to(torch.float)
     print(vox.shape)
     Vox.plot_voxelgrid(vox.numpy()[0])
     Vox.plot_voxelgrid(vox_gt.numpy()[0])
@@ -320,12 +368,12 @@ if __name__ == "__main__":
     # %%
 
     cy = cylinder_kernel('cy', (6, 6, 6), radius=torch.tensor(2), sigma=torch.tensor(2))
+    cy = cylinderv2('cy', (9, 7, 7), radius=torch.tensor(3), sigma=torch.tensor(5))
     #kernel = cy.compute_kernel_(True)
-    kernel = cy.compute_kernel(True)
 
-    #cy.visualize_kernel()
+    cy.visualize_kernel()
     # %%
-    cy.convolution(vox.view((1, *vox.shape)).to(cy.device))
+    cy.convolution(vox.view((1, *vox.shape)).to(cy.device),plot=True)
 
     # %%
     type(cy.kernel)
