@@ -33,6 +33,7 @@ import os
 ROOT_PROJECT = Path(os.path.abspath(__file__)).parents[3].resolve()
 
 
+
 def build_pole_samples(dataset_path, save_path):
     """
     Builds a new dataset based on the SemanticKITTI dataset with smaller cut out samples in order to increase
@@ -57,6 +58,7 @@ def build_pole_samples(dataset_path, save_path):
 
     kitti = semKITTI(dataset_path, transform=None)
     counter = 0
+    pole_label = 80
 
     for i in tqdm(range(len(kitti)), desc='Building new dataset...'):
 
@@ -83,6 +85,76 @@ def build_pole_samples(dataset_path, save_path):
 
                 with open(npy_name, 'wb') as f:
                     np.save(f, rad)  # sample, (x, y, z, label)
+                    counter += 1
+
+
+def crop_tower_samples(xyz:np.ndarray, classes:np.ndarray, obj_class=[80]) -> List[np.ndarray]:
+
+    pcd_tower, _ = eda.select_object(xyz, classes, obj_class)
+    towers = eda.extract_towers(pcd_tower, visual=False, eps=5, min_points=10)
+
+    samples = []
+
+    for tower in towers:
+        crop, crop_classes = eda.crop_tower_radius(xyz, classes, tower, radius=5)
+        tower_section = np.append(crop, crop_classes.reshape(-1, 1), axis=1)
+        samples.append(tower_section)
+
+    return samples
+
+def build_pole_radius_samples(dataset_path, save_path):
+    """
+    Builds a new dataset based on the SemanticKITTI dataset with smaller cut out samples in order to increase
+    voxel resolution during training.
+
+    Parameters
+    ----------
+
+    `dataset_path` - str:
+        Path to the semanticKITTI dataset directory
+
+    `save_path` - str:
+        Path to the directory of where to save the new samples.
+
+     
+    """
+
+    samples_path = os.path.join(save_path, 'samples')
+
+    if not os.path.exists(samples_path):
+        os.makedirs(samples_path)
+        counter = 0
+    else:
+        ans = input('Save Directory already exist. Continue? (y/n)')
+        if ans != 'y':
+            return
+        counter = len(os.listdir(samples_path))
+
+    kitti = semKITTI(dataset_path, transform=None)
+    pole_label = 80
+
+    for i in tqdm(range(len(kitti)), desc='Building new dataset...'):
+
+        xyz, gt = kitti[i]
+        
+        xyz, gt = np.squeeze(xyz), np.squeeze(gt) # get rid of batch dim
+
+        if np.any(gt == pole_label): # if gt contains poles
+            pole_samples = crop_tower_samples(xyz, gt, [pole_label])
+        else:
+            continue
+
+        for sample in pole_samples:
+            # print(sample.shape)
+            # ply = eda.np_to_ply(sample[:, :-1])
+            # eda.color_pointcloud(ply, sample[:, -1])
+            # eda.visualize_ply([ply])
+
+            if np.sum(np.isin(sample[:, -1], [pole_label])) >= 5: # if gt contains poles
+                npy_name = os.path.join(samples_path, f'sample_{counter}.npy')
+
+                with open(npy_name, 'wb') as f:
+                    np.save(f, sample) # sample: (x, y, z, label)
                     counter += 1
 
 
@@ -120,7 +192,7 @@ class semKITTIv2(Dataset):
         self.split = split
         self.data_split = {
             'samples' : [0.0, 1.0],   # 100%
-            'train' :   [0.0, 0.2],   # 20%
+            'train' :   [0.0, 0.1],   # 20%
             'val' :     [0.2, 0.4],   # 20%
             'test' :    [0.4, 1.0]    # 60%
         }
@@ -321,8 +393,8 @@ def main():
 
     NEW_SEMK_PATH = os.path.join(EXT_DIR, 'SemKITTI')
 
-    # input("build?")
-    # build_pole_samples(SEMK_DATA_PATH, NEW_SEMK_PATH)
+    input("build?")
+    build_pole_radius_samples(SEMK_DATA_PATH, NEW_SEMK_PATH)
 
 
     KITTI_config_path = os.path.join(ROOT_PROJECT, 'SemKITTI_API', "config/semantic-kitti.yaml")

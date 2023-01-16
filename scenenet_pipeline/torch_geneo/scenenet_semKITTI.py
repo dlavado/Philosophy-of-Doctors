@@ -28,8 +28,9 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 
 from datasets.semKITTI import semKITTI, Voxelization, ToTensor, ToFullDense, semKITTIv2
-from torch_geneo.models.SCENE_Net import SCENE_Net
-from scenenet_pipeline.torch_geneo.criterions.geneo_loss import PICKLE_PATH, GENEO_Loss, GENEO_Loss_BCE
+from torch_geneo.models.SCENE_Net import SCENE_Net, SCENE_Netv2
+from scenenet_pipeline.torch_geneo.criterions.geneo_loss import GENEO_Dice_BCE, GENEO_Dice_Loss, GENEO_Loss
+from scenenet_pipeline.torch_geneo.criterions.w_mse import HIST_PATH
 from observer_utils import *
 
 
@@ -37,15 +38,17 @@ ROOT_PROJECT = Path(os.path.abspath(__file__)).parents[2].resolve()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+if "didi" in str(ROOT_PROJECT):
+    EXT_PATH = "/media/didi/TOSHIBA EXT/"
+else:
+    EXT_PATH = "/home/d.lavado/" #cluster data dir
 
-EXT_DIR = "/media/didi/TOSHIBA EXT/"
-#EXT_DIR = "/home/d.lavado/" #cluster data dir
-SEMK_DATA_PATH = os.path.join(EXT_DIR, 'SemKITTI/dataset')
+SEMK_DATA_PATH = os.path.join(EXT_PATH, 'SemKITTI/')
 
 SNET_PIPELINE_PATH = os.path.join(ROOT_PROJECT, 'scenenet_pipeline')
 
 META_PATH = os.path.join(SNET_PIPELINE_PATH, 'snet_semK_models')
-HIST_PATH = os.path.join(SNET_PIPELINE_PATH, "torch_geneo/models")
+#HIST_PATH = os.path.join(SNET_PIPELINE_PATH, "torch_geneo/models")
 FREQ_SAMPLES = os.path.join(SNET_PIPELINE_PATH, "dataset/freq_samples")
 
 TAU=0.7
@@ -63,6 +66,8 @@ def arg_parser():
     parser.add_argument("--val", action="store_true") # perform validation
     parser.add_argument("--no_train", action="store_true") # dont train the model - requires load_model flag
     parser.add_argument("--bce_loss", action='store_true') # use BCELoss
+    parser.add_argument("--dice_loss", action='store_true')
+
 
     # Model Loading
     parser.add_argument("--tuning", action='store_true') # Inits a new model with the model in --load_model
@@ -80,6 +85,7 @@ def arg_parser():
     parser.add_argument('-a', '--alpha', type=float, default=5)
     parser.add_argument('-e', '--epsilon', type=float, default=1e-1)
     parser.add_argument('-k', '--k_size', type=int, action='append', nargs="+", default=None)
+    parser.add_argument('-g', '--gamma', type=float, default=1)
     parser.add_argument('--cy', type=int, default=1)
     parser.add_argument('--cone', type=int, default=1)
     parser.add_argument('--neg', type=int, default=1)
@@ -113,6 +119,7 @@ def training_loop(gnet:SCENE_Net, train_loader, val_loader, geneo_loss, opt:torc
 
     # ---- Model Checkpoint ---
     if parser.load_model is not None:
+        print("Loading model...")
         gnet, chkp = load_state_dict(MODEL_PATH, gnet_class, parser.model_tag, kernel_size=None)
 
         opt = opt_class(gnet.parameters(), lr=LR)
@@ -142,8 +149,11 @@ def training_loop(gnet:SCENE_Net, train_loader, val_loader, geneo_loss, opt:torc
 
 
     train_metrics = init_metrics(tau)
+
     if parser.val:
         val_metrics = init_metrics(tau)
+    else:
+        val_metrics = None
 
     # `plot_metrics` saves the train/val metric results and loss for each epoch for later plotting
     init = torch.zeros((NUM_EPOCHS, 1 + parser.val), device=device)
@@ -161,7 +171,7 @@ def training_loop(gnet:SCENE_Net, train_loader, val_loader, geneo_loss, opt:torc
         if parser.val:
             val_loss = torch.tensor(0.0, device=device)        
         for batch in tqdm(train_loader, desc=f"train"): 
-            loss, _ = process_batch(gnet, batch, geneo_loss, opt, train_metrics)
+            loss, pred = process_batch(gnet, batch, geneo_loss, opt, train_metrics)
             train_loss += loss
         
         if parser.val:
@@ -175,7 +185,7 @@ def training_loop(gnet:SCENE_Net, train_loader, val_loader, geneo_loss, opt:torc
         # --- Calculate avg loss / metrics of train and validation loops ---
         train_res = train_metrics.compute()  
         train_loss = train_loss / len(train_loader)
-        print(f"Epoch {epoch+1} / {NUM_EPOCHS}:\n")
+        print(f"Epoch {epoch+1} / {NUM_EPOCHS}:")
         print(f"\t(threshold = {tau})")
         print(f"\ttrain_loss = {train_loss:.5f};")
         for met in train_res: 
@@ -228,10 +238,11 @@ def training_loop(gnet:SCENE_Net, train_loader, val_loader, geneo_loss, opt:torc
         # for name, param in gnet.named_parameters():
         #     print(f"{name} = {param.item():.4f}")
         # print("\n")
-
+        
+        print("")
         for name, param in gnet.get_cvx_coefficients().items():
             print(f"{name} = {param.item():.4f}")
-        print("\n")
+        print("")
         # --- Update GENEO Parameter Tracker ---
         params = gnet.get_dict_parameters()
         epoch_params = pd.DataFrame({'epoch': np.full(len(gnet.get_dict_parameters()), epoch+1), 'name': params.keys(), 'value': params.values()})
@@ -247,8 +258,8 @@ def training_loop(gnet:SCENE_Net, train_loader, val_loader, geneo_loss, opt:torc
             for metric in train_metrics:
                 plot_metrics[metric][epoch] = train_res[metric][None, ...]
 
-        if torch.sum(plot_metrics['FBetaScore']) == 0 and epoch >= 50:
-            break # early stop if metrics remain null after 50 epochs
+        if torch.sum(plot_metrics['FBetaScore']) == 0 and epoch >= 10:
+            break # early stop if metrics remain null after 10 epochs
         
         # early stopping
         # early_stopping(train_res[early_metric])
@@ -260,18 +271,26 @@ def training_loop(gnet:SCENE_Net, train_loader, val_loader, geneo_loss, opt:torc
         if parser.val:
             val_metrics.reset()
         
-        if chkp_epoch % 10 == 0:
-            torch.save(state_dict, MODEL_PATH)
+        # --- Save Model ---
+        torch.save(state_dict, MODEL_PATH)
+
+        del loss, train_loss, pred # free memory
+        if parser.val:
+            del val_loss
 
     return plot_metrics, gnet_params, best_train_metrics
     
 
 def train_observer(tau=TAU):
 
-    print("Loading semK dataset...")
+    print("Loading SemKITTI dataset...")
     semK_train_loader = DataLoader(semK_train, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
 
-    semK_val_loader = DataLoader(semK_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
+    if parser.val:
+        print("Loading SemKITTI validation dataset...")
+        semK_val_loader = DataLoader(semK_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
+    else:
+        semK_val_loader = None
 
 
     if parser.load_model is None:
@@ -292,7 +311,7 @@ def train_observer(tau=TAU):
 
     # --- Loss and Optimizer ---
     torch.autograd.set_detect_anomaly(True)
-    geneo_loss = gnet_loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    geneo_loss = loss_criterion(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON, gamma=GAMMA)
     
 
     # --- Train GENEO Net ---
@@ -315,7 +334,6 @@ def train_observer(tau=TAU):
     torch.save(state_dict, MODEL_PATH)
 
 
-
 def testing_observer(model_path, tau=TAU, tag='latest'):
 
     # --- Load Best Model ---
@@ -324,7 +342,7 @@ def testing_observer(model_path, tau=TAU, tag='latest'):
 
     print("Load Testing Data...")
     semK_test_loader = DataLoader(semK_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
-    geneo_loss = gnet_loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    geneo_loss = loss_criterion(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
 
     test_metrics = init_metrics(tau) 
     test_loss = 0
@@ -358,7 +376,7 @@ def visualize_thresholding(model_path, taus):
 
     print("Load Testing Data...")
     semK_test_loader = DataLoader(semK_test, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
-    geneo_loss = gnet_loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
+    geneo_loss = loss_criterion(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
 
     for batch in tqdm(semK_test_loader, desc=f"..."):
         loss, pred  = process_batch(gnet, batch, geneo_loss, None, None, requires_grad=False)
@@ -554,7 +572,6 @@ if __name__ == "__main__":
 
     torch.cuda.empty_cache()
 
-
     # Model checkpoint directory 
     if parser.model_date == 'saved':
         META_TODAY = os.path.join(META_PATH, 'models_geneo')
@@ -629,7 +646,7 @@ if __name__ == "__main__":
     pole_label = list(SemKITTI_labels.keys())[list(SemKITTI_labels.values()).index('pole')]
     # traffic_sign_label = list(SemKITTI_labels.keys())[list(SemKITTI_labels.values()).index('traffic-sign')]
 
-    vxg_size = (64, 64, 256)
+    vxg_size = (64, 64, 128)
     vox_size = (0.5, 0.5, 0.2) #only use vox_size after training or with batch_size = 1
     composed = Compose([Voxelization([pole_label], vxg_size=vxg_size, vox_size=None), 
                         ToTensor(), 
@@ -642,6 +659,7 @@ if __name__ == "__main__":
 
     semK_test = semKITTIv2(dataset_path=SEMK_DATA_PATH, split='test', transform=composed)
 
+
     # --- HyperParameters ---
     NUM_EPOCHS = parser.epochs
     BATCH_SIZE = parser.batch_size
@@ -651,23 +669,24 @@ if __name__ == "__main__":
     #TAU = 0.65 # default metric threshold 
     ALPHA = parser.alpha #importance factor of the weighting scheme applied during dense loss
     RHO = 5 #scaling factor of cvx_loss
+    GAMMA = parser.gamma #scaling factor of data fidelity
     EPSILON = parser.epsilon # min value of dense_loss
     gt_tau = 0.5 # default ground-truth threshold 
     #vxlgrid_size = (64, 64, 64)
 
-    kernel_size = (8, 8 ,8) if parser.k_size is None else tuple(*parser.k_size)
+    kernel_size = (9, 7, 7) if parser.k_size is None else tuple(*parser.k_size)
     
-
 
     # --- Model Definition ---
     gnet_class = SCENE_Net
-    opt_class = torch.optim.RMSprop
+    opt_class = torch.optim.SGD
 
     if parser.bce_loss:
-        gnet_loss = GENEO_Loss_BCE
+        loss_criterion = GENEO_Dice_BCE
+    elif parser.dice_loss:
+        loss_criterion = GENEO_Dice_Loss
     else:
-        gnet_loss = GENEO_Loss
-
+        loss_criterion = GENEO_Loss
 
     # --- Define State Dict ---
     if parser.load_model is None:
@@ -676,8 +695,8 @@ if __name__ == "__main__":
                                               'cone':parser.cone,
                                               'neg':parser.neg
                                             },
-                            'GENEO-Net Class' : gnet_class,
-                            'GENEO_Net Loss' : gnet_loss,
+                            'Model Class' : gnet_class,
+                            'Loss Criterion' : loss_criterion,
                             'opt_class' : opt_class,
                             'kernel_size': kernel_size,
                             'epsilon': EPSILON,
@@ -763,8 +782,15 @@ if __name__ == "__main__":
     ###############################################################
 
     with torch.no_grad():
-        taus_size=20
+        taus_size=10
         testing_model_tag = parser.model_tag
+
+        print("\n\nTesting model with different thresholds...")
+        print(f"\nModel's Train Performance on {testing_model_tag}:")
+        for metric, value in state_dict['models'][testing_model_tag].items():
+            if not isinstance(value, dict):
+                print(f"\t{metric}: {value}")
+                
         thresholding(META_MODEL_PATH, state_dict, taus_size=taus_size)
         # best_tau = state_dict['model_props'].get('best_tau', TAU)
 

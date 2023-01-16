@@ -6,5 +6,7 @@ rsync -Prav d.lavado@dicluster:soa_scenenet/scenenet_pipeline/torch_geneo/saved_
 
 rsync -Prav .  d.lavado@dicluster:soa_scenenet
 
+rsync -Prav /media/didi/TOSHIBA\ EXT/SemKITTI/samples/ d.lavado@dicluster:~/SemKITTI/samples/
+
 Clip pwd : 
 N9GrhJy5M9yEhe#

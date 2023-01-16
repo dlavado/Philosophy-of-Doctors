@@ -1,11 +1,11 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision
 
 import sys
 
 from tqdm import tqdm
+
 
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
@@ -116,11 +116,10 @@ if __name__ == "__main__":
     from pathlib import Path
     from datasets.ts40k import ToFullDense, torch_TS40K, ToTensor
     from torchvision.transforms import Compose
-    from scenenet_pipeline.torch_geneo.models.geneo_loss import HIST_PATH
-    from scenenet_pipeline.torch_geneo.models.geneo_loss import GENEO_Loss
     from torch.utils.data import DataLoader
     from torch_geneo.observer_utils import init_metrics, visualize_batch, process_batch
-    import torchvision.models as models
+    from scenenet_pipeline.torch_geneo.criterions.geneo_loss import GENEO_Loss
+    from scenenet_pipeline.torch_geneo.criterions.w_mse import HIST_PATH
     from torch.profiler import profile, record_function, ProfilerActivity
 
 
@@ -151,7 +150,6 @@ if __name__ == "__main__":
         print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
 
         print(prof.key_averages().table(sort_by="cuda_memory_usage", row_limit=10))
-
 
         input("\n\nContinue?\n\n")
 

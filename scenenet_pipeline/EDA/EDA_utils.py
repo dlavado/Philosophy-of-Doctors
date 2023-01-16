@@ -802,15 +802,15 @@ def crop_two_towers_samples(xyz:np.ndarray, classes:np.ndarray) -> List[np.ndarr
 
 
 
-def crop_tower_samples(xyz:np.ndarray, classes:np.ndarray) -> List[np.ndarray]:
+def crop_tower_samples(xyz:np.ndarray, classes:np.ndarray, obj_class=[POWER_LINE_SUPPORT_TOWER]) -> List[np.ndarray]:
 
-    pcd_tower, _ = select_object(xyz, classes, [POWER_LINE_SUPPORT_TOWER])
+    pcd_tower, _ = select_object(xyz, classes, obj_class)
     towers = extract_towers(pcd_tower, visual=False)
 
     samples = []
 
     for tower in towers:
-        crop, crop_classes = crop_tower_radius(xyz, classes, tower)
+        crop, crop_classes = crop_tower_radius(xyz, classes, tower, radius=15)
         tower_section = np.append(crop, crop_classes.reshape(-1, 1), axis=1)
         samples.append(tower_section)
 

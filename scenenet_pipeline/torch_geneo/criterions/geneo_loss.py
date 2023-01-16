@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 import cloudpickle
+from scenenet_pipeline.torch_geneo.criterions.dice_loss import BinaryDiceLoss, BinaryDiceLoss_BCE
 
 from scenenet_pipeline.torch_geneo.criterions.w_mse import WeightedMSE
 
@@ -78,22 +79,53 @@ class GENEO_Loss(WeightedMSE):
         return dense_criterion + cvx_penalty + non_positive_penalty
 
 
-class GENEO_Loss_BCE(GENEO_Loss):
+# class GENEO_Loss_BCE(GENEO_Loss):
 
-    def __init__(self, targets: torch.Tensor, hist_path, alpha=1, rho=1, epsilon=0.1, gamma=1) -> None:
+#     def __init__(self, targets: torch.Tensor, hist_path, alpha=1, rho=1, epsilon=0.1, gamma=1) -> None:
+#         super().__init__(targets, hist_path, alpha, rho, epsilon, gamma)
+
+#         self.bce = torch.nn.BCELoss()
+
+
+#     def forward(self, y_pred:torch.Tensor, y_gt:torch.Tensor, cvx_coeffs:torch.nn.ParameterDict, geneo_params:torch.nn.ParameterDict):
+
+#         exp_y_pred, exp_y_gt = torch.broadcast_tensors(y_pred, y_gt) ## ensures equal dims; probably not necessary
+#         weights_y_gt = self.get_weight_target(exp_y_gt)
+#         bce = torch.nn.BCELoss(weight=weights_y_gt)
+
+#         return bce(exp_y_pred, exp_y_gt) + self.cvx_loss(cvx_coeffs) + self.positive_regularizer(geneo_params)
+
+
+
+class GENEO_Dice_BCE(GENEO_Loss):
+
+    def __init__(self, targets: torch.Tensor, hist_path, alpha=1, rho=1, epsilon=0.1, gamma=1, reduction='mean') -> None:
+        
         super().__init__(targets, hist_path, alpha, rho, epsilon, gamma)
 
-        self.bce = torch.nn.BCELoss()
+        self.dice_bce = BinaryDiceLoss_BCE(targets, hist_path, alpha, rho, epsilon, gamma, reduction=reduction)
 
 
     def forward(self, y_pred:torch.Tensor, y_gt:torch.Tensor, cvx_coeffs:torch.nn.ParameterDict, geneo_params:torch.nn.ParameterDict):
 
-        exp_y_pred, exp_y_gt = torch.broadcast_tensors(y_pred, y_gt) ## ensures equal dims; probably not necessary
-        weights_y_gt = self.get_weight_target(exp_y_gt)
-        bce = torch.nn.BCELoss(weight=weights_y_gt)
 
-        return bce(exp_y_pred, exp_y_gt) + self.cvx_loss(cvx_coeffs) + self.positive_regularizer(geneo_params)
+        return self.gamma*self.dice_bce(y_pred, y_gt) + self.cvx_loss(cvx_coeffs) + self.positive_regularizer(geneo_params)
 
+
+class GENEO_Dice_Loss(GENEO_Loss):
+
+    def __init__(self, targets: torch.Tensor, hist_path, alpha=1, rho=1, epsilon=0.1, gamma=1, reduction='mean') -> None:
+        
+        super().__init__(targets, hist_path, alpha, rho, epsilon, gamma)
+
+        self.dice = BinaryDiceLoss()
+
+
+    def forward(self, y_pred:torch.Tensor, y_gt:torch.Tensor, cvx_coeffs:torch.nn.ParameterDict, geneo_params:torch.nn.ParameterDict):
+
+        dense_criterion = super().forward(y_pred, y_gt)
+
+        return dense_criterion + self.dice(y_pred, y_gt) + self.cvx_loss(cvx_coeffs) + self.positive_regularizer(geneo_params)
 
 
 

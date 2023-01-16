@@ -142,6 +142,8 @@ class WeightedMSE(torch.nn.Module):
         y_dens = self.get_dens_target(y)
         weights = torch.max(1 - self.alpha*y_dens, torch.full_like(y_dens, self.epsilon, device=self.device))
 
+        assert weights.shape == y.shape
+
         return weights / torch.mean(weights) # weights should have a mean of 1 to not directly influence the learning rate
 
     def forward(self, y_pred:torch.Tensor, y_gt:torch.Tensor):

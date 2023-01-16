@@ -188,8 +188,6 @@ class cone_kernel(GENEO_kernel_torch):
         heights = torch.arange(cone_height.item(), device=self.device, dtype=torch.long)
         c_radius_h = self.cone_radius*torch.sin(self.cone_inc*torch.pi / (2 + heights))
 
-        print(c_radius_h)
-
         for h in heights:
             height_vals = self.gaussian(floor_idxs, rad=None, sig=c_radius_h[h])
             height_vals = self.sum_zero(height_vals)

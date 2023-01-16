@@ -30,9 +30,6 @@ import os
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
-# %%
-
 def build_data_samples(data_dirs:List[str], save_dir=os.getcwd(), tower_radius=True, data_split:dict={"train": 0.7, "val": 0.2, "test": 0.1}):
     """
 
@@ -174,8 +171,6 @@ def build_data_samples(data_dirs:List[str], save_dir=os.getcwd(), tower_radius=T
 
 
 
-
-
 class torch_TS40Kv2(Dataset):
 
     def __init__(self, dataset_path, split='samples', centroid=False, transform=ToTensor()):
@@ -204,7 +199,7 @@ class torch_TS40Kv2(Dataset):
         self.data_split = {
             'samples' : [0.0, 1.0],   # 100%
             'train' :   [0.0, 0.2],   # 20%
-            'val' :     [0.2, 0.2],   # 20%
+            'val' :     [0.2, 0.4],   # 20%
             'test' :    [0.4, 1.0]    # 60%
         }
         
@@ -252,7 +247,7 @@ class torch_TS40Kv2(Dataset):
                 sample = (npy[None, :, 0:-1], npy[None, :, -1]) # xyz-coord (1, N, 3); label (1, N) 
         
         except:
-            print(f"Corrupted or Empty Sample: {idx}")
+            print(f"Corrupted or Empty Sample: {npy_path}")
 
             if self.transform:
                 sample = (np.zeros((100, 3)), np.zeros(100))

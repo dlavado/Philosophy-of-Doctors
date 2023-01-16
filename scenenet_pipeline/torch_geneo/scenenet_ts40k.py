@@ -20,7 +20,7 @@ from datasets.ts40kv2 import torch_TS40Kv2
 from datasets.torch_transforms import Voxelization, ToTensor, ToFullDense
 from torch_geneo.models.SCENE_Net import SCENE_Net, SCENE_Netv2
 from scenenet_pipeline.torch_geneo.criterions.w_mse import HIST_PATH
-from scenenet_pipeline.torch_geneo.criterions.geneo_loss import GENEO_Loss, GENEO_Loss_BCE
+from scenenet_pipeline.torch_geneo.criterions.geneo_loss import GENEO_Dice_BCE, GENEO_Dice_Loss, GENEO_Loss
 from observer_utils import *
 
 import sys
@@ -67,6 +67,7 @@ def arg_parser():
     parser.add_argument("--val", action="store_true") # perform validation
     parser.add_argument("--no_train", action="store_true") # dont train the model - requires load_model flag
     parser.add_argument("--bce_loss", action='store_true') # use BCELoss
+    parser.add_argument("--dice_loss", action='store_true')
 
     # Model Loading
     parser.add_argument("--tuning", action='store_true') # Inits a new model with the model in --load_model
@@ -328,14 +329,14 @@ def train_observer(tau=TAU):
     torch.save(state_dict, MODEL_PATH)
 
 
-def testing_observer(model_path, tau=TAU, tag='latest'):
+def testing_observer(model_path, dataset, tau=TAU, tag='latest'):
 
     # --- Load Best Model ---
     gnet, chkp = load_state_dict(model_path, gnet_class, tag, kernel_size=kernel_size)
     print(f"Tag '{tag}' Loss = {chkp['loss']}")
 
     print("Load Testing Data...")
-    ts40k_test_loader = DataLoader(ts40k_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
+    ts40k_test_loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
     geneo_loss = loss_criterion(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON, gamma=GAMMA)
 
     test_metrics = init_metrics(tau) 
@@ -344,12 +345,14 @@ def testing_observer(model_path, tau=TAU, tag='latest'):
     # --- Test Loop ---
     print(f"\n\nBegin testing with tau={tau:.3f} ...")
     for batch in tqdm(ts40k_test_loader, desc=f"testing..."):
-        loss, _ = process_batch(gnet, batch, geneo_loss, None, test_metrics, requires_grad=False)
+        loss, pred = process_batch(gnet, batch, geneo_loss, None, test_metrics, requires_grad=False)
         test_loss += loss
 
         # if parser.vis and vis:
         #     visualize_batch(batch[0], gt, pred, tau=tau)
         #     input("\n\nPress Enter to continue...")
+
+        del loss, pred # free memory
 
     test_loss = test_loss /  len(ts40k_test_loader)
     test_res = test_metrics.compute()
@@ -382,11 +385,10 @@ def visualize_thresholding(model_path, taus):
             visualize_batch(vox, gt, pred, idx, tau)
 
 
-def thresholding(model_dir, state_dict, taus_size=10):
+def thresholding(model_path, state_dict, taus_size=10):
 
-    model_path = os.path.join(model_dir, 'gnet.pt')
 
-    roc = np.empty((taus_size, 5))
+    roc = np.empty((taus_size, 5))  # precision, recall, f1, fbeta, tau
 
     best_loss = 1e10
     best_tau_loss = 0
@@ -394,7 +396,7 @@ def thresholding(model_dir, state_dict, taus_size=10):
     for i, tau in enumerate(taus):
         print(f"\n\n\nTesting for threshold = {tau}")
         with torch.no_grad():
-            test_metrics, loss = testing_observer(model_path, tau, tag=testing_model_tag)
+            test_metrics, loss = testing_observer(model_path, ts40k_val, tau, tag=testing_model_tag)
         pre = test_metrics['Precision']
         rec= test_metrics['Recall']
         f1 = test_metrics['F1Score']
@@ -575,7 +577,7 @@ def update_testing_results(models_root):
                     tau = best_tau['loss']
                 else:
                     tau = best_tau
-                test_res, test_loss = testing_observer(model_path, tau=tau, tag=testing_model_tag)
+                test_res, test_loss = testing_observer(model_path, ts40k_test, tau=tau, tag=testing_model_tag)
 
                 if not parser.vis:
                     state_dict['model_props']['test_results'] = {'loss' : test_loss,
@@ -604,8 +606,9 @@ if __name__ == "__main__":
         date = list(map(int, date))
         META_TODAY = os.path.join(SAVED_SCNETS_PATH, str(datetime(*date).date()))
 
-    print(META_TODAY)
+    print(f"working Directory: {META_TODAY}")
 
+    # -- Model Path Resolution ---
     if parser.load_model is None:
         if not os.path.exists(META_TODAY):
             os.mkdir(META_TODAY)
@@ -648,7 +651,7 @@ if __name__ == "__main__":
         META_TODAY = aux_date_path
         META_MODEL_PATH = aux_meta_model_path
         MODEL_PATH = os.path.join(META_MODEL_PATH, "gnet.pt")
-    elif parser.load_model is not None:
+    elif parser.load_model is not None and not parser.no_train:
         print(f"Resuming Training of model {META_MODEL_PATH}")
 
     # --- Dataset Initialization ---
@@ -660,12 +663,8 @@ if __name__ == "__main__":
 
     ts40k_train = torch_TS40Kv2(dataset_path=TS40K_PATH, split=parser.ts40k_split, transform=composed)
 
-
-    if parser.val:
-        ts40k_val = torch_TS40Kv2(dataset_path=TS40K_PATH, split='val', transform=composed)
-    else:
-        ts40k_val = None
-
+    ts40k_val = torch_TS40Kv2(dataset_path=TS40K_PATH, split='val', transform=composed)
+   
     ts40k_test = torch_TS40Kv2(dataset_path=TS40K_PATH, split='test', transform=composed)
 
 
@@ -687,10 +686,12 @@ if __name__ == "__main__":
 
     # --- Model Definition ---
     gnet_class = SCENE_Netv2
-    opt_class = torch.optim.RMSprop
+    opt_class = torch.optim.SGD
 
     if parser.bce_loss:
-        loss_criterion = GENEO_Loss_BCE
+        loss_criterion = GENEO_Dice_BCE
+    elif parser.dice_loss:
+        loss_criterion = GENEO_Dice_Loss
     else:
         loss_criterion = GENEO_Loss
 
@@ -748,18 +749,11 @@ if __name__ == "__main__":
 
 
     pp.pprint(state_dict['model_props'])
-    #pp.pprint(state_dict['models'])
+    
+    # pp.pprint(state_dict['models'])
+    # input("Press Enter to continue...")
 
    
-    ###############################################################
-    #                     Model Calibration                       #
-    ###############################################################
-
-
-    #scnet_calibration(MODEL_PATH, gnet_class, ts40k_val, parser.batch_size, mode='LogRegression')
-    # scnet_calibration(MODEL_PATH, gnet_class, ts40k_val, parser.batch_size, mode='TempScaling')
-    # input("Continue?")
-
 
     ###############################################################
     #                   Examining Samples                         #
@@ -788,56 +782,62 @@ if __name__ == "__main__":
         train_observer()
 
 
-        ###############################################################
-        #                       Thresholding                          #
-        ###############################################################
-        with torch.no_grad():
-            taus_size=20
-            testing_model_tag = parser.model_tag
-            thresholding(META_MODEL_PATH, state_dict, taus_size=taus_size)
+    ###############################################################
+    #                       Thresholding                          #
+    ###############################################################
+    with torch.no_grad():
+        taus_size=10
+        testing_model_tag = parser.model_tag
 
-            for metric in ['loss', 'F1Score', 'FBetaScore', 'Precision', 'latest']:
-                
-                tau = state_dict['model_props']['best_tau'][metric] if metric != 'latest' else TAU
+        print("\n\nTesting model with different thresholds...")
+        print(f"\nModel's Train Performance on {testing_model_tag}:")
+        for metric, value in state_dict['models'][testing_model_tag].items():
+            if not isinstance(value, dict):
+                print(f"\t{metric}: {value}")
 
-                print(metric, tau)
+        thresholding(MODEL_PATH, state_dict, taus_size=taus_size)
 
-                test_res, test_loss = testing_observer(MODEL_PATH, tau=tau, tag=metric)
+        for metric in ['loss', 'F1Score', 'FBetaScore', 'Precision', 'latest']:
+            
+            tau = state_dict['model_props']['best_tau'][metric] if metric != 'latest' else TAU
 
-                if not parser.vis:
-                    state_dict['model_props']['test_results'][metric] = {'loss' : test_loss,
-                                                                        'tau': tau,
-                                                                        **test_res}
+            print(f"Testing {metric} with tau={tau}...")
 
-            if parser.vis:
-                taus = torch.linspace(0.5, 0.95, taus_size)
-                visualize_thresholding(MODEL_PATH, taus)
-            else:
-                torch.save(state_dict, MODEL_PATH)
+            test_res, test_loss = testing_observer(MODEL_PATH, ts40k_test, tau=tau, tag=metric)
 
-        chkp = torch.load(MODEL_PATH)
-        pp.pprint(chkp['models'].keys())
-        pp.pprint(chkp['model_props'])
+            if not parser.vis:
+                state_dict['model_props']['test_results'][metric] = {'loss' : test_loss,
+                                                                     'tau': tau,
+                                                                     **test_res}
 
-        ###############################################################
-        #                   Saving Run Config                         #
-        ###############################################################
-
-        text_file = open(os.path.join(META_MODEL_PATH, 'model_props.txt'), "w")
-
-        text_file.write(pp.pformat(chkp['models'].keys()))
-        text_file.write('\n\n\n' + '#'*100+'\n'+'#'*100 + '\n\n\n')
-        if parser.no_train:
-            text_file.write(f"FINE TUNED FROM MODEL: {parser.load_model} ; {parser.model_date} ; {parser.model_tag} ;")
+        if parser.vis:
+            taus = torch.linspace(0.5, 0.95, taus_size)
+            visualize_thresholding(MODEL_PATH, taus)
         else:
-            text_file.write(pp.pformat(chkp['run_config']))
-        text_file.write('\n\n\n' + '#'*100+'\n'+'#'*100 + '\n\n\n')
-        text_file.write(pp.pformat(chkp['model_props']))
+            torch.save(state_dict, MODEL_PATH)
 
-        text_file.close()
+    chkp = torch.load(MODEL_PATH)
+    pp.pprint(chkp['models'].keys())
+    pp.pprint(chkp['model_props'])
 
+    ###############################################################
+    #                   Saving Run Config                         #
+    ###############################################################
 
-    # %%
+    text_file = open(os.path.join(META_MODEL_PATH, 'model_props.txt'), "w")
+
+    text_file.write(pp.pformat(chkp['models'].keys()))
+    text_file.write('\n\n\n' + '#'*100+'\n'+'#'*100 + '\n\n\n')
+    if parser.no_train:
+        text_file.write(f"FINE TUNED FROM MODEL: {parser.load_model} ; {parser.model_date} ; {parser.model_tag} ;")
+    else:
+        text_file.write(pp.pformat(chkp['run_config']))
+    text_file.write('\n\n\n' + '#'*100+'\n'+'#'*100 + '\n\n\n')
+    text_file.write(pp.pformat(chkp['model_props']))
+
+    text_file.close()
+
+    ###############################################################
 
     # META_DIR = os.path.join(ROOT_PROJECT, 'metadata_geneo')
 
