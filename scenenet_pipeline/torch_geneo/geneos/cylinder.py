@@ -368,7 +368,7 @@ if __name__ == "__main__":
     # %%
 
     cy = cylinder_kernel('cy', (6, 6, 6), radius=torch.tensor(2), sigma=torch.tensor(2))
-    cy = cylinderv2('cy', (9, 7, 7), radius=torch.tensor(3), sigma=torch.tensor(5))
+    cy = cylinderv2('cy', (6, 7, 7), radius=torch.tensor(2.5), sigma=torch.tensor(5))
     #kernel = cy.compute_kernel_(True)
 
     cy.visualize_kernel()

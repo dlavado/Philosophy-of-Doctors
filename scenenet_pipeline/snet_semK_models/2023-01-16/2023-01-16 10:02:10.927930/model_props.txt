@@ -1,0 +1,65 @@
+dict_keys(['loss', 'latest', 'JaccardIndex', 'Precision', 'Recall', 'F1Score', 'FBetaScore'])
+
+
+####################################################################################################
+####################################################################################################
+
+
+{'batch_size': 8,
+ 'learning_rate': 0.0001,
+ 'num_epochs': 50,
+ 'num_samples': 3517}
+
+
+####################################################################################################
+####################################################################################################
+
+
+{'Loss Criterion': <class 'scenenet_pipeline.torch_geneo.criterions.geneo_loss.GENEO_Dice_Loss'>,
+ 'Model Class': <class 'torch_geneo.models.SCENE_Net.SCENE_Netv2'>,
+ 'alpha': 1.0,
+ 'best_tau': {'F1Score': 0.5277777910232544,
+              'FBetaScore': 0.6333333253860474,
+              'Precision': 0.8444444537162781,
+              'Recall': 0.0,
+              'loss': tensor(0.6333)},
+ 'epsilon': 0.1,
+ 'geneos_used': {'cone': 1, 'cy': 1, 'neg': 1},
+ 'kernel_size': (9, 5, 5),
+ 'opt_class': <class 'torch.optim.sgd.SGD'>,
+ 'rho': 5,
+ 'test_results': {'F1Score': {'F1Score': tensor(0.2241, device='cuda:0'),
+                              'FBetaScore': tensor(0.2550, device='cuda:0'),
+                              'JaccardIndex': tensor(0.5631, device='cuda:0'),
+                              'Precision': tensor(0.2809, device='cuda:0'),
+                              'Recall': tensor(0.1864, device='cuda:0'),
+                              'loss': tensor(0.9226, device='cuda:0', dtype=torch.float64),
+                              'tau': 0.5277777910232544},
+                  'FBetaScore': {'F1Score': tensor(0.2004, device='cuda:0'),
+                                 'FBetaScore': tensor(0.2893, device='cuda:0'),
+                                 'JaccardIndex': tensor(0.5557, device='cuda:0'),
+                                 'Precision': tensor(0.4106, device='cuda:0'),
+                                 'Recall': tensor(0.1326, device='cuda:0'),
+                                 'loss': tensor(0.9226, device='cuda:0', dtype=torch.float64),
+                                 'tau': 0.6333333253860474},
+                  'Precision': {'F1Score': tensor(0.0472, device='cuda:0'),
+                                'FBetaScore': tensor(0.1063, device='cuda:0'),
+                                'JaccardIndex': tensor(0.5120, device='cuda:0'),
+                                'Precision': tensor(0.6476, device='cuda:0'),
+                                'Recall': tensor(0.0245, device='cuda:0'),
+                                'loss': tensor(0.9225, device='cuda:0', dtype=torch.float64),
+                                'tau': 0.8444444537162781},
+                  'latest': {'F1Score': tensor(0.1685, device='cuda:0'),
+                             'FBetaScore': tensor(0.2780, device='cuda:0'),
+                             'JaccardIndex': tensor(0.5460, device='cuda:0'),
+                             'Precision': tensor(0.4909, device='cuda:0'),
+                             'Recall': tensor(0.1017, device='cuda:0'),
+                             'loss': tensor(0.9225, device='cuda:0', dtype=torch.float64),
+                             'tau': 0.7},
+                  'loss': {'F1Score': tensor(0.2043, device='cuda:0'),
+                           'FBetaScore': tensor(0.2911, device='cuda:0'),
+                           'JaccardIndex': tensor(0.5569, device='cuda:0'),
+                           'Precision': tensor(0.4060, device='cuda:0'),
+                           'Recall': tensor(0.1365, device='cuda:0'),
+                           'loss': tensor(0.9226, device='cuda:0', dtype=torch.float64),
+                           'tau': tensor(0.6333)}}}

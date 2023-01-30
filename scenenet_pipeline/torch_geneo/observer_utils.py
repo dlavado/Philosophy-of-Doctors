@@ -281,11 +281,11 @@ def to_numpy(tensor:torch.Tensor, device = torch.device('cuda' if torch.cuda.is_
 def plot_voxelgrid(tensor:torch.Tensor, title="", color_mode='density', device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
     if tensor is None:
         ValueError("Tensor is None")
-    if len(tensor[tensor > 0]) == 0:
-        print("Empty Tensor")
+    if torch.sum(tensor > 0) == 0:
+        ValueError("Empty Tensor")
     else:
-    
         Vox.plot_voxelgrid(to_numpy(torch.squeeze(tensor), device), color_mode=color_mode, title=title)
+
 
 def visualize_batch(vox_input:torch.Tensor=None, gt:torch.Tensor=None, pred:torch.Tensor=None, idx:int=None, tau=0.7,
                     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
@@ -296,11 +296,12 @@ def visualize_batch(vox_input:torch.Tensor=None, gt:torch.Tensor=None, pred:torc
     # selecting random sample from batch
     if idx is None:
         idx = np.random.randint(0, batch_size, size=1)[0]
-    
-    plot_voxelgrid(vox_input[idx], title='Input Voxelgrid')
+   
+    #plot_voxelgrid(vox_input[idx], title='Input Voxelgrid')
 
     plot_voxelgrid(pred[idx], color_mode='ranges', title='GENEO-Net Probability Prediction')
     plot_voxelgrid(Vox.prob_to_label(pred[idx], tau), title='GENEO-Net Prediction')
+
 
     visualize_regression(pred[idx], gt[idx], tau, device)
 

@@ -453,12 +453,15 @@ def visualize_pred_vs_gt(pred:np.ndarray, gt:np.ndarray, plot=True):
 
     if len(pred) == 0 or len(gt) == 0:
         return
-   
-    vxg_common = (pred*gt + 1.5*pred + 0.5*gt) / 2 # 1-> TP;  0.75 -> FP;  0.25 -> FN;  0 -> TN
+       
+    #vxg_common = (pred*gt + 1.5*pred + 0.5*gt) / 2 # 1-> TP;  0.75 -> FP;  0.25 -> FN;  0 -> TN
+    #vxg_common = (vxg_common * 4) / 3 
+    vxg_common = (4*pred + 1*gt) / 5
+
 
     y_true, y_pred = gt.flatten(), pred.flatten()
 
-    plot_voxelgrid(np.squeeze(vxg_common), color_mode='ranges', title='Prediction vs. Ground Truth') 
+    plot_voxelgrid(np.squeeze(vxg_common), color_mode='ranges', title='Prediction vs. Ground Truth', visual=True) 
 
     if plot:
         print(f"Jaccard Score: {jaccard_score(y_true, y_pred)}")

@@ -220,6 +220,9 @@ class torch_TS40Kv2(Dataset):
     def __len__(self):
         return len(self.npy_files)
 
+    def __str__(self) -> str:
+        return f"TS40Kv2 {self.split} Dataset with {len(self)} samples"
+
     def set_transform(self, new_transform):
         self.transform = new_transform
     
@@ -257,6 +260,37 @@ class torch_TS40Kv2(Dataset):
 
         return sample
 
+    
+    def get_item_no_transform(self, idx):
+
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        npy_path = os.path.join(self.dataset_path, self.npy_files[idx])
+
+        if self.split == 'val':
+            print(npy_path)
+
+        try:
+            npy = np.load(npy_path)
+
+            return (npy[None, :, 0:-1], npy[None, :, -1]) # xyz-coord (1, N, 3); label (1, N) 
+        except:
+            print(f"Corrupted or Empty Sample")
+
+            return np.zeros((1, 100, 3)), np.zeros((1, 100))
+
+    def get_item_from_path(self, idx):
+
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        npy_path = os.path.join(self.dataset_path, f"sample_{idx}.npy")
+
+        npy = np.load(npy_path)
+
+        return (npy[None, :, 0:-1], npy[None, :, -1]) # xyz-coord (1, N, 3); label (1, N) 
+
 # %%
 def main():
     
@@ -268,7 +302,7 @@ def main():
 
     #build_data_samples([EXT_DIR, DATA_SAMPLE_DIR], SAVE_DIR)
 
-    #composed = Compose([ToTensor(), AddPad((3, 3, 3, 3, 3, 3))])
+    #composed = Compose([ToTensor(), AddPad((3, 3, 3, 3, 3, 3))]) 
     vxg_size  = (64, 64, 64)
     vox_size = (0.5, 0.5, 0.5) #only use vox_size after training or with batch_size = 1
     composed = Compose([Voxelization([eda.POWER_LINE_SUPPORT_TOWER], vxg_size=vxg_size), 

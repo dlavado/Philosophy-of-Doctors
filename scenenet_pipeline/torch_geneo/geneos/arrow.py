@@ -301,9 +301,9 @@ if __name__ == "__main__":
     cone = arrow('arrow', (9, 7, 7), plot = True, 
                                      radius=torch.tensor(1.0),  
                                      sigma=torch.tensor(1.0), 
-                                     apex=nn.Parameter(torch.tensor(3.0)), 
+                                     apex=nn.Parameter(torch.tensor(5.0)), 
                                      cone_radius=torch.tensor(5),
-                                     cone_inc=nn.Parameter(torch.tensor(0.1)))
+                                     cone_inc=nn.Parameter(torch.tensor(0.2)))
   
     #conv = cone.convolution(vox.view((1, *vox.shape)).to(cone.device))
 

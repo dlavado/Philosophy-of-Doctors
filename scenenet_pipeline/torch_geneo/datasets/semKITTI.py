@@ -193,8 +193,8 @@ class semKITTIv2(Dataset):
         self.data_split = {
             'samples' : [0.0, 1.0],   # 100%
             'train' :   [0.0, 0.1],   # 20%
-            'val' :     [0.2, 0.4],   # 20%
-            'test' :    [0.4, 1.0]    # 60%
+            'val' :     [0.1, 0.3],   # 20%
+            'test' :    [0.3, 1.0]    # 60%
         }
 
         self.KITTI_config_path = os.path.join(ROOT_PROJECT, 'SemKITTI_API', "config/semantic-kitti.yaml")
@@ -222,6 +222,9 @@ class semKITTIv2(Dataset):
     def __len__(self):
         return len(self.npy_files)
 
+    def __str__(self) -> str:
+        return f"SemKITTIv2 {self.split} Dataset with {len(self)} samples."
+
 
     def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
         # data[i]
@@ -230,6 +233,9 @@ class semKITTIv2(Dataset):
             idx = idx.tolist()
 
         npy_path = os.path.join(self.dataset_path, self.npy_files[idx])
+
+        if self.split == 'val':
+            print(npy_path)
 
         try:
             npy = np.load(npy_path)
@@ -250,6 +256,38 @@ class semKITTIv2(Dataset):
                 sample =  (np.zeros((1, 100, 3)), np.zeros((1, 100))) # batch dim
 
         return sample
+    
+    def get_item_no_transform(self, idx):
+
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        npy_path = os.path.join(self.dataset_path, self.npy_files[idx])
+
+        if self.split == 'val':
+            print(npy_path)
+
+        try:
+            npy = np.load(npy_path)
+
+            return (npy[None, :, 0:-1], npy[None, :, -1]) # xyz-coord (1, N, 3); label (1, N) 
+        except:
+            print(f"Corrupted or Empty Sample")
+
+            return np.zeros((1, 100, 3)), np.zeros((1, 100))
+
+    def get_item_from_path(self, idx):
+
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        npy_path = os.path.join(self.dataset_path, f"sample_{idx}.npy")
+
+        npy = np.load(npy_path)
+
+        return (npy[None, :, 0:-1], npy[None, :, -1]) # xyz-coord (1, N, 3); label (1, N) 
+
+
 
 
 

@@ -261,8 +261,8 @@ if __name__ == "__main__":
     
     # %%
 
-    sphere = negSpherev2('cy', (6, 6, 6), radius=torch.tensor(3), 
-                                          sigma=torch.tensor(1), 
+    sphere = negSpherev2('cy', (9, 9, 9), radius=torch.tensor(3), 
+                                          sigma=torch.tensor(2), 
                                           neg_factor=torch.tensor(1))
     kernel = sphere.compute_kernel(True)
 

@@ -20,7 +20,7 @@ from datasets.ts40kv2 import torch_TS40Kv2
 from datasets.torch_transforms import Voxelization, ToTensor, ToFullDense
 from torch_geneo.models.SCENE_Net import SCENE_Net, SCENE_Netv2
 from scenenet_pipeline.torch_geneo.criterions.w_mse import HIST_PATH
-from scenenet_pipeline.torch_geneo.criterions.geneo_loss import GENEO_Dice_BCE, GENEO_Dice_Loss, GENEO_Loss
+from scenenet_pipeline.torch_geneo.criterions.geneo_loss import GENEO_Dice_BCE, GENEO_Dice_Loss, GENEO_Loss, GENEO_Tversky_Loss
 from observer_utils import *
 
 import sys
@@ -68,6 +68,8 @@ def arg_parser():
     parser.add_argument("--no_train", action="store_true") # dont train the model - requires load_model flag
     parser.add_argument("--bce_loss", action='store_true') # use BCELoss
     parser.add_argument("--dice_loss", action='store_true')
+    parser.add_argument("--tversky_loss", action='store_true')
+
 
     # Model Loading
     parser.add_argument("--tuning", action='store_true') # Inits a new model with the model in --load_model
@@ -335,26 +337,25 @@ def testing_observer(model_path, dataset, tau=TAU, tag='latest'):
     gnet, chkp = load_state_dict(model_path, gnet_class, tag, kernel_size=kernel_size)
     print(f"Tag '{tag}' Loss = {chkp['loss']}")
 
-    print("Load Testing Data...")
-    ts40k_test_loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
-    geneo_loss = loss_criterion(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON, gamma=GAMMA)
+    print(f"Load {str(dataset)} Data...")
+    semK_test_loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
+    geneo_loss = loss_criterion(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
 
     test_metrics = init_metrics(tau) 
     test_loss = 0
  
     # --- Test Loop ---
     print(f"\n\nBegin testing with tau={tau:.3f} ...")
-    for batch in tqdm(ts40k_test_loader, desc=f"testing..."):
-        loss, pred = process_batch(gnet, batch, geneo_loss, None, test_metrics, requires_grad=False)
+    for batch in tqdm(semK_test_loader, desc=f"testing..."):
+        loss, _ = process_batch(gnet, batch, geneo_loss, None, test_metrics, requires_grad=False)
         test_loss += loss
 
         # if parser.vis and vis:
         #     visualize_batch(batch[0], gt, pred, tau=tau)
         #     input("\n\nPress Enter to continue...")
+        del loss # free memory
 
-        del loss, pred # free memory
-
-    test_loss = test_loss /  len(ts40k_test_loader)
+    test_loss = test_loss /  len(semK_test_loader)
     test_res = test_metrics.compute()
     print(f"\ttest_loss = {test_loss:.3f};")
     for met in test_res:
@@ -385,30 +386,51 @@ def visualize_thresholding(model_path, taus):
             visualize_batch(vox, gt, pred, idx, tau)
 
 
-def thresholding(model_path, state_dict, taus_size=10):
+def plot_metric_thresholding(model_dir, roc, metric, midx):
+    plt.close()
+    fig = plt.figure()
+    ax = plt.subplot(111)
+    rem_axis(ax, ['top', 'right'])  
+    plt.plot(roc[:, -1], roc[:, midx])
+    xmax = roc[:, -1][np.argmax(roc[:, midx])]
+    ymax = np.max(roc[:, midx])
+    label= "x={:.3f}, y={:.3f}".format(xmax, ymax)
+    plt.annotate(label, # this is the text
+                (xmax,ymax), # these are the coordinates parser.add_argument("--val", action="store_true")to position the label
+                textcoords="offset points", # how to position the text
+                xytext=(0,10), # distance from text to points (x,y)
+                ha='center') # horizontal alignment can be left, right or center
+    plt.xlabel('Threshold')
+    plt.ylabel(metric)
+    plt.title(f"{metric} per threshold")
+    plt.savefig(os.path.join(model_dir, f"{metric}_threshold.png"))
 
 
-    roc = np.empty((taus_size, 5))  # precision, recall, f1, fbeta, tau
+
+def thresholding(model_dir, state_dict, taus=torch.linspace(0.0, 0.95, 10)):
+
+    model_path = os.path.join(model_dir, 'gnet.pt')
+
+    roc = np.empty((taus_size, 6))
 
     best_loss = 1e10
-    best_tau_loss = 0
-    taus = torch.linspace(0.0, 0.95, taus_size)
+    best_tau_loss = 0.0
     for i, tau in enumerate(taus):
-        print(f"\n\n\nTesting for threshold = {tau}")
+        print(f"\n\n\nValidating for threshold = {tau}")
         with torch.no_grad():
             test_metrics, loss = testing_observer(model_path, ts40k_val, tau, tag=testing_model_tag)
         pre = test_metrics['Precision']
         rec= test_metrics['Recall']
+        ji = test_metrics['JaccardIndex']
         f1 = test_metrics['F1Score']
         fbeta = test_metrics['FBetaScore']
-        roc[i] = [pre, rec, f1, fbeta, tau]
+        roc[i] = [pre, rec, ji, f1, fbeta, tau]
 
         if loss <= best_loss:
             best_loss =  loss
             best_tau_loss = tau
 
     np.save(open('thresholding.npy', 'wb'), roc)
-    input("Stop?")
     
     # --- Plot ROC ---
     plt.close()
@@ -431,62 +453,29 @@ def thresholding(model_path, state_dict, taus_size=10):
     plt.title(f"Precision-Recall Curve")
     plt.savefig(os.path.join(model_dir, f"ROC.png"))
 
-    plt.close()
-    fig = plt.figure()
-    ax = plt.subplot(111)
-    rem_axis(ax, ['top', 'right'])  
-    plt.plot(roc[:, -1], roc[:, 2])
-    xmax = roc[:, -1][np.argmax(roc[:, 2])]
-    ymax = np.max(roc[:, 2])
-    label= "x={:.3f}, y={:.3f}".format(xmax, ymax)
-    plt.annotate(label, # this is the text
-                (xmax,ymax), # these are the coordinates parser.add_argument("--val", action="store_true")to position the label
-                textcoords="offset points", # how to position the text
-                xytext=(0,10), # distance from text to points (x,y)
-                ha='center') # horizontal alignment can be left, right or center
-    plt.xlabel('Threshold')
-    plt.ylabel('F1_Score')
-    plt.title(f"F1_Score per threshold")
-    plt.savefig(os.path.join(model_dir, f"F1_Score_threshold.png"))
+    plot_metric_thresholding(model_dir, roc, 'JacardIndex', 2)
+    plot_metric_thresholding(model_dir, roc, 'F1Score', 3)
+    plot_metric_thresholding(model_dir, roc, 'FBetaScore', 4)
 
-    plt.close()
-    fig = plt.figure()
-    ax = plt.subplot(111)
-    rem_axis(ax, ['top', 'right'])  
-    plt.plot(roc[:, -1], roc[:, 3])
-    xmax = roc[:, -1][np.argmax(roc[:, 3])]
-    ymax = np.max(roc[:, 3])
-    label= "x={:.3f}, y={:.3f}".format(xmax, ymax)
-    plt.annotate(label, # this is the text
-                (xmax,ymax), # these are the coordinates parser.add_argument("--val", action="store_true")to position the label
-                textcoords="offset points", # how to position the text
-                xytext=(0,10), # distance from text to points (x,y)
-                ha='center') # horizontal alignment can be left, right or center
-    plt.xlabel('Threshold')
-    plt.ylabel('FBetaScore')
-    plt.title(f"FBetaScore(beta = {0.5}) per threshold")
-    plt.savefig(os.path.join(model_dir, f"FBetaScore_threshold.png"))
-
-    if parser.vis:
-        visualize_thresholding(model_path, taus)
 
     print(f"\n\nBest tau = {best_tau_loss}")
     max_metrics = np.argmax(roc, axis=0)
 
     if not parser.vis:
         state_dict['model_props']["best_tau"] = {'loss' : best_tau_loss,
-                                                'Precision' : roc[max_metrics[0], -1],
-                                                'Recall': roc[max_metrics[1], -1],
-                                                'F1Score' : roc[max_metrics[2], -1],
-                                                'FBetaScore':roc[max_metrics[3], -1]
+                                                 'Precision' : roc[max_metrics[0], -1],
+                                                 'Recall': roc[max_metrics[1], -1],
+                                                 'JaccardIndex' : roc[max_metrics[2], -1],
+                                                 'F1Score':roc[max_metrics[3], -1],
+                                                 'FBetaScore':roc[max_metrics[4], -1]
                                                 }
 
 
-def examine_samples(model_path, data_path, tau=None, tag='loss'):
+
+def examine_samples(model_path, dataset, tau=None, tag='loss'):
 
     gnet, _ = load_state_dict(model_path, gnet_class, tag, kernel_size=kernel_size)
 
-    ts40k = torch_TS40Kv2(dataset_path=data_path, split='val', transform=composed)
 
     st_dict = torch.load(model_path)
     if tau is None:
@@ -495,7 +484,7 @@ def examine_samples(model_path, data_path, tau=None, tag='loss'):
     print(f"\n\nExamining samples with model {model_path.split('/')[-2]}")
     print(f"\t with tau={tau} trying to optimize {tag}...")
 
-    ts40k_loader = DataLoader(ts40k, batch_size=1, shuffle=True, num_workers=4)
+    ts40k_loader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=4)
     geneo_loss = GENEO_Loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON, gamma=GAMMA)
     
     test_metrics = init_metrics(tau) 
@@ -507,7 +496,7 @@ def examine_samples(model_path, data_path, tau=None, tag='loss'):
     # --- Test Loop ---
     for i in tqdm(range(0, 100)):
         # print(f"Examining TS40K Sample {i}...")
-        pts, labels = ts40k[i]
+        pts, labels = dataset[i]
         batch = pts[None], labels[None]
         loss, pred = process_batch(gnet, batch, geneo_loss, None, test_metrics, requires_grad=False)
         test_loss += loss
@@ -523,10 +512,15 @@ def examine_samples(model_path, data_path, tau=None, tag='loss'):
             preds = torch.concat((preds, torch.flatten(pred)))
             gts = torch.concat((gts, torch.flatten(labels)))
 
-        if False:
+        if True:
             print(f"Precision = {pre}")
             print(f"Recall = {rec}")
             vox, gt = transform_batch(batch)
+            pts, labels = dataset.get_item_no_transform(i)
+            pts, labels  = np.squeeze(pts), np.squeeze(labels)
+            pts_ply = eda.np_to_ply(pts)
+            eda.color_pointcloud(pts_ply, labels)
+            eda.visualize_ply([pts_ply], window_name='Original Pointcloud')
             visualize_batch(vox, gt, pred, tau=tau)
             input("\n\nPress Enter to continue...")
 
@@ -692,6 +686,8 @@ if __name__ == "__main__":
         loss_criterion = GENEO_Dice_BCE
     elif parser.dice_loss:
         loss_criterion = GENEO_Dice_Loss
+    elif parser.tversky_loss:
+        loss_criterion = GENEO_Tversky_Loss
     else:
         loss_criterion = GENEO_Loss
 
@@ -772,7 +768,7 @@ if __name__ == "__main__":
                 else:
                     tau = None
             
-            examine_samples(MODEL_PATH, TS40K_PATH, tau=tau, tag=parser.model_tag)
+            examine_samples(MODEL_PATH, ts40k_val, tau=tau, tag=parser.model_tag)
 
     ###############################################################
     #                   Training GENEO-NET                        #
@@ -787,21 +783,29 @@ if __name__ == "__main__":
     ###############################################################
     with torch.no_grad():
         taus_size=10
+        taus = torch.linspace(0.5, 0.7, taus_size)
         testing_model_tag = parser.model_tag
 
-        print("\n\nTesting model with different thresholds...")
+        print('\n\n\n' + '#'*100+'\n'+'#'*100 + '\n\n\n')
+        print("Threshold Optimization...")
         print(f"\nModel's Train Performance on {testing_model_tag}:")
         for metric, value in state_dict['models'][testing_model_tag].items():
             if not isinstance(value, dict):
                 print(f"\t{metric}: {value}")
+                
+        thresholding(META_MODEL_PATH, state_dict, taus=taus)
+        # best_tau = state_dict['model_props'].get('best_tau', TAU)
 
-        thresholding(MODEL_PATH, state_dict, taus_size=taus_size)
+        # if isinstance(best_tau, dict):
+        #     tau = best_tau['loss']
+        # else:
+        #     tau = best_tau
 
-        for metric in ['loss', 'F1Score', 'FBetaScore', 'Precision', 'latest']:
+        for metric in ['loss', 'FBetaScore', 'Precision', 'latest', 'JaccardIndex']:
             
             tau = state_dict['model_props']['best_tau'][metric] if metric != 'latest' else TAU
 
-            print(f"Testing {metric} with tau={tau}...")
+            print(metric, tau)
 
             test_res, test_loss = testing_observer(MODEL_PATH, ts40k_test, tau=tau, tag=metric)
 

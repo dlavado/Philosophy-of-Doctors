@@ -6,6 +6,7 @@ import torch
 import matplotlib.pyplot as plt
 import cloudpickle
 from scenenet_pipeline.torch_geneo.criterions.dice_loss import BinaryDiceLoss, BinaryDiceLoss_BCE
+from scenenet_pipeline.torch_geneo.criterions.tversky_loss import FocalTverskyLoss, TverskyLoss
 
 from scenenet_pipeline.torch_geneo.criterions.w_mse import WeightedMSE
 
@@ -114,7 +115,7 @@ class GENEO_Dice_BCE(GENEO_Loss):
 
 class GENEO_Dice_Loss(GENEO_Loss):
 
-    def __init__(self, targets: torch.Tensor, hist_path, alpha=1, rho=1, epsilon=0.1, gamma=1, reduction='mean') -> None:
+    def __init__(self, targets: torch.Tensor, hist_path, alpha=1, rho=1, epsilon=0.1, gamma=1) -> None:
         
         super().__init__(targets, hist_path, alpha, rho, epsilon, gamma)
 
@@ -123,9 +124,28 @@ class GENEO_Dice_Loss(GENEO_Loss):
 
     def forward(self, y_pred:torch.Tensor, y_gt:torch.Tensor, cvx_coeffs:torch.nn.ParameterDict, geneo_params:torch.nn.ParameterDict):
 
-        dense_criterion = super().forward(y_pred, y_gt)
+        dense_criterion = WeightedMSE.forward(self, y_pred, y_gt)
 
         return dense_criterion + self.dice(y_pred, y_gt) + self.cvx_loss(cvx_coeffs) + self.positive_regularizer(geneo_params)
+
+class GENEO_Tversky_Loss(GENEO_Loss):
+
+    def __init__(self, targets: torch.Tensor, hist_path, alpha=1, rho=1, epsilon=0.1, gamma=1, tversky_alpha=0.5, tversky_beta=1) -> None:
+        
+        super().__init__(targets, hist_path, alpha, rho, epsilon, gamma)
+
+        self.tversky = FocalTverskyLoss()
+        self.tversky_alpha = tversky_alpha
+        self.tversky_beta = tversky_beta
+
+
+    def forward(self, y_pred:torch.Tensor, y_gt:torch.Tensor, cvx_coeffs:torch.nn.ParameterDict, geneo_params:torch.nn.ParameterDict):
+
+        dense_criterion = WeightedMSE.forward(self, y_pred, y_gt)
+
+        tversky_crit = self.tversky(y_pred, y_gt, alpha=self.tversky_alpha, beta=self.tversky_beta)
+
+        return dense_criterion + tversky_crit + self.cvx_loss(cvx_coeffs) + self.positive_regularizer(geneo_params)
 
 
 

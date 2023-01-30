@@ -29,7 +29,7 @@ sys.path.insert(1, '../..')
 
 from datasets.semKITTI import semKITTI, Voxelization, ToTensor, ToFullDense, semKITTIv2
 from torch_geneo.models.SCENE_Net import SCENE_Net, SCENE_Netv2
-from scenenet_pipeline.torch_geneo.criterions.geneo_loss import GENEO_Dice_BCE, GENEO_Dice_Loss, GENEO_Loss
+from scenenet_pipeline.torch_geneo.criterions.geneo_loss import GENEO_Dice_BCE, GENEO_Dice_Loss, GENEO_Loss, GENEO_Tversky_Loss
 from scenenet_pipeline.torch_geneo.criterions.w_mse import HIST_PATH
 from observer_utils import *
 
@@ -67,6 +67,8 @@ def arg_parser():
     parser.add_argument("--no_train", action="store_true") # dont train the model - requires load_model flag
     parser.add_argument("--bce_loss", action='store_true') # use BCELoss
     parser.add_argument("--dice_loss", action='store_true')
+    parser.add_argument("--tversky_loss", action='store_true')
+
 
 
     # Model Loading
@@ -334,14 +336,14 @@ def train_observer(tau=TAU):
     torch.save(state_dict, MODEL_PATH)
 
 
-def testing_observer(model_path, tau=TAU, tag='latest'):
+def testing_observer(model_path, dataset, tau=TAU, tag='latest'):
 
     # --- Load Best Model ---
     gnet, chkp = load_state_dict(model_path, gnet_class, tag, kernel_size=kernel_size)
     print(f"Tag '{tag}' Loss = {chkp['loss']}")
 
-    print("Load Testing Data...")
-    semK_test_loader = DataLoader(semK_val, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
+    print(f"Load {str(dataset)} Data...")
+    semK_test_loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
     geneo_loss = loss_criterion(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
 
     test_metrics = init_metrics(tau) 
@@ -388,31 +390,51 @@ def visualize_thresholding(model_path, taus):
             visualize_batch(vox, gt, pred, idx, tau)
 
 
-def thresholding(model_dir, state_dict, taus_size=10):
+def plot_metric_thresholding(model_dir, roc, metric, midx):
+    plt.close()
+    fig = plt.figure()
+    ax = plt.subplot(111)
+    rem_axis(ax, ['top', 'right'])  
+    plt.plot(roc[:, -1], roc[:, midx])
+    xmax = roc[:, -1][np.argmax(roc[:, midx])]
+    ymax = np.max(roc[:, midx])
+    label= "x={:.3f}, y={:.3f}".format(xmax, ymax)
+    plt.annotate(label, # this is the text
+                (xmax,ymax), # these are the coordinates parser.add_argument("--val", action="store_true")to position the label
+                textcoords="offset points", # how to position the text
+                xytext=(0,10), # distance from text to points (x,y)
+                ha='center') # horizontal alignment can be left, right or center
+    plt.xlabel('Threshold')
+    plt.ylabel(metric)
+    plt.title(f"{metric} per threshold")
+    plt.savefig(os.path.join(model_dir, f"{metric}_threshold.png"))
+
+
+
+def thresholding(model_dir, state_dict, taus=torch.linspace(0.0, 0.95, 10)):
 
     model_path = os.path.join(model_dir, 'gnet.pt')
 
-    roc = np.empty((taus_size, 5))
+    roc = np.empty((taus_size, 6))
 
     best_loss = 1e10
-    best_tau_loss = 0
-    taus = torch.linspace(0.0, 0.95, taus_size)
+    best_tau_loss = 0.0
     for i, tau in enumerate(taus):
-        print(f"\n\n\nTesting for threshold = {tau}")
+        print(f"\n\n\nValidating for threshold = {tau}")
         with torch.no_grad():
-            test_metrics, loss = testing_observer(model_path, tau, tag=testing_model_tag)
+            test_metrics, loss = testing_observer(model_path, semK_val, tau, tag=testing_model_tag)
         pre = test_metrics['Precision']
         rec= test_metrics['Recall']
+        ji = test_metrics['JaccardIndex']
         f1 = test_metrics['F1Score']
         fbeta = test_metrics['FBetaScore']
-        roc[i] = [pre, rec, f1, fbeta, tau]
+        roc[i] = [pre, rec, ji, f1, fbeta, tau]
 
         if loss <= best_loss:
             best_loss =  loss
             best_tau_loss = tau
 
     np.save(open('thresholding.npy', 'wb'), roc)
-    input("Stop?")
     
     # --- Plot ROC ---
     plt.close()
@@ -435,63 +457,27 @@ def thresholding(model_dir, state_dict, taus_size=10):
     plt.title(f"Precision-Recall Curve")
     plt.savefig(os.path.join(model_dir, f"ROC.png"))
 
-    plt.close()
-    fig = plt.figure()
-    ax = plt.subplot(111)
-    rem_axis(ax, ['top', 'right'])  
-    plt.plot(roc[:, -1], roc[:, 2])
-    xmax = roc[:, -1][np.argmax(roc[:, 2])]
-    ymax = np.max(roc[:, 2])
-    label= "x={:.3f}, y={:.3f}".format(xmax, ymax)
-    plt.annotate(label, # this is the text
-                (xmax,ymax), # these are the coordinates parser.add_argument("--val", action="store_true")to position the label
-                textcoords="offset points", # how to position the text
-                xytext=(0,10), # distance from text to points (x,y)
-                ha='center') # horizontal alignment can be left, right or center
-    plt.xlabel('Threshold')
-    plt.ylabel('F1_Score')
-    plt.title(f"F1_Score per threshold")
-    plt.savefig(os.path.join(model_dir, f"F1_Score_threshold.png"))
+    plot_metric_thresholding(model_dir, roc, 'JacardIndex', 2)
+    plot_metric_thresholding(model_dir, roc, 'F1Score', 3)
+    plot_metric_thresholding(model_dir, roc, 'FBetaScore', 4)
 
-    plt.close()
-    fig = plt.figure()
-    ax = plt.subplot(111)
-    rem_axis(ax, ['top', 'right'])  
-    plt.plot(roc[:, -1], roc[:, 3])
-    xmax = roc[:, -1][np.argmax(roc[:, 3])]
-    ymax = np.max(roc[:, 3])
-    label= "x={:.3f}, y={:.3f}".format(xmax, ymax)
-    plt.annotate(label, # this is the text
-                (xmax,ymax), # these are the coordinates parser.add_argument("--val", action="store_true")to position the label
-                textcoords="offset points", # how to position the text
-                xytext=(0,10), # distance from text to points (x,y)
-                ha='center') # horizontal alignment can be left, right or center
-    plt.xlabel('Threshold')
-    plt.ylabel('FBetaScore')
-    plt.title(f"FBetaScore(beta = {0.5}) per threshold")
-    plt.savefig(os.path.join(model_dir, f"FBetaScore_threshold.png"))
-
-    if parser.vis:
-        visualize_thresholding(model_path, taus)
 
     print(f"\n\nBest tau = {best_tau_loss}")
     max_metrics = np.argmax(roc, axis=0)
 
     if not parser.vis:
         state_dict['model_props']["best_tau"] = {'loss' : best_tau_loss,
-                                                'Precision' : roc[max_metrics[0], -1],
-                                                'Recall': roc[max_metrics[1], -1],
-                                                'F1Score' : roc[max_metrics[2], -1],
-                                                'FBetaScore':roc[max_metrics[3], -1]
+                                                 'Precision' : roc[max_metrics[0], -1],
+                                                 'Recall': roc[max_metrics[1], -1],
+                                                 'JaccardIndex' : roc[max_metrics[2], -1],
+                                                 'F1Score':roc[max_metrics[3], -1],
+                                                 'FBetaScore':roc[max_metrics[4], -1]
                                                 }
 
 
-def examine_samples(model_path, data_path, tau=None, tag='loss'):
+def examine_samples(model_path, dataset, tau=None, tag='loss'):
 
     gnet, _ = load_state_dict(model_path, gnet_class, tag, kernel_size=kernel_size)
-
-    composed = Compose([ToTensor(), ToFullDense()])
-    semK = semKITTI(dataset_path=data_path, split='samples', transform=composed)
 
     st_dict = torch.load(model_path)
     if tau is None:
@@ -500,16 +486,16 @@ def examine_samples(model_path, data_path, tau=None, tag='loss'):
     print(f"\n\nExamining samples with model {model_path.split('/')[-2]}")
     print(f"\t with tau={tau} trying to optimize {tag}...")
 
-    semK_loader = DataLoader(semK, batch_size=1, shuffle=True, num_workers=4)
+    semK_loader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=4)
     geneo_loss = GENEO_Loss(torch.tensor([]), hist_path=HIST_PATH, alpha=ALPHA, rho=RHO, epsilon=EPSILON)
     
     test_metrics = init_metrics(tau) 
     test_loss = 0
  
     # --- Test Loop ---
-    for i in range(33, len(semK)):
+    for i in range(0, len(dataset)):
         print(f"Examining semK Sample {i}...")
-        pts, labels = semK[i]
+        pts, labels = dataset[i]
         batch = pts[None], labels[None]
         loss, pred = process_batch(gnet, batch, geneo_loss, None, test_metrics, requires_grad=False)
         test_loss += loss
@@ -521,10 +507,16 @@ def examine_samples(model_path, data_path, tau=None, tag='loss'):
         # print(f"Precision = {pre}")
         # print(f"Recall = {rec}")
         #if pre <= 0.1 or rec <= 0.1:
-        #if pre >= 0.3 and rec >= 0.20:
-        if True:
+        if pre >= 0.4 and rec >= 0.30:
+        #if True:
             print(f"Precision = {pre}")
             print(f"Recall = {rec}")
+            print(f"JaccardIndex = {test_res['JaccardIndex']}")
+            pts, labels = dataset.get_item_no_transform(i)
+            pts, labels  = np.squeeze(pts), np.squeeze(labels)
+            pts_ply = eda.np_to_ply(pts)
+            eda.color_pointcloud(pts_ply, labels)
+            eda.visualize_ply([pts_ply], window_name='Original Pointcloud')
             vox, gt = transform_batch(batch)
             visualize_batch(vox, gt, pred, tau=tau)
             input("\n\nPress Enter to continue...")
@@ -588,7 +580,6 @@ if __name__ == "__main__":
             os.makedirs(META_TODAY)
         META_MODEL_PATH = os.path.join(META_TODAY, str(datetime.now()))
         os.makedirs(META_MODEL_PATH)
-
     else:
         try:
             idx = int(parser.load_model)
@@ -646,7 +637,7 @@ if __name__ == "__main__":
     pole_label = list(SemKITTI_labels.keys())[list(SemKITTI_labels.values()).index('pole')]
     # traffic_sign_label = list(SemKITTI_labels.keys())[list(SemKITTI_labels.values()).index('traffic-sign')]
 
-    vxg_size = (64, 64, 128)
+    vxg_size = (64, 64, 64)
     vox_size = (0.5, 0.5, 0.2) #only use vox_size after training or with batch_size = 1
     composed = Compose([Voxelization([pole_label], vxg_size=vxg_size, vox_size=None), 
                         ToTensor(), 
@@ -678,13 +669,15 @@ if __name__ == "__main__":
     
 
     # --- Model Definition ---
-    gnet_class = SCENE_Net
+    gnet_class = SCENE_Netv2
     opt_class = torch.optim.SGD
 
     if parser.bce_loss:
         loss_criterion = GENEO_Dice_BCE
     elif parser.dice_loss:
         loss_criterion = GENEO_Dice_Loss
+    elif parser.tversky_loss:
+        loss_criterion = GENEO_Tversky_Loss
     else:
         loss_criterion = GENEO_Loss
 
@@ -759,12 +752,12 @@ if __name__ == "__main__":
                 tau = None
                 #examine_tag = examine_tag.strip()
             
-            test_metrics, loss = testing_observer(MODEL_PATH, tau, tag=parser.model_tag)
+            #test_metrics, loss = testing_observer(MODEL_PATH, tau, tag=parser.model_tag)
 
-            print(test_metrics)
-            print(loss)
+            # print(test_metrics)
+            # print(loss)
 
-            examine_samples(MODEL_PATH, SEMK_DATA_PATH, tau=tau, tag=parser.model_tag)
+            examine_samples(MODEL_PATH, semK_val, tau=tau, tag=parser.model_tag)
 
     ###############################################################
     #                   Training GENEO-NET                        #
@@ -783,15 +776,17 @@ if __name__ == "__main__":
 
     with torch.no_grad():
         taus_size=10
+        taus = torch.linspace(0.5, 0.7, taus_size)
         testing_model_tag = parser.model_tag
 
-        print("\n\nTesting model with different thresholds...")
+        print('\n\n\n' + '#'*100+'\n'+'#'*100 + '\n\n\n')
+        print("Threshold Optimization...")
         print(f"\nModel's Train Performance on {testing_model_tag}:")
         for metric, value in state_dict['models'][testing_model_tag].items():
             if not isinstance(value, dict):
                 print(f"\t{metric}: {value}")
                 
-        thresholding(META_MODEL_PATH, state_dict, taus_size=taus_size)
+        thresholding(META_MODEL_PATH, state_dict, taus=taus)
         # best_tau = state_dict['model_props'].get('best_tau', TAU)
 
         # if isinstance(best_tau, dict):
@@ -799,18 +794,18 @@ if __name__ == "__main__":
         # else:
         #     tau = best_tau
 
-        for metric in ['loss', 'F1Score', 'FBetaScore', 'Precision', 'latest']:
+        for metric in ['loss', 'FBetaScore', 'Precision', 'latest', 'JaccardIndex']:
             
             tau = state_dict['model_props']['best_tau'][metric] if metric != 'latest' else TAU
 
             print(metric, tau)
 
-            test_res, test_loss = testing_observer(MODEL_PATH, tau=tau, tag=metric)
+            test_res, test_loss = testing_observer(MODEL_PATH, semK_test, tau=tau, tag=metric)
 
             if not parser.vis:
                 state_dict['model_props']['test_results'][metric] = {'loss' : test_loss,
-                                                                        'tau': tau,
-                                                                        **test_res}
+                                                                     'tau': tau,
+                                                                     **test_res}
 
         if parser.vis:
             taus = torch.linspace(0.5, 0.95, taus_size)
