@@ -23,8 +23,8 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 from VoxGENEO import Voxelization as Vox
 from EDA import EDA_utils as eda
-from torch_geneo.datasets.ts40k import ToTensor, torch_TS40K
-from torch_geneo.geneos.GENEO_kernel_torch import GENEO_kernel_torch
+from datasets.ts40k import ToTensor
+from geneos.GENEO_kernel_torch import GENEO_kernel_torch
 
 
 class cone_kernel(GENEO_kernel_torch):
@@ -275,6 +275,7 @@ if __name__ == "__main__":
     import os
     from pathlib import Path
     import torch.nn as nn
+    from datasets.ts40k import TS40KDataset 
 
 
     ROOT_PROJECT = str(Path(Path(os.getcwd()).parent.absolute()).parent.absolute())
@@ -284,7 +285,7 @@ if __name__ == "__main__":
     SAVE_DIR = ROOT_PROJECT + "/dataset/torch_dataset"
 
     #build_data_samples([DATA_SAMPLE_DIR], SAVE_DIR)
-    ts40k = torch_TS40K(dataset_path=SAVE_DIR, transform=ToTensor())
+    ts40k = TS40KDataset(dataset_path=SAVE_DIR, transform=ToTensor())
 
     vox, vox_gt = ts40k[2]
     vox, vox_gt = vox.to(torch.float), vox_gt.to(torch.float)
