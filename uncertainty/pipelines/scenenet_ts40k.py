@@ -567,7 +567,6 @@ def update_testing_results(models_root):
 
 
 
-# %%
 if __name__ == "__main__":
     
     print(f"root: {ROOT_PROJECT}")

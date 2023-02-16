@@ -1,0 +1,2724 @@
+wandb init.
+{'group': 'scenenet_ts40k_test', 'output_dir': 'experiments/scenenet_ts40k/outputs', 'dataset': 'ts40k', 'data_path': '', 'batch_size': 4, 'voxel_grid_size': '(64, 64, 64)', 'voxel_size': 'None', 'num_workers': 4, 'val_split': 0.1, 'test_split': 0.3, 'model': 'scenenet', 'cylinder_geneo': 1, 'arrow_geneo': 1, 'neg_sphere_geneo': 1, 'kernel_size': '(9, 5, 5)', 'optimizer': 'sgd', 'learning_rate': 0.001, 'max_epochs': 100, 'gpus': -1, 'criterion': 'geneo_tversky', 'weighting_scheme_path': 'core/criterions/hist_estimation.pickle', 'weight_alpha': 1, 'weight_epsilon': 0.1, 'mse_weight': 1, 'convex_weight': 5, 'tversky_alpha': 2, 'tversky_beta': 2, 'tversky_smooth': 1e-06, 'focal_gamma': 4, 'fast_dev_run': True, 'precision': 16, 'auto_lr_find': True, 'auto_scale_batch_size': True, 'profiler': False, 'resume_from_checkpoint': False, 'checkpoint_dir': 'experiments/scenenet_ts40k/checkpoints', 'checkpoint_every': 1}
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+Sanity Checking: 0it [00:00, ?it/s]
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+  | Name          | Type               | Params
+-----------------------------------------------------
+0 | model         | SceneNet           | 13
+1 | criterion     | GENEO_Tversky_Loss | 0
+2 | train_metrics | MetricCollection   | 0
+3 | val_metrics   | MetricCollection   | 0
+4 | test_metrics  | MetricCollection   | 0
+-----------------------------------------------------
+11        Trainable params
+2         Non-trainable params
+13        Total params
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 0:  89%|▉| 34/38 [00:54<00:06,  1.60s/it, loss=0.962, v_num=c5r3, train_JaccardIndex_step=0.532, train_Precision_step=0.0713, train_Recall_step=0.546, train_F1Score_step=0.126, train_FBetaSc
+
+Validation: 0it [00:00, ?it/s]
+Epoch 0, global step 34: 'train_JaccardIndex' reached 0.51413 (best 0.51413), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 0, global step 34: 'train_Precision' reached 0.04081 (best 0.04081), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 0, global step 34: 'train_Recall' reached 0.43389 (best 0.43389), saving model to './scenenet/hmn2c5r3/checkpoints/Recall_ckpt.ckpt' as top 1
+Epoch 0, global step 34: 'train_F1Score' reached 0.07395 (best 0.07395), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 0, global step 34: 'train_FBetaScore' reached 0.04971 (best 0.04971), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 1:  89%|▉| 34/38 [00:52<00:06,  1.55s/it, loss=0.96, v_num=c5r3, train_JaccardIndex_step=0.534, train_Precision_step=0.0748, train_Recall_step=0.546, train_F1Score_step=0.132, train_FBetaSco
+
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████                                                                    | 2/4 [00:01<00:01,  1.88it/s]
+Epoch 1, global step 68: 'train_JaccardIndex' reached 0.51498 (best 0.51498), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 1, global step 68: 'train_Precision' reached 0.04226 (best 0.04226), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 1, global step 68: 'train_Recall' was not in top 1
+Epoch 1, global step 68: 'train_F1Score' reached 0.07620 (best 0.07620), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 1, global step 68: 'train_FBetaScore' reached 0.05141 (best 0.05141), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 2:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.959, v_num=c5r3, train_JaccardIndex_step=0.535, train_Precision_step=0.0779, train_Recall_step=0.546, train_F1Score_step=0.136, train_FBetaSc
+
+
+Validation DataLoader 0:   0%|                                                                                                                                                | 0/4 [00:00<?, ?it/s]
+Epoch 2, global step 102: 'train_JaccardIndex' reached 0.51585 (best 0.51585), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 2, global step 102: 'train_Precision' reached 0.04378 (best 0.04378), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 2, global step 102: 'train_Recall' was not in top 1
+Epoch 2, global step 102: 'train_F1Score' reached 0.07852 (best 0.07852), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 2, global step 102: 'train_FBetaScore' reached 0.05318 (best 0.05318), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 3:  89%|▉| 34/38 [00:50<00:05,  1.48s/it, loss=0.958, v_num=c5r3, train_JaccardIndex_step=0.536, train_Precision_step=0.0806, train_Recall_step=0.546, train_F1Score_step=0.140, train_FBetaSc
+
+Validation: 0it [00:00, ?it/s]
+Epoch 3, global step 136: 'train_JaccardIndex' reached 0.51681 (best 0.51681), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 3, global step 136: 'train_Precision' reached 0.04552 (best 0.04552), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 3, global step 136: 'train_Recall' was not in top 1
+Epoch 3, global step 136: 'train_F1Score' reached 0.08118 (best 0.08118), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 3, global step 136: 'train_FBetaScore' reached 0.05521 (best 0.05521), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 4:  89%|▉| 34/38 [00:50<00:05,  1.49s/it, loss=0.956, v_num=c5r3, train_JaccardIndex_step=0.538, train_Precision_step=0.0839, train_Recall_step=0.546, train_F1Score_step=0.145, train_FBetaSc
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████                                                                    | 2/4 [00:00<00:00,  2.08it/s]
+Epoch 4, global step 170: 'train_JaccardIndex' reached 0.51782 (best 0.51782), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 4, global step 170: 'train_Precision' reached 0.04742 (best 0.04742), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 4, global step 170: 'train_Recall' was not in top 1
+Epoch 4, global step 170: 'train_F1Score' reached 0.08401 (best 0.08401), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 4, global step 170: 'train_FBetaScore' reached 0.05740 (best 0.05740), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 5:  89%|▉| 34/38 [00:50<00:05,  1.49s/it, loss=0.955, v_num=c5r3, train_JaccardIndex_step=0.538, train_Precision_step=0.0849, train_Recall_step=0.528, train_F1Score_step=0.146, train_FBetaSc
+
+Validation DataLoader 0:  25%|██████████████████████████████████                                                                                                      | 1/4 [00:00<00:00,  3.68it/s]
+Epoch 5, global step 204: 'train_JaccardIndex' reached 0.51885 (best 0.51885), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 5, global step 204: 'train_Precision' reached 0.04943 (best 0.04943), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 5, global step 204: 'train_Recall' was not in top 1
+Epoch 5, global step 204: 'train_F1Score' reached 0.08695 (best 0.08695), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 5, global step 204: 'train_FBetaScore' reached 0.05972 (best 0.05972), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 6:  89%|▉| 34/38 [00:50<00:05,  1.49s/it, loss=0.953, v_num=c5r3, train_JaccardIndex_step=0.540, train_Precision_step=0.0899, train_Recall_step=0.519, train_F1Score_step=0.153, train_FBetaSc
+Validation: 0it [00:00, ?it/s]
+Epoch 6, global step 238: 'train_JaccardIndex' reached 0.51998 (best 0.51998), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 6, global step 238: 'train_Precision' reached 0.05168 (best 0.05168), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 6, global step 238: 'train_Recall' was not in top 1
+Epoch 6, global step 238: 'train_F1Score' reached 0.09020 (best 0.09020), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 6, global step 238: 'train_FBetaScore' reached 0.06230 (best 0.06230), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 7:  89%|▉| 34/38 [00:50<00:05,  1.49s/it, loss=0.951, v_num=c5r3, train_JaccardIndex_step=0.542, train_Precision_step=0.0939, train_Recall_step=0.509, train_F1Score_step=0.159, train_FBetaSc
+
+Validation DataLoader 0:  75%|██████████████████████████████████████████████████████████████████████████████████████████████████████                                  | 3/4 [00:01<00:00,  2.27it/s]
+Epoch 7, global step 272: 'train_JaccardIndex' reached 0.52124 (best 0.52124), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 7, global step 272: 'train_Precision' reached 0.05430 (best 0.05430), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 7, global step 272: 'train_Recall' was not in top 1
+Epoch 7, global step 272: 'train_F1Score' reached 0.09392 (best 0.09392), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 7, global step 272: 'train_FBetaScore' reached 0.06529 (best 0.06529), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 8:  89%|▉| 34/38 [00:50<00:05,  1.49s/it, loss=0.95, v_num=c5r3, train_JaccardIndex_step=0.542, train_Precision_step=0.0953, train_Recall_step=0.491, train_F1Score_step=0.160, train_FBetaSco
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████                                                                    | 2/4 [00:01<00:01,  1.89it/s]
+Epoch 8, global step 306: 'train_JaccardIndex' reached 0.52254 (best 0.52254), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 8, global step 306: 'train_Precision' reached 0.05711 (best 0.05711), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 8, global step 306: 'train_Recall' was not in top 1
+Epoch 8, global step 306: 'train_F1Score' reached 0.09782 (best 0.09782), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 8, global step 306: 'train_FBetaScore' reached 0.06848 (best 0.06848), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 9:  89%|▉| 34/38 [00:50<00:05,  1.50s/it, loss=0.948, v_num=c5r3, train_JaccardIndex_step=0.545, train_Precision_step=0.101, train_Recall_step=0.491, train_F1Score_step=0.167, train_FBetaSco
+
+Validation DataLoader 0:   0%|                                                                                                                                                | 0/4 [00:00<?, ?it/s]
+Epoch 9, global step 340: 'train_JaccardIndex' reached 0.52391 (best 0.52391), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 9, global step 340: 'train_Precision' reached 0.06018 (best 0.06018), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 9, global step 340: 'train_Recall' was not in top 1
+Epoch 9, global step 340: 'train_F1Score' reached 0.10195 (best 0.10195), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 9, global step 340: 'train_FBetaScore' reached 0.07194 (best 0.07194), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 10:  89%|▉| 34/38 [00:52<00:06,  1.54s/it, loss=0.946, v_num=c5r3, train_JaccardIndex_step=0.545, train_Precision_step=0.104, train_Recall_step=0.463, train_F1Score_step=0.169, train_FBetaSc
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████                                                                    | 2/4 [00:01<00:01,  1.98it/s]
+Epoch 10, global step 374: 'train_JaccardIndex' reached 0.52542 (best 0.52542), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 10, global step 374: 'train_Precision' reached 0.06371 (best 0.06371), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 10, global step 374: 'train_Recall' was not in top 1
+Epoch 10, global step 374: 'train_F1Score' reached 0.10656 (best 0.10656), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 10, global step 374: 'train_FBetaScore' reached 0.07586 (best 0.07586), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 11:  89%|▉| 34/38 [00:50<00:05,  1.49s/it, loss=0.944, v_num=c5r3, train_JaccardIndex_step=0.546, train_Precision_step=0.106, train_Recall_step=0.435, train_F1Score_step=0.171, train_FBetaSc
+
+Validation DataLoader 0:  25%|██████████████████████████████████                                                                                                      | 1/4 [00:00<00:00,  3.66it/s]
+Epoch 11, global step 408: 'train_JaccardIndex' reached 0.52711 (best 0.52711), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 11, global step 408: 'train_Precision' reached 0.06778 (best 0.06778), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 11, global step 408: 'train_Recall' was not in top 1
+Epoch 11, global step 408: 'train_F1Score' reached 0.11180 (best 0.11180), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 11, global step 408: 'train_FBetaScore' reached 0.08038 (best 0.08038), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 12:  89%|▉| 34/38 [00:50<00:05,  1.49s/it, loss=0.942, v_num=c5r3, train_JaccardIndex_step=0.548, train_Precision_step=0.114, train_Recall_step=0.417, train_F1Score_step=0.179, train_FBetaSc
+
+
+Validation DataLoader 0:   0%|                                                                                                                                                | 0/4 [00:00<?, ?it/s]
+Epoch 12, global step 442: 'train_JaccardIndex' reached 0.52897 (best 0.52897), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 12, global step 442: 'train_Precision' reached 0.07248 (best 0.07248), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 12, global step 442: 'train_Recall' was not in top 1
+Epoch 12, global step 442: 'train_F1Score' reached 0.11762 (best 0.11762), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 12, global step 442: 'train_FBetaScore' reached 0.08554 (best 0.08554), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 13:  89%|▉| 34/38 [00:50<00:05,  1.50s/it, loss=0.94, v_num=c5r3, train_JaccardIndex_step=0.551, train_Precision_step=0.122, train_Recall_step=0.398, train_F1Score_step=0.187, train_FBetaSco
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████                                                                    | 2/4 [00:01<00:01,  1.82it/s]
+Epoch 13, global step 476: 'train_JaccardIndex' reached 0.53099 (best 0.53099), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 13, global step 476: 'train_Precision' reached 0.07784 (best 0.07784), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 13, global step 476: 'train_Recall' was not in top 1
+Epoch 13, global step 476: 'train_F1Score' reached 0.12402 (best 0.12402), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 13, global step 476: 'train_FBetaScore' reached 0.09136 (best 0.09136), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 14:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.937, v_num=c5r3, train_JaccardIndex_step=0.552, train_Precision_step=0.128, train_Recall_step=0.380, train_F1Score_step=0.191, train_FBetaSc
+
+
+Validation DataLoader 0:   0%|                                                                                                                                                | 0/4 [00:00<?, ?it/s]
+Epoch 14, global step 510: 'train_JaccardIndex' reached 0.53299 (best 0.53299), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 14, global step 510: 'train_Precision' reached 0.08348 (best 0.08348), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 14, global step 510: 'train_Recall' was not in top 1
+Epoch 14, global step 510: 'train_F1Score' reached 0.13030 (best 0.13030), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 14, global step 510: 'train_FBetaScore' reached 0.09735 (best 0.09735), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 15:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.935, v_num=c5r3, train_JaccardIndex_step=0.555, train_Precision_step=0.137, train_Recall_step=0.361, train_F1Score_step=0.199, train_FBetaSc
+
+Validation DataLoader 0:  25%|██████████████████████████████████                                                                                                      | 1/4 [00:00<00:00,  3.64it/s]
+Epoch 15, global step 544: 'train_JaccardIndex' reached 0.53532 (best 0.53532), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 15, global step 544: 'train_Precision' reached 0.09044 (best 0.09044), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 15, global step 544: 'train_Recall' was not in top 1
+Epoch 15, global step 544: 'train_F1Score' reached 0.13771 (best 0.13771), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 15, global step 544: 'train_FBetaScore' reached 0.10466 (best 0.10466), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 16:  89%|▉| 34/38 [00:50<00:05,  1.50s/it, loss=0.933, v_num=c5r3, train_JaccardIndex_step=0.559, train_Precision_step=0.154, train_Recall_step=0.352, train_F1Score_step=0.214, train_FBetaSc
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████                                                                    | 2/4 [00:01<00:01,  1.63it/s]
+Epoch 16, global step 578: 'train_JaccardIndex' reached 0.53793 (best 0.53793), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 16, global step 578: 'train_Precision' reached 0.09872 (best 0.09872), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 16, global step 578: 'train_Recall' was not in top 1
+Epoch 16, global step 578: 'train_F1Score' reached 0.14600 (best 0.14600), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 16, global step 578: 'train_FBetaScore' reached 0.11316 (best 0.11316), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 17:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.931, v_num=c5r3, train_JaccardIndex_step=0.559, train_Precision_step=0.157, train_Recall_step=0.324, train_F1Score_step=0.211, train_FBetaSc
+
+Validation DataLoader 0:   0%|                                                                                                                                                | 0/4 [00:00<?, ?it/s]
+Epoch 17, global step 612: 'train_JaccardIndex' reached 0.54056 (best 0.54056), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 17, global step 612: 'train_Precision' reached 0.10778 (best 0.10778), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 17, global step 612: 'train_Recall' was not in top 1
+Epoch 17, global step 612: 'train_F1Score' reached 0.15438 (best 0.15438), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 17, global step 612: 'train_FBetaScore' reached 0.12226 (best 0.12226), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 18:  89%|▉| 34/38 [00:54<00:06,  1.59s/it, loss=0.928, v_num=c5r3, train_JaccardIndex_step=0.559, train_Precision_step=0.162, train_Recall_step=0.315, train_F1Score_step=0.214, train_FBetaSc
+
+
+Validation DataLoader 0:   0%|                                                                                                                                                | 0/4 [00:00<?, ?it/s]
+Epoch 18, global step 646: 'train_JaccardIndex' reached 0.54338 (best 0.54338), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 18, global step 646: 'train_Precision' reached 0.11823 (best 0.11823), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 18, global step 646: 'train_Recall' was not in top 1
+Epoch 18, global step 646: 'train_F1Score' reached 0.16331 (best 0.16331), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 18, global step 646: 'train_FBetaScore' reached 0.13247 (best 0.13247), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 19:  89%|▉| 34/38 [00:51<00:06,  1.50s/it, loss=0.926, v_num=c5r3, train_JaccardIndex_step=0.563, train_Precision_step=0.176, train_Recall_step=0.306, train_F1Score_step=0.224, train_FBetaSc
+
+Validation: 0it [00:00, ?it/s]
+Epoch 19, global step 680: 'train_JaccardIndex' reached 0.54618 (best 0.54618), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 19, global step 680: 'train_Precision' reached 0.12973 (best 0.12973), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 19, global step 680: 'train_Recall' was not in top 1
+Epoch 19, global step 680: 'train_F1Score' reached 0.17219 (best 0.17219), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 19, global step 680: 'train_FBetaScore' reached 0.14336 (best 0.14336), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 20:  89%|▉| 34/38 [00:50<00:05,  1.50s/it, loss=0.923, v_num=c5r3, train_JaccardIndex_step=0.565, train_Precision_step=0.188, train_Recall_step=0.296, train_F1Score_step=0.230, train_FBetaSc
+
+Validation DataLoader 0:  25%|██████████████████████████████████                                                                                                      | 1/4 [00:00<00:00,  3.64it/s]
+Epoch 20, global step 714: 'train_JaccardIndex' reached 0.54910 (best 0.54910), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 20, global step 714: 'train_Precision' reached 0.14310 (best 0.14310), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 20, global step 714: 'train_Recall' was not in top 1
+Epoch 20, global step 714: 'train_F1Score' reached 0.18136 (best 0.18136), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 20, global step 714: 'train_FBetaScore' reached 0.15552 (best 0.15552), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 21:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.921, v_num=c5r3, train_JaccardIndex_step=0.567, train_Precision_step=0.204, train_Recall_step=0.287, train_F1Score_step=0.238, train_FBetaSc
+
+Validation DataLoader 0:  75%|██████████████████████████████████████████████████████████████████████████████████████████████████████                                  | 3/4 [00:01<00:00,  2.19it/s]
+Epoch 21, global step 748: 'train_JaccardIndex' reached 0.55231 (best 0.55231), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 21, global step 748: 'train_Precision' reached 0.15896 (best 0.15896), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 21, global step 748: 'train_Recall' was not in top 1
+Epoch 21, global step 748: 'train_F1Score' reached 0.19143 (best 0.19143), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 21, global step 748: 'train_FBetaScore' reached 0.16951 (best 0.16951), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 22:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.919, v_num=c5r3, train_JaccardIndex_step=0.564, train_Precision_step=0.208, train_Recall_step=0.250, train_F1Score_step=0.227, train_FBetaSc
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████                                                                                                      | 1/4 [00:00<00:00,  3.66it/s]
+Epoch 22, global step 782: 'train_JaccardIndex' reached 0.55524 (best 0.55524), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 22, global step 782: 'train_Precision' reached 0.17601 (best 0.17601), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 22, global step 782: 'train_Recall' was not in top 1
+Epoch 22, global step 782: 'train_F1Score' reached 0.20055 (best 0.20055), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 22, global step 782: 'train_FBetaScore' reached 0.18377 (best 0.18377), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 23:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.916, v_num=c5r3, train_JaccardIndex_step=0.563, train_Precision_step=0.213, train_Recall_step=0.241, train_F1Score_step=0.226, train_FBetaSc
+
+Validation DataLoader 0:  25%|██████████████████████████████████                                                                                                      | 1/4 [00:00<00:00,  3.65it/s]
+Epoch 23, global step 816: 'train_JaccardIndex' reached 0.55793 (best 0.55793), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 23, global step 816: 'train_Precision' reached 0.19458 (best 0.19458), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 23, global step 816: 'train_Recall' was not in top 1
+Epoch 23, global step 816: 'train_F1Score' reached 0.20881 (best 0.20881), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 23, global step 816: 'train_FBetaScore' reached 0.19845 (best 0.19845), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 24:  89%|▉| 34/38 [00:51<00:06,  1.52s/it, loss=0.914, v_num=c5r3, train_JaccardIndex_step=0.564, train_Precision_step=0.225, train_Recall_step=0.231, train_F1Score_step=0.228, train_FBetaScore_step=0.226, train_loss=0.886,
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████████████████████▌                                                                                    | 2/4 [00:01<00:01,  1.68it/s]
+Epoch 24, global step 850: 'train_JaccardIndex' reached 0.56042 (best 0.56042), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 24, global step 850: 'train_Precision' reached 0.21529 (best 0.21529), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 24, global step 850: 'train_Recall' was not in top 1
+Epoch 24, global step 850: 'train_F1Score' reached 0.21637 (best 0.21637), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 24, global step 850: 'train_FBetaScore' reached 0.21373 (best 0.21373), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 25:  89%|▉| 34/38 [00:52<00:06,  1.56s/it, loss=0.913, v_num=c5r3, train_JaccardIndex_step=0.560, train_Precision_step=0.229, train_Recall_step=0.204, train_F1Score_step=0.216, train_FBetaScore_step=0.224, train_loss=0.885,
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.62it/s]
+Epoch 25, global step 884: 'train_JaccardIndex' reached 0.56246 (best 0.56246), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 25, global step 884: 'train_Precision' reached 0.23672 (best 0.23672), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 25, global step 884: 'train_Recall' was not in top 1
+Epoch 25, global step 884: 'train_F1Score' reached 0.22251 (best 0.22251), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 25, global step 884: 'train_FBetaScore' reached 0.22849 (best 0.22849), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 26:  89%|▉| 34/38 [00:51<00:06,  1.52s/it, loss=0.911, v_num=c5r3, train_JaccardIndex_step=0.559, train_Precision_step=0.233, train_Recall_step=0.194, train_F1Score_step=0.212, train_FBetaScore_step=0.224, train_loss=0.884,
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.66it/s]
+Epoch 26, global step 918: 'train_JaccardIndex' reached 0.56401 (best 0.56401), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 26, global step 918: 'train_Precision' reached 0.25813 (best 0.25813), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 26, global step 918: 'train_Recall' was not in top 1
+Epoch 26, global step 918: 'train_F1Score' reached 0.22710 (best 0.22710), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 26, global step 918: 'train_FBetaScore' reached 0.24206 (best 0.24206), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 27:  89%|▉| 34/38 [00:54<00:06,  1.61s/it, loss=0.91, v_num=c5r3, train_JaccardIndex_step=0.561, train_Precision_step=0.250, train_Recall_step=0.194, train_F1Score_step=0.219, train_FBetaScore_step=0.236, train_loss=0.883,
+
+Validation: 0it [00:00, ?it/s]
+Epoch 27, global step 952: 'train_JaccardIndex' reached 0.56556 (best 0.56556), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 27, global step 952: 'train_Precision' reached 0.28111 (best 0.28111), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 27, global step 952: 'train_Recall' was not in top 1
+Epoch 27, global step 952: 'train_F1Score' reached 0.23167 (best 0.23167), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 27, global step 952: 'train_FBetaScore' reached 0.25592 (best 0.25592), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 28:  89%|▉| 34/38 [00:52<00:06,  1.54s/it, loss=0.908, v_num=c5r3, train_JaccardIndex_step=0.557, train_Precision_step=0.244, train_Recall_step=0.176, train_F1Score_step=0.204, train_FBetaScore_step=0.226, train_loss=0.882,
+
+Validation DataLoader 0:  75%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                                          | 3/4 [00:01<00:00,  2.34it/s]
+Epoch 28, global step 986: 'train_JaccardIndex' reached 0.56650 (best 0.56650), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 28, global step 986: 'train_Precision' reached 0.30255 (best 0.30255), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 28, global step 986: 'train_Recall' was not in top 1
+Epoch 28, global step 986: 'train_F1Score' reached 0.23437 (best 0.23437), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 28, global step 986: 'train_FBetaScore' reached 0.26751 (best 0.26751), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 29:  89%|▉| 34/38 [00:52<00:06,  1.55s/it, loss=0.907, v_num=c5r3, train_JaccardIndex_step=0.556, train_Precision_step=0.254, train_Recall_step=0.167, train_F1Score_step=0.201, train_FBetaScore_step=0.230, train_loss=0.881,
+
+Validation: 0it [00:00, ?it/s]
+Epoch 29, global step 1020: 'train_JaccardIndex' reached 0.56701 (best 0.56701), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 29, global step 1020: 'train_Precision' reached 0.32189 (best 0.32189), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 29, global step 1020: 'train_Recall' was not in top 1
+Epoch 29, global step 1020: 'train_F1Score' reached 0.23578 (best 0.23578), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 29, global step 1020: 'train_FBetaScore' reached 0.27715 (best 0.27715), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 30:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.907, v_num=c5r3, train_JaccardIndex_step=0.556, train_Precision_step=0.261, train_Recall_step=0.167, train_F1Score_step=0.203, train_FBetaScore_step=0.234, train_loss=0.881,
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.64it/s]
+Epoch 30, global step 1054: 'train_JaccardIndex' reached 0.56715 (best 0.56715), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 30, global step 1054: 'train_Precision' reached 0.33937 (best 0.33937), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 30, global step 1054: 'train_Recall' was not in top 1
+Epoch 30, global step 1054: 'train_F1Score' reached 0.23616 (best 0.23616), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 30, global step 1054: 'train_FBetaScore' reached 0.28502 (best 0.28502), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 31:  89%|▉| 34/38 [00:52<00:06,  1.54s/it, loss=0.906, v_num=c5r3, train_JaccardIndex_step=0.559, train_Precision_step=0.286, train_Recall_step=0.167, train_F1Score_step=0.211, train_FBetaScore_step=0.250, train_loss=0.880,
+
+
+Validation DataLoader 0:   0%|                                                                                                                                                                                 | 0/4 [00:00<?, ?it/s]
+Epoch 31, global step 1088: 'train_JaccardIndex' was not in top 1
+Epoch 31, global step 1088: 'train_Precision' reached 0.35649 (best 0.35649), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 31, global step 1088: 'train_Recall' was not in top 1
+Epoch 31, global step 1088: 'train_F1Score' was not in top 1
+Epoch 31, global step 1088: 'train_FBetaScore' reached 0.29189 (best 0.29189), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 32:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.905, v_num=c5r3, train_JaccardIndex_step=0.559, train_Precision_step=0.290, train_Recall_step=0.167, train_F1Score_step=0.212, train_FBetaScore_step=0.253, train_loss=0.880,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.41it/s]
+Epoch 32, global step 1122: 'train_JaccardIndex' was not in top 1
+Epoch 32, global step 1122: 'train_Precision' reached 0.37295 (best 0.37295), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 32, global step 1122: 'train_Recall' was not in top 1
+Epoch 32, global step 1122: 'train_F1Score' was not in top 1
+Epoch 32, global step 1122: 'train_FBetaScore' reached 0.29829 (best 0.29829), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 33:  89%|▉| 34/38 [00:52<00:06,  1.54s/it, loss=0.905, v_num=c5r3, train_JaccardIndex_step=0.559, train_Precision_step=0.295, train_Recall_step=0.167, train_F1Score_step=0.213, train_FBetaScore_step=0.256, train_loss=0.880,
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.65it/s]
+Epoch 33, global step 1156: 'train_JaccardIndex' was not in top 1
+Epoch 33, global step 1156: 'train_Precision' reached 0.38612 (best 0.38612), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 33, global step 1156: 'train_Recall' was not in top 1
+Epoch 33, global step 1156: 'train_F1Score' was not in top 1
+Epoch 33, global step 1156: 'train_FBetaScore' reached 0.30261 (best 0.30261), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 34:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.905, v_num=c5r3, train_JaccardIndex_step=0.565, train_Precision_step=0.367, train_Recall_step=0.167, train_F1Score_step=0.229, train_FBetaScore_step=0.296, train_loss=0.879,
+
+Validation DataLoader 0:  75%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                                          | 3/4 [00:01<00:00,  2.31it/s]
+Epoch 34, global step 1190: 'train_JaccardIndex' was not in top 1
+Epoch 34, global step 1190: 'train_Precision' reached 0.39952 (best 0.39952), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 34, global step 1190: 'train_Recall' was not in top 1
+Epoch 34, global step 1190: 'train_F1Score' was not in top 1
+Epoch 34, global step 1190: 'train_FBetaScore' reached 0.30747 (best 0.30747), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 35:  89%|▉| 34/38 [00:51<00:06,  1.50s/it, loss=0.905, v_num=c5r3, train_JaccardIndex_step=0.565, train_Precision_step=0.375, train_Recall_step=0.167, train_F1Score_step=0.231, train_FBetaScore_step=0.300, train_loss=0.879,
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.66it/s]
+Epoch 35, global step 1224: 'train_JaccardIndex' was not in top 1
+Epoch 35, global step 1224: 'train_Precision' reached 0.41028 (best 0.41028), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 35, global step 1224: 'train_Recall' was not in top 1
+Epoch 35, global step 1224: 'train_F1Score' was not in top 1
+Epoch 35, global step 1224: 'train_FBetaScore' reached 0.31118 (best 0.31118), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 36:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.904, v_num=c5r3, train_JaccardIndex_step=0.566, train_Precision_step=0.391, train_Recall_step=0.167, train_F1Score_step=0.234, train_FBetaScore_step=0.308, train_loss=0.879,
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████████████████████▌                                                                                    | 2/4 [00:01<00:01,  1.75it/s]
+Epoch 36, global step 1258: 'train_JaccardIndex' was not in top 1
+Epoch 36, global step 1258: 'train_Precision' reached 0.42259 (best 0.42259), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 36, global step 1258: 'train_Recall' was not in top 1
+Epoch 36, global step 1258: 'train_F1Score' was not in top 1
+Epoch 36, global step 1258: 'train_FBetaScore' reached 0.31580 (best 0.31580), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 37:  89%|▉| 34/38 [00:52<00:06,  1.55s/it, loss=0.904, v_num=c5r3, train_JaccardIndex_step=0.566, train_Precision_step=0.400, train_Recall_step=0.167, train_F1Score_step=0.235, train_FBetaScore_step=0.312, train_loss=0.879,
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.62it/s]
+Epoch 37, global step 1292: 'train_JaccardIndex' was not in top 1
+Epoch 37, global step 1292: 'train_Precision' reached 0.42925 (best 0.42925), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 37, global step 1292: 'train_Recall' was not in top 1
+Epoch 37, global step 1292: 'train_F1Score' was not in top 1
+Epoch 37, global step 1292: 'train_FBetaScore' reached 0.31754 (best 0.31754), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 38:  89%|▉| 34/38 [00:52<00:06,  1.54s/it, loss=0.904, v_num=c5r3, train_JaccardIndex_step=0.567, train_Precision_step=0.409, train_Recall_step=0.167, train_F1Score_step=0.237, train_FBetaScore_step=0.317, train_loss=0.879,
+
+Validation DataLoader 0:  75%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                                          | 3/4 [00:01<00:00,  2.27it/s]
+Epoch 38, global step 1326: 'train_JaccardIndex' was not in top 1
+Epoch 38, global step 1326: 'train_Precision' reached 0.43591 (best 0.43591), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 38, global step 1326: 'train_Recall' was not in top 1
+Epoch 38, global step 1326: 'train_F1Score' was not in top 1
+Epoch 38, global step 1326: 'train_FBetaScore' reached 0.31976 (best 0.31976), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 39:  89%|▉| 34/38 [00:52<00:06,  1.54s/it, loss=0.904, v_num=c5r3, train_JaccardIndex_step=0.567, train_Precision_step=0.409, train_Recall_step=0.167, train_F1Score_step=0.237, train_FBetaScore_step=0.317, train_loss=0.878,
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.31it/s]
+Epoch 39, global step 1360: 'train_JaccardIndex' was not in top 1
+Epoch 39, global step 1360: 'train_Precision' reached 0.44226 (best 0.44226), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 39, global step 1360: 'train_Recall' was not in top 1
+Epoch 39, global step 1360: 'train_F1Score' was not in top 1
+Epoch 39, global step 1360: 'train_FBetaScore' reached 0.32140 (best 0.32140), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 40:  89%|▉| 34/38 [00:54<00:06,  1.60s/it, loss=0.904, v_num=c5r3, train_JaccardIndex_step=0.567, train_Precision_step=0.409, train_Recall_step=0.167, train_F1Score_step=0.237, train_FBetaScore_step=0.317, train_loss=0.878,
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.65it/s]
+Epoch 40, global step 1394: 'train_JaccardIndex' was not in top 1
+Epoch 40, global step 1394: 'train_Precision' reached 0.44745 (best 0.44745), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 40, global step 1394: 'train_Recall' was not in top 1
+Epoch 40, global step 1394: 'train_F1Score' was not in top 1
+Epoch 40, global step 1394: 'train_FBetaScore' reached 0.32293 (best 0.32293), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 41:  89%|▉| 34/38 [00:51<00:06,  1.50s/it, loss=0.904, v_num=c5r3, train_JaccardIndex_step=0.567, train_Precision_step=0.419, train_Recall_step=0.167, train_F1Score_step=0.238, train_FBetaScore_step=0.321, train_loss=0.878,
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████████████████████▌                                                                                    | 2/4 [00:01<00:01,  1.96it/s]
+Epoch 41, global step 1428: 'train_JaccardIndex' was not in top 1
+Epoch 41, global step 1428: 'train_Precision' reached 0.45118 (best 0.45118), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 41, global step 1428: 'train_Recall' was not in top 1
+Epoch 41, global step 1428: 'train_F1Score' was not in top 1
+
+Epoch 41, global step 1428: 'train_FBetaScore' reached 0.32405 (best 0.32405), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 42:  89%|▉| 34/38 [00:52<00:06,  1.53s/it, loss=0.903, v_num=c5r3, train_JaccardIndex_step=0.567, train_Precision_step=0.419, train_Recall_step=0.167, train_F1Score_step=0.238, train_FBetaScore_step=0.321, train_loss=0.878,
+
+
+Validation DataLoader 0:   0%|                                                                                                                                                                                 | 0/4 [00:00<?, ?it/s]
+Epoch 42, global step 1462: 'train_JaccardIndex' was not in top 1
+Epoch 42, global step 1462: 'train_Precision' reached 0.45460 (best 0.45460), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 42, global step 1462: 'train_Recall' was not in top 1
+Epoch 42, global step 1462: 'train_F1Score' was not in top 1
+Epoch 42, global step 1462: 'train_FBetaScore' reached 0.32517 (best 0.32517), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 43:  89%|▉| 34/38 [00:51<00:06,  1.52s/it, loss=0.903, v_num=c5r3, train_JaccardIndex_step=0.574, train_Precision_step=0.581, train_Recall_step=0.167, train_F1Score_step=0.259, train_FBetaScore_step=0.388, train_loss=0.878,
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.63it/s]
+Epoch 43, global step 1496: 'train_JaccardIndex' was not in top 1
+Epoch 43, global step 1496: 'train_Precision' reached 0.45967 (best 0.45967), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 43, global step 1496: 'train_Recall' was not in top 1
+Epoch 43, global step 1496: 'train_F1Score' was not in top 1
+Epoch 43, global step 1496: 'train_FBetaScore' reached 0.32708 (best 0.32708), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 44:  89%|▉| 34/38 [00:50<00:05,  1.50s/it, loss=0.903, v_num=c5r3, train_JaccardIndex_step=0.574, train_Precision_step=0.581, train_Recall_step=0.167, train_F1Score_step=0.259, train_FBetaScore_step=0.388, train_loss=0.878,
+
+Validation: 0it [00:00, ?it/s]
+Epoch 44, global step 1530: 'train_JaccardIndex' was not in top 1
+Epoch 44, global step 1530: 'train_Precision' reached 0.46648 (best 0.46648), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 44, global step 1530: 'train_Recall' was not in top 1
+Epoch 44, global step 1530: 'train_F1Score' was not in top 1
+Epoch 44, global step 1530: 'train_FBetaScore' reached 0.32976 (best 0.32976), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 45:  89%|▉| 34/38 [00:52<00:06,  1.55s/it, loss=0.903, v_num=c5r3, train_JaccardIndex_step=0.574, train_Precision_step=0.581, train_Recall_step=0.167, train_F1Score_step=0.259, train_FBetaScore_step=0.388, train_loss=0.877,
+
+Validation: 0it [00:00, ?it/s]
+Epoch 45, global step 1564: 'train_JaccardIndex' was not in top 1
+Epoch 45, global step 1564: 'train_Precision' reached 0.46861 (best 0.46861), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 45, global step 1564: 'train_Recall' was not in top 1
+Epoch 45, global step 1564: 'train_F1Score' was not in top 1
+Epoch 45, global step 1564: 'train_FBetaScore' reached 0.33039 (best 0.33039), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 46:  89%|▉| 34/38 [00:52<00:06,  1.54s/it, loss=0.903, v_num=c5r3, train_JaccardIndex_step=0.574, train_Precision_step=0.581, train_Recall_step=0.167, train_F1Score_step=0.259, train_FBetaScore_step=0.388, train_loss=0.877,
+
+Validation: 0it [00:00, ?it/s]
+Epoch 46, global step 1598: 'train_JaccardIndex' was not in top 1
+Epoch 46, global step 1598: 'train_Precision' reached 0.46991 (best 0.46991), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 46, global step 1598: 'train_Recall' was not in top 1
+Epoch 46, global step 1598: 'train_F1Score' was not in top 1
+Epoch 46, global step 1598: 'train_FBetaScore' reached 0.33073 (best 0.33073), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 47:  89%|▉| 34/38 [00:51<00:06,  1.50s/it, loss=0.903, v_num=c5r3, train_JaccardIndex_step=0.575, train_Precision_step=0.600, train_Recall_step=0.167, train_F1Score_step=0.261, train_FBetaScore_step=0.395, train_loss=0.877,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.66it/s]
+Epoch 47, global step 1632: 'train_JaccardIndex' was not in top 1
+Epoch 47, global step 1632: 'train_Precision' reached 0.47184 (best 0.47184), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 47, global step 1632: 'train_Recall' was not in top 1
+Epoch 47, global step 1632: 'train_F1Score' was not in top 1
+Epoch 47, global step 1632: 'train_FBetaScore' reached 0.33149 (best 0.33149), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 48:  89%|▉| 34/38 [00:52<00:06,  1.54s/it, loss=0.903, v_num=c5r3, train_JaccardIndex_step=0.575, train_Precision_step=0.600, train_Recall_step=0.167, train_F1Score_step=0.261, train_FBetaScore_step=0.395, train_loss=0.877,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.64it/s]
+Epoch 48, global step 1666: 'train_JaccardIndex' was not in top 1
+Epoch 48, global step 1666: 'train_Precision' reached 0.47308 (best 0.47308), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 48, global step 1666: 'train_Recall' was not in top 1
+Epoch 48, global step 1666: 'train_F1Score' was not in top 1
+Epoch 48, global step 1666: 'train_FBetaScore' reached 0.33198 (best 0.33198), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 49:  89%|▉| 34/38 [00:50<00:05,  1.50s/it, loss=0.903, v_num=c5r3, train_JaccardIndex_step=0.575, train_Precision_step=0.621, train_Recall_step=0.167, train_F1Score_step=0.263, train_FBetaScore_step=0.402, train_loss=0.877,
+
+Validation: 0it [00:00, ?it/s]
+Epoch 49, global step 1700: 'train_JaccardIndex' was not in top 1
+Epoch 49, global step 1700: 'train_Precision' reached 0.47393 (best 0.47393), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 49, global step 1700: 'train_Recall' was not in top 1
+Epoch 49, global step 1700: 'train_F1Score' was not in top 1
+Epoch 49, global step 1700: 'train_FBetaScore' reached 0.33223 (best 0.33223), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 50:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.903, v_num=c5r3, train_JaccardIndex_step=0.575, train_Precision_step=0.621, train_Recall_step=0.167, train_F1Score_step=0.263, train_FBetaScore_step=0.402, train_loss=0.877,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.56it/s]
+Epoch 50, global step 1734: 'train_JaccardIndex' was not in top 1
+Epoch 50, global step 1734: 'train_Precision' reached 0.47469 (best 0.47469), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 50, global step 1734: 'train_Recall' was not in top 1
+Epoch 50, global step 1734: 'train_F1Score' was not in top 1
+Epoch 50, global step 1734: 'train_FBetaScore' reached 0.33244 (best 0.33244), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 51:  89%|▉| 34/38 [00:54<00:06,  1.59s/it, loss=0.903, v_num=c5r3, train_JaccardIndex_step=0.575, train_Precision_step=0.621, train_Recall_step=0.167, train_F1Score_step=0.263, train_FBetaScore_step=0.402, train_loss=0.877,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.60it/s]
+Epoch 51, global step 1768: 'train_JaccardIndex' was not in top 1
+Epoch 51, global step 1768: 'train_Precision' reached 0.47531 (best 0.47531), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 51, global step 1768: 'train_Recall' was not in top 1
+Epoch 51, global step 1768: 'train_F1Score' was not in top 1
+Epoch 51, global step 1768: 'train_FBetaScore' reached 0.33266 (best 0.33266), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 52:  89%|▉| 34/38 [00:51<00:06,  1.52s/it, loss=0.902, v_num=c5r3, train_JaccardIndex_step=0.575, train_Precision_step=0.621, train_Recall_step=0.167, train_F1Score_step=0.263, train_FBetaScore_step=0.402, train_loss=0.877,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.63it/s]
+Epoch 52, global step 1802: 'train_JaccardIndex' reached 0.56716 (best 0.56716), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 52, global step 1802: 'train_Precision' reached 0.47622 (best 0.47622), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 52, global step 1802: 'train_Recall' was not in top 1
+Epoch 52, global step 1802: 'train_F1Score' was not in top 1
+Epoch 52, global step 1802: 'train_FBetaScore' reached 0.33305 (best 0.33305), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 53:  89%|▉| 34/38 [00:51<00:06,  1.52s/it, loss=0.902, v_num=c5r3, train_JaccardIndex_step=0.575, train_Precision_step=0.621, train_Recall_step=0.167, train_F1Score_step=0.263, train_FBetaScore_step=0.402, train_loss=0.877,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.60it/s]
+Epoch 53, global step 1836: 'train_JaccardIndex' reached 0.56718 (best 0.56718), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 53, global step 1836: 'train_Precision' reached 0.47664 (best 0.47664), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 53, global step 1836: 'train_Recall' was not in top 1
+Epoch 53, global step 1836: 'train_F1Score' was not in top 1
+Epoch 53, global step 1836: 'train_FBetaScore' reached 0.33324 (best 0.33324), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 54:  89%|▉| 34/38 [00:50<00:05,  1.50s/it, loss=0.902, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.877,
+
+Validation: 0it [00:00, ?it/s]
+Epoch 54, global step 1870: 'train_JaccardIndex' reached 0.56721 (best 0.56721), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 54, global step 1870: 'train_Precision' reached 0.47738 (best 0.47738), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 54, global step 1870: 'train_Recall' was not in top 1
+Epoch 54, global step 1870: 'train_F1Score' was not in top 1
+Epoch 54, global step 1870: 'train_FBetaScore' reached 0.33350 (best 0.33350), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 55:  89%|▉| 34/38 [00:51<00:06,  1.52s/it, loss=0.902, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.877,
+
+Validation: 0it [00:00, ?it/s]
+Epoch 55, global step 1904: 'train_JaccardIndex' reached 0.56722 (best 0.56722), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 55, global step 1904: 'train_Precision' reached 0.47810 (best 0.47810), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 55, global step 1904: 'train_Recall' was not in top 1
+Epoch 55, global step 1904: 'train_F1Score' was not in top 1
+Epoch 55, global step 1904: 'train_FBetaScore' reached 0.33374 (best 0.33374), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 56:  89%|▉| 34/38 [00:51<00:06,  1.52s/it, loss=0.902, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.877,
+
+Validation DataLoader 0:   0%|                                                                                                                                                                                 | 0/4 [00:00<?, ?it/s]
+Epoch 56, global step 1938: 'train_JaccardIndex' reached 0.56725 (best 0.56725), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 56, global step 1938: 'train_Precision' reached 0.47919 (best 0.47919), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 56, global step 1938: 'train_Recall' was not in top 1
+Epoch 56, global step 1938: 'train_F1Score' was not in top 1
+Epoch 56, global step 1938: 'train_FBetaScore' reached 0.33413 (best 0.33413), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 57:  89%|▉| 34/38 [00:53<00:06,  1.57s/it, loss=0.902, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876,
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████████████████████▌                                                                                    | 2/4 [00:00<00:00,  2.07it/s]
+Epoch 57, global step 1972: 'train_JaccardIndex' reached 0.56731 (best 0.56731), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 57, global step 1972: 'train_Precision' reached 0.48047 (best 0.48047), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 57, global step 1972: 'train_Recall' was not in top 1
+Epoch 57, global step 1972: 'train_F1Score' was not in top 1
+Epoch 57, global step 1972: 'train_FBetaScore' reached 0.33464 (best 0.33464), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 58:  89%|▉| 34/38 [00:52<00:06,  1.55s/it, loss=0.902, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.64it/s]
+Epoch 58, global step 2006: 'train_JaccardIndex' reached 0.56734 (best 0.56734), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 58, global step 2006: 'train_Precision' reached 0.48088 (best 0.48088), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 58, global step 2006: 'train_Recall' was not in top 1
+Epoch 58, global step 2006: 'train_F1Score' reached 0.23616 (best 0.23616), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 58, global step 2006: 'train_FBetaScore' reached 0.33485 (best 0.33485), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 59:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.902, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876,
+
+Validation: 0it [00:00, ?it/s]
+Epoch 59, global step 2040: 'train_JaccardIndex' reached 0.56736 (best 0.56736), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 59, global step 2040: 'train_Precision' reached 0.48154 (best 0.48154), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 59, global step 2040: 'train_Recall' was not in top 1
+Epoch 59, global step 2040: 'train_F1Score' reached 0.23622 (best 0.23622), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 59, global step 2040: 'train_FBetaScore' reached 0.33511 (best 0.33511), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 60:  89%|▉| 34/38 [00:54<00:06,  1.61s/it, loss=0.902, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.64it/s]
+Epoch 60, global step 2074: 'train_JaccardIndex' reached 0.56740 (best 0.56740), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 60, global step 2074: 'train_Precision' reached 0.48257 (best 0.48257), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 60, global step 2074: 'train_Recall' was not in top 1
+Epoch 60, global step 2074: 'train_F1Score' reached 0.23634 (best 0.23634), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 60, global step 2074: 'train_FBetaScore' reached 0.33550 (best 0.33550), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 61:  89%|▉| 34/38 [00:52<00:06,  1.54s/it, loss=0.902, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.63it/s]
+Epoch 61, global step 2108: 'train_JaccardIndex' reached 0.56742 (best 0.56742), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 61, global step 2108: 'train_Precision' reached 0.48316 (best 0.48316), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 61, global step 2108: 'train_Recall' was not in top 1
+Epoch 61, global step 2108: 'train_F1Score' reached 0.23641 (best 0.23641), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 61, global step 2108: 'train_FBetaScore' reached 0.33573 (best 0.33573), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 62:  89%|▉| 34/38 [00:54<00:06,  1.60s/it, loss=0.901, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876,
+
+
+Validation DataLoader 0:   0%|                                                                                                                                                                                 | 0/4 [00:00<?, ?it/s]
+Epoch 62, global step 2142: 'train_JaccardIndex' reached 0.56748 (best 0.56748), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 62, global step 2142: 'train_Precision' reached 0.48386 (best 0.48386), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 62, global step 2142: 'train_Recall' was not in top 1
+Epoch 62, global step 2142: 'train_F1Score' reached 0.23657 (best 0.23657), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 62, global step 2142: 'train_FBetaScore' reached 0.33605 (best 0.33605), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 63:  89%|▉| 34/38 [00:53<00:06,  1.58s/it, loss=0.901, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876,
+
+
+Validation DataLoader 0:   0%|                                                                                                                                                                                 | 0/4 [00:00<?, ?it/s]
+Epoch 63, global step 2176: 'train_JaccardIndex' reached 0.56751 (best 0.56751), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 63, global step 2176: 'train_Precision' reached 0.48447 (best 0.48447), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 63, global step 2176: 'train_Recall' was not in top 1
+Epoch 63, global step 2176: 'train_F1Score' reached 0.23667 (best 0.23667), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 63, global step 2176: 'train_FBetaScore' reached 0.33630 (best 0.33630), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 64:  89%|▉| 34/38 [00:52<00:06,  1.55s/it, loss=0.901, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876,
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████████████████████▌                                                                                    | 2/4 [00:01<00:01,  1.79it/s]
+Epoch 64, global step 2210: 'train_JaccardIndex' reached 0.56753 (best 0.56753), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 64, global step 2210: 'train_Precision' reached 0.48518 (best 0.48518), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 64, global step 2210: 'train_Recall' was not in top 1
+Epoch 64, global step 2210: 'train_F1Score' reached 0.23675 (best 0.23675), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 64, global step 2210: 'train_FBetaScore' reached 0.33658 (best 0.33658), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 65:  89%|▉| 34/38 [00:51<00:06,  1.50s/it, loss=0.901, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876,
+
+Validation DataLoader 0:   0%|                                                                                                                                                                                 | 0/4 [00:00<?, ?it/s]
+Epoch 65, global step 2244: 'train_JaccardIndex' reached 0.56756 (best 0.56756), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 65, global step 2244: 'train_Precision' reached 0.48597 (best 0.48597), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 65, global step 2244: 'train_Recall' was not in top 1
+
+Epoch 65, global step 2244: 'train_F1Score' reached 0.23684 (best 0.23684), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 65, global step 2244: 'train_FBetaScore' reached 0.33686 (best 0.33686), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 66:  89%|▉| 34/38 [00:53<00:06,  1.57s/it, loss=0.901, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876,
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████████████████████▌                                                                                    | 2/4 [00:01<00:01,  1.83it/s]
+Epoch 66, global step 2278: 'train_JaccardIndex' reached 0.56759 (best 0.56759), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 66, global step 2278: 'train_Precision' reached 0.48674 (best 0.48674), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 66, global step 2278: 'train_Recall' was not in top 1
+Epoch 66, global step 2278: 'train_F1Score' reached 0.23693 (best 0.23693), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 66, global step 2278: 'train_FBetaScore' reached 0.33716 (best 0.33716), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 67:  89%|▉| 34/38 [00:51<00:06,  1.52s/it, loss=0.901, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876,
+
+Validation DataLoader 0:  75%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                                          | 3/4 [00:01<00:00,  2.30it/s]
+Epoch 67, global step 2312: 'train_JaccardIndex' reached 0.56764 (best 0.56764), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 67, global step 2312: 'train_Precision' reached 0.48762 (best 0.48762), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 67, global step 2312: 'train_Recall' was not in top 1
+Epoch 67, global step 2312: 'train_F1Score' reached 0.23706 (best 0.23706), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 67, global step 2312: 'train_FBetaScore' reached 0.33753 (best 0.33753), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 68:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.901, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.44it/s]
+Epoch 68, global step 2346: 'train_JaccardIndex' reached 0.56766 (best 0.56766), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 68, global step 2346: 'train_Precision' reached 0.48861 (best 0.48861), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 68, global step 2346: 'train_Recall' was not in top 1
+Epoch 68, global step 2346: 'train_F1Score' reached 0.23712 (best 0.23712), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 68, global step 2346: 'train_FBetaScore' reached 0.33783 (best 0.33783), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 69:  89%|▉| 34/38 [00:52<00:06,  1.54s/it, loss=0.901, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876,
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.64it/s]
+Epoch 69, global step 2380: 'train_JaccardIndex' reached 0.56766 (best 0.56766), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 69, global step 2380: 'train_Precision' reached 0.48885 (best 0.48885), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 69, global step 2380: 'train_Recall' was not in top 1
+Epoch 69, global step 2380: 'train_F1Score' reached 0.23713 (best 0.23713), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 69, global step 2380: 'train_FBetaScore' reached 0.33792 (best 0.33792), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 70:  89%|▉| 34/38 [00:51<00:06,  1.52s/it, loss=0.901, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.61it/s]
+Epoch 70, global step 2414: 'train_JaccardIndex' reached 0.56770 (best 0.56770), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 70, global step 2414: 'train_Precision' reached 0.48976 (best 0.48976), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 70, global step 2414: 'train_Recall' was not in top 1
+Epoch 70, global step 2414: 'train_F1Score' reached 0.23724 (best 0.23724), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 70, global step 2414: 'train_FBetaScore' reached 0.33827 (best 0.33827), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 71:  89%|▉| 34/38 [00:53<00:06,  1.57s/it, loss=0.9, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876, v
+
+Validation DataLoader 0:  75%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                                          | 3/4 [00:01<00:00,  2.07it/s]
+Epoch 71, global step 2448: 'train_JaccardIndex' reached 0.56772 (best 0.56772), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 71, global step 2448: 'train_Precision' reached 0.49073 (best 0.49073), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 71, global step 2448: 'train_Recall' was not in top 1
+Epoch 71, global step 2448: 'train_F1Score' reached 0.23731 (best 0.23731), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 71, global step 2448: 'train_FBetaScore' reached 0.33861 (best 0.33861), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 72:  89%|▉| 34/38 [00:52<00:06,  1.55s/it, loss=0.9, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876, v
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.30it/s]
+Epoch 72, global step 2482: 'train_JaccardIndex' reached 0.56775 (best 0.56775), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 72, global step 2482: 'train_Precision' reached 0.49138 (best 0.49138), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 72, global step 2482: 'train_Recall' was not in top 1
+Epoch 72, global step 2482: 'train_F1Score' reached 0.23741 (best 0.23741), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 72, global step 2482: 'train_FBetaScore' reached 0.33889 (best 0.33889), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 73:  89%|▉| 34/38 [00:52<00:06,  1.56s/it, loss=0.9, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.876, v
+
+Validation DataLoader 0:  75%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                                          | 3/4 [00:01<00:00,  2.26it/s]
+Epoch 73, global step 2516: 'train_JaccardIndex' reached 0.56793 (best 0.56793), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 73, global step 2516: 'train_Precision' reached 0.49506 (best 0.49506), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 73, global step 2516: 'train_Recall' was not in top 1
+Epoch 73, global step 2516: 'train_F1Score' reached 0.23790 (best 0.23790), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 73, global step 2516: 'train_FBetaScore' reached 0.34038 (best 0.34038), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 74:  89%|▉| 34/38 [00:53<00:06,  1.56s/it, loss=0.9, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.875, v
+
+
+Validation DataLoader 0:   0%|                                                                                                                                                                                 | 0/4 [00:00<?, ?it/s]
+Epoch 74, global step 2550: 'train_JaccardIndex' reached 0.56798 (best 0.56798), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 74, global step 2550: 'train_Precision' reached 0.49656 (best 0.49656), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 74, global step 2550: 'train_Recall' was not in top 1
+Epoch 74, global step 2550: 'train_F1Score' reached 0.23806 (best 0.23806), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 74, global step 2550: 'train_FBetaScore' reached 0.34099 (best 0.34099), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 75:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.9, v_num=c5r3, train_JaccardIndex_step=0.576, train_Precision_step=0.643, train_Recall_step=0.167, train_F1Score_step=0.265, train_FBetaScore_step=0.409, train_loss=0.875, v
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.63it/s]
+Epoch 75, global step 2584: 'train_JaccardIndex' reached 0.56805 (best 0.56805), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 75, global step 2584: 'train_Precision' reached 0.49716 (best 0.49716), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 75, global step 2584: 'train_Recall' was not in top 1
+Epoch 75, global step 2584: 'train_F1Score' reached 0.23827 (best 0.23827), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 75, global step 2584: 'train_FBetaScore' reached 0.34133 (best 0.34133), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 76:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.9, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875, v
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████████████████████▌                                                                                    | 2/4 [00:01<00:01,  1.95it/s]
+Epoch 76, global step 2618: 'train_JaccardIndex' reached 0.56813 (best 0.56813), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 76, global step 2618: 'train_Precision' reached 0.49895 (best 0.49895), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 76, global step 2618: 'train_Recall' was not in top 1
+Epoch 76, global step 2618: 'train_F1Score' reached 0.23852 (best 0.23852), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 76, global step 2618: 'train_FBetaScore' reached 0.34202 (best 0.34202), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 77:  89%|▉| 34/38 [00:53<00:06,  1.57s/it, loss=0.9, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875, v
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████████████████████▌                                                                                    | 2/4 [00:01<00:01,  1.64it/s]
+Epoch 77, global step 2652: 'train_JaccardIndex' reached 0.56814 (best 0.56814), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 77, global step 2652: 'train_Precision' reached 0.49943 (best 0.49943), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 77, global step 2652: 'train_Recall' was not in top 1
+Epoch 77, global step 2652: 'train_F1Score' reached 0.23858 (best 0.23858), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 77, global step 2652: 'train_FBetaScore' reached 0.34214 (best 0.34214), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 78:  89%|▉| 34/38 [00:52<00:06,  1.54s/it, loss=0.9, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875, v
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.65it/s]
+Epoch 78, global step 2686: 'train_JaccardIndex' reached 0.56826 (best 0.56826), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 78, global step 2686: 'train_Precision' reached 0.50081 (best 0.50081), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 78, global step 2686: 'train_Recall' was not in top 1
+Epoch 78, global step 2686: 'train_F1Score' reached 0.23893 (best 0.23893), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 78, global step 2686: 'train_FBetaScore' reached 0.34286 (best 0.34286), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 79:  89%|▉| 34/38 [00:52<00:06,  1.54s/it, loss=0.9, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875, v
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.43it/s]
+Epoch 79, global step 2720: 'train_JaccardIndex' reached 0.56831 (best 0.56831), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 79, global step 2720: 'train_Precision' reached 0.50138 (best 0.50138), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 79, global step 2720: 'train_Recall' was not in top 1
+Epoch 79, global step 2720: 'train_F1Score' reached 0.23906 (best 0.23906), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 79, global step 2720: 'train_FBetaScore' reached 0.34317 (best 0.34317), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 80:  89%|▉| 34/38 [00:52<00:06,  1.55s/it, loss=0.899, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+Validation: 0it [00:00, ?it/s]
+Epoch 80, global step 2754: 'train_JaccardIndex' reached 0.56840 (best 0.56840), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 80, global step 2754: 'train_Precision' reached 0.50248 (best 0.50248), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 80, global step 2754: 'train_Recall' was not in top 1
+Epoch 80, global step 2754: 'train_F1Score' reached 0.23933 (best 0.23933), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 80, global step 2754: 'train_FBetaScore' reached 0.34376 (best 0.34376), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 81:  89%|▉| 34/38 [00:51<00:06,  1.51s/it, loss=0.899, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.61it/s]
+Epoch 81, global step 2788: 'train_JaccardIndex' reached 0.56847 (best 0.56847), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 81, global step 2788: 'train_Precision' reached 0.50346 (best 0.50346), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 81, global step 2788: 'train_Recall' was not in top 1
+Epoch 81, global step 2788: 'train_F1Score' reached 0.23954 (best 0.23954), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 81, global step 2788: 'train_FBetaScore' reached 0.34422 (best 0.34422), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 82:  89%|▉| 34/38 [00:54<00:06,  1.59s/it, loss=0.899, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.61it/s]
+Epoch 82, global step 2822: 'train_JaccardIndex' was not in top 1
+Epoch 82, global step 2822: 'train_Precision' reached 0.50411 (best 0.50411), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 82, global step 2822: 'train_Recall' was not in top 1
+Epoch 82, global step 2822: 'train_F1Score' was not in top 1
+Epoch 82, global step 2822: 'train_FBetaScore' reached 0.34440 (best 0.34440), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 83:  89%|▉| 34/38 [00:50<00:05,  1.50s/it, loss=0.899, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+Validation: 0it [00:00, ?it/s]
+Epoch 83, global step 2856: 'train_JaccardIndex' reached 0.56850 (best 0.56850), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 83, global step 2856: 'train_Precision' reached 0.50498 (best 0.50498), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 83, global step 2856: 'train_Recall' was not in top 1
+Epoch 83, global step 2856: 'train_F1Score' reached 0.23963 (best 0.23963), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 83, global step 2856: 'train_FBetaScore' reached 0.34474 (best 0.34474), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 84:  89%|▉| 34/38 [00:53<00:06,  1.56s/it, loss=0.899, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+
+Epoch 85:   0%| | 0/38 [00:00<?, ?it/s, loss=0.899, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875, val_loss
+Epoch 84, global step 2890: 'train_JaccardIndex' reached 0.56854 (best 0.56854), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 84, global step 2890: 'train_Precision' reached 0.50597 (best 0.50597), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 84, global step 2890: 'train_Recall' was not in top 1
+Epoch 84, global step 2890: 'train_F1Score' reached 0.23974 (best 0.23974), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 84, global step 2890: 'train_FBetaScore' reached 0.34509 (best 0.34509), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 85:  89%|▉| 34/38 [00:52<00:06,  1.53s/it, loss=0.899, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+Validation: 0it [00:00, ?it/s]
+Epoch 85, global step 2924: 'train_JaccardIndex' reached 0.56859 (best 0.56859), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 85, global step 2924: 'train_Precision' reached 0.50700 (best 0.50700), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 85, global step 2924: 'train_Recall' was not in top 1
+Epoch 85, global step 2924: 'train_F1Score' reached 0.23990 (best 0.23990), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 85, global step 2924: 'train_FBetaScore' reached 0.34552 (best 0.34552), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 86:  89%|▉| 34/38 [00:51<00:06,  1.52s/it, loss=0.899, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+Validation DataLoader 0:   0%|                                                                                                                                                                                 | 0/4 [00:00<?, ?it/s]
+Epoch 86, global step 2958: 'train_JaccardIndex' reached 0.56860 (best 0.56860), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 86, global step 2958: 'train_Precision' reached 0.50761 (best 0.50761), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 86, global step 2958: 'train_Recall' was not in top 1
+Epoch 86, global step 2958: 'train_F1Score' reached 0.23994 (best 0.23994), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 86, global step 2958: 'train_FBetaScore' reached 0.34574 (best 0.34574), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 87:  89%|▉| 34/38 [00:53<00:06,  1.58s/it, loss=0.899, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.64it/s]
+Epoch 87, global step 2992: 'train_JaccardIndex' reached 0.56862 (best 0.56862), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 87, global step 2992: 'train_Precision' reached 0.50813 (best 0.50813), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 87, global step 2992: 'train_Recall' was not in top 1
+Epoch 87, global step 2992: 'train_F1Score' reached 0.24000 (best 0.24000), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 87, global step 2992: 'train_FBetaScore' reached 0.34593 (best 0.34593), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 88:  89%|▉| 34/38 [00:52<00:06,  1.56s/it, loss=0.899, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+Validation DataLoader 0:  75%|██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████▊                                          | 3/4 [00:01<00:00,  2.11it/s]
+Epoch 88, global step 3026: 'train_JaccardIndex' reached 0.56863 (best 0.56863), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 88, global step 3026: 'train_Precision' reached 0.50821 (best 0.50821), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 88, global step 3026: 'train_Recall' was not in top 1
+Epoch 88, global step 3026: 'train_F1Score' reached 0.24001 (best 0.24001), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 88, global step 3026: 'train_FBetaScore' reached 0.34595 (best 0.34595), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 89:  89%|▉| 34/38 [00:53<00:06,  1.56s/it, loss=0.899, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.63it/s]
+Epoch 89, global step 3060: 'train_JaccardIndex' reached 0.56867 (best 0.56867), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 89, global step 3060: 'train_Precision' reached 0.50899 (best 0.50899), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 89, global step 3060: 'train_Recall' was not in top 1
+Epoch 89, global step 3060: 'train_F1Score' reached 0.24014 (best 0.24014), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 89, global step 3060: 'train_FBetaScore' reached 0.34625 (best 0.34625), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 90:  89%|▉| 34/38 [00:53<00:06,  1.56s/it, loss=0.898, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+Validation: 0it [00:00, ?it/s]
+Epoch 90, global step 3094: 'train_JaccardIndex' reached 0.56871 (best 0.56871), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 90, global step 3094: 'train_Precision' reached 0.50947 (best 0.50947), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 90, global step 3094: 'train_Recall' was not in top 1
+Epoch 90, global step 3094: 'train_F1Score' reached 0.24026 (best 0.24026), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 90, global step 3094: 'train_FBetaScore' reached 0.34647 (best 0.34647), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 91:  89%|▉| 34/38 [00:52<00:06,  1.54s/it, loss=0.898, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████████████████████▌                                                                                    | 2/4 [00:01<00:01,  1.92it/s]
+Epoch 91, global step 3128: 'train_JaccardIndex' reached 0.56881 (best 0.56881), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 91, global step 3128: 'train_Precision' reached 0.50991 (best 0.50991), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 91, global step 3128: 'train_Recall' was not in top 1
+Epoch 91, global step 3128: 'train_F1Score' reached 0.24057 (best 0.24057), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 91, global step 3128: 'train_FBetaScore' reached 0.34687 (best 0.34687), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 92:  89%|▉| 34/38 [00:53<00:06,  1.56s/it, loss=0.898, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.35it/s]
+Epoch 92, global step 3162: 'train_JaccardIndex' reached 0.56887 (best 0.56887), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 92, global step 3162: 'train_Precision' was not in top 1
+Epoch 92, global step 3162: 'train_Recall' was not in top 1
+Epoch 92, global step 3162: 'train_F1Score' reached 0.24074 (best 0.24074), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 92, global step 3162: 'train_FBetaScore' reached 0.34698 (best 0.34698), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 93:  89%|▉| 34/38 [00:55<00:06,  1.62s/it, loss=0.898, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+Validation: 0it [00:00, ?it/s]
+Epoch 93, global step 3196: 'train_JaccardIndex' reached 0.56893 (best 0.56893), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 93, global step 3196: 'train_Precision' reached 0.51028 (best 0.51028), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 93, global step 3196: 'train_Recall' was not in top 1
+Epoch 93, global step 3196: 'train_F1Score' reached 0.24092 (best 0.24092), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 93, global step 3196: 'train_FBetaScore' reached 0.34728 (best 0.34728), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 94:  89%|▉| 34/38 [01:06<00:07,  1.95s/it, loss=0.898, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.57it/s]
+Epoch 94, global step 3230: 'train_JaccardIndex' reached 0.56896 (best 0.56896), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 94, global step 3230: 'train_Precision' reached 0.51063 (best 0.51063), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 94, global step 3230: 'train_Recall' was not in top 1
+Epoch 94, global step 3230: 'train_F1Score' reached 0.24100 (best 0.24100), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 94, global step 3230: 'train_FBetaScore' reached 0.34740 (best 0.34740), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 95:  89%|▉| 34/38 [01:00<00:07,  1.77s/it, loss=0.898, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.667, train_Recall_step=0.167, train_F1Score_step=0.267, train_FBetaScore_step=0.417, train_loss=0.875,
+
+Validation DataLoader 0:  50%|████████████████████████████████████████████████████████████████████████████████████▌                                                                                    | 2/4 [00:01<00:01,  1.59it/s]
+Epoch 95, global step 3264: 'train_JaccardIndex' reached 0.56898 (best 0.56898), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 95, global step 3264: 'train_Precision' reached 0.51088 (best 0.51088), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 95, global step 3264: 'train_Recall' was not in top 1
+Epoch 95, global step 3264: 'train_F1Score' reached 0.24108 (best 0.24108), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 95, global step 3264: 'train_FBetaScore' reached 0.34754 (best 0.34754), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 96:  89%|▉| 34/38 [00:59<00:06,  1.75s/it, loss=0.898, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.692, train_Recall_step=0.167, train_F1Score_step=0.269, train_FBetaScore_step=0.425, train_loss=0.874,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.57it/s]
+Epoch 96, global step 3298: 'train_JaccardIndex' reached 0.56901 (best 0.56901), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 96, global step 3298: 'train_Precision' reached 0.51141 (best 0.51141), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 96, global step 3298: 'train_Recall' was not in top 1
+Epoch 96, global step 3298: 'train_F1Score' reached 0.24114 (best 0.24114), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 96, global step 3298: 'train_FBetaScore' reached 0.34769 (best 0.34769), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 97:  89%|▉| 34/38 [01:00<00:07,  1.77s/it, loss=0.898, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.692, train_Recall_step=0.167, train_F1Score_step=0.269, train_FBetaScore_step=0.425, train_loss=0.874,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.61it/s]
+Epoch 97, global step 3332: 'train_JaccardIndex' reached 0.56905 (best 0.56905), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 97, global step 3332: 'train_Precision' reached 0.51169 (best 0.51169), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 97, global step 3332: 'train_Recall' was not in top 1
+Epoch 97, global step 3332: 'train_F1Score' reached 0.24128 (best 0.24128), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 97, global step 3332: 'train_FBetaScore' reached 0.34790 (best 0.34790), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 98:  89%|▉| 34/38 [00:58<00:06,  1.73s/it, loss=0.897, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.692, train_Recall_step=0.167, train_F1Score_step=0.269, train_FBetaScore_step=0.425, train_loss=0.874,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.59it/s]
+Epoch 98, global step 3366: 'train_JaccardIndex' reached 0.56906 (best 0.56906), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 98, global step 3366: 'train_Precision' was not in top 1
+Epoch 98, global step 3366: 'train_Recall' was not in top 1
+Epoch 98, global step 3366: 'train_F1Score' reached 0.24130 (best 0.24130), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 98, global step 3366: 'train_FBetaScore' was not in top 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 99:  89%|▉| 34/38 [01:00<00:07,  1.79s/it, loss=0.897, v_num=c5r3, train_JaccardIndex_step=0.577, train_Precision_step=0.692, train_Recall_step=0.167, train_F1Score_step=0.269, train_FBetaScore_step=0.425, train_loss=0.874,
+
+Validation DataLoader 0:  25%|██████████████████████████████████████████▎                                                                                                                              | 1/4 [00:00<00:00,  3.56it/s]
+Epoch 99, global step 3400: 'train_JaccardIndex' reached 0.56908 (best 0.56908), saving model to './scenenet/hmn2c5r3/checkpoints/JaccardIndex_ckpt.ckpt' as top 1
+Epoch 99, global step 3400: 'train_Precision' reached 0.51183 (best 0.51183), saving model to './scenenet/hmn2c5r3/checkpoints/Precision_ckpt.ckpt' as top 1
+Epoch 99, global step 3400: 'train_Recall' was not in top 1
+Epoch 99, global step 3400: 'train_F1Score' reached 0.24136 (best 0.24136), saving model to './scenenet/hmn2c5r3/checkpoints/F1Score_ckpt.ckpt' as top 1
+Epoch 99, global step 3400: 'train_FBetaScore' reached 0.34801 (best 0.34801), saving model to './scenenet/hmn2c5r3/checkpoints/FBetaScore_ckpt.ckpt' as top 1
+Epoch 99, global step 3400: 'train_loss' reached 0.87436 (best 0.87436), saving model to './scenenet/hmn2c5r3/checkpoints/train_loss_ckpt.ckpt' as top 1
+
+`Trainer.fit` stopped: `max_epochs=100` reached.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]

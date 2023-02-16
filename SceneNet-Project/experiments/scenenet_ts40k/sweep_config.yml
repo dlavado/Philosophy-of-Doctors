@@ -1,0 +1,106 @@
+# Description: config file for scenenet_ts40k experiment
+# Author: Diogo Mateus
+program: core/scripts/main.py
+method: random
+metric:
+  goal: minimize
+  name: val_loss 
+name: 'scenenet_ts40k'
+project: 'scenenet_ts40k'
+parameters:
+  output_dir: 
+    value: 'experiments/scenenet_ts40k/outputs'
+  # ------------------ #
+  # dataset config
+  # ------------------ #
+  dataset:
+    value: 'ts40k'
+  data_path:
+    value: ''
+  batch_size:
+    values: [4, 8]
+  voxel_grid_size:
+    value: (64, 64, 64)
+  voxel_size:
+    value: None
+  #dataset_params:
+  num_workers:
+    value: 4
+  val_split:
+    value: 0.1
+  test_split:
+    value: 0.3
+  # ------------------ #
+  # model config
+  # ------------------ #
+  model:
+    value: 'scenenet'
+  #model_params:
+    #geneo_num:
+  cylinder_geneo:
+    values: [1, 2, 4]
+  arrow_geneo:
+    values: [1, 2, 4]
+  neg_sphere_geneo:
+    values: [1, 2, 4]  
+  kernel_size:
+    values: [(9, 5, 5), (9, 7, 7)]
+  # ------------------ #
+  # training config
+  # ------------------ #
+  optimizer:
+    values: ['sgd', 'rmsprop']
+  learning_rate:
+    min: 0.0001
+    max: 0.1
+  max_epochs:
+    value: 100
+  gpus:
+    value: -1 # -1 for all available gpus
+  # ------------------ #
+  #criterion config
+  # ------------------ #
+  criterion:
+    values: ['mse', 'focal_tversky', 'dice'] # 'mse', 'focal_tversky', 'dice', 'tversky', 'geneo', 'geneo_tversky', 'geneo_dice', 'geneo_dice_bce'
+  weighting_scheme_path:
+    value: 'core/criterions/hist_estimation.pickle'
+  #criterion_params: # possible criterion params and their values
+  weight_alpha:
+    values: [0.1, 1, 5]
+  weight_epsilon:
+    values: [0.1, 0.01]
+  mse_weight:
+    values: [1, 5]
+  convex_weight:
+    values: [1, 5]
+  tversky_alpha:
+    values: [0.1, 0.5, 1]
+  tversky_beta:
+    values: [0.1, 0.5, 1]
+  tversky_smooth:
+    values: [0.1, 0.5, 1]
+  focal_gamma:
+    values: [1, 2, 5]
+  # ------------------ #
+  # Lit Trainer config
+  # ------------------ #
+  fast_dev_run:
+    value: True
+  auto_lr_find:
+    value: True
+  auto_scale_batch_size:
+    value: True
+  profiler:
+    value: False
+  weights_summary: # 'top' or 'full'
+    value: 'top'
+  # ------------------ #
+  # Checkpointing config
+  # ------------------ #
+  resume_from_checkpoint:
+    value: False
+  checkpoint_dir:
+    value: "experiments/scenenet_ts40k/checkpoints"
+  checkpoint_every:
+    value: 1 # every n epochs
+   
