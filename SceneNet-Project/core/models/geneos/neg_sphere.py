@@ -20,6 +20,8 @@ import sys
 
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
+sys.path.insert(2, '../../..')
+from scripts import constants as const
 from utils import voxelization as Vox
 from utils import pcd_processing as eda
 from core.models.geneos.GENEO_kernel_torch import GENEO_kernel_torch
@@ -174,13 +176,12 @@ class negSpherev2(neg_sphere_kernel):
         x_c_norm = torch.linalg.norm(x_c, dim=1, keepdim=True) # Nx1
         gauss_dist = x_c_norm**2 #- (self.radius + epsilon)**2 
 
-        return sig*torch.exp((gauss_dist**2) * (-1 / (2*(rad + epsilon)**2)))
+        return torch.exp((gauss_dist**2) * (-1 / (2*(rad + epsilon)**2)))
 
-    # def sum_zero(self, tensor:torch.Tensor) -> torch.Tensor:
-    #     return tensor - (torch.sum(tensor) - 1) / self.volume 
+    def sum_negfactor(self, tensor:torch.Tensor) -> torch.Tensor:
+        return tensor - (torch.sum(tensor) + self.neg_factor) / self.volume
     
     
- 
     def compute_kernel(self, plot=False):
 
         idxs = torch.stack(
@@ -190,21 +191,11 @@ class negSpherev2(neg_sphere_kernel):
                             )
             ).T.reshape(-1, 3)
 
-        # idxs = list(itertools.product(list(range(self.kernel_size[0])), list(range(self.kernel_size[1])), list(range(self.kernel_size[2]))))
-        # idxs = torch.from_numpy(np.array([*idxs], dtype=np.float)).to(self.device) # (z*x*y, 3) 
-        # idxs.requires_grad_()
-
-        # kernel = -1*self.gaussian(idxs)
-        # kernel = self.sum_zero(kernel) - self.neg_factor
         kernel = self.gaussian(idxs)
-        kernel = self.sum_zero(kernel)
-        kernel = (-self.neg_factor)*torch.relu(kernel)
+        kernel = (-self.neg_factor)*kernel
+        kernel = self.sum_negfactor(kernel)
         kernel = torch.t(kernel).view(self.kernel_size)            
 
-        if plot:
-            print(f"kernel shape = {kernel.shape}")
-            print(f"kernel sum = {torch.sum(kernel)}")
-            Vox.plot_voxelgrid(kernel.detach().cpu().numpy())
         return kernel
 
     
@@ -240,37 +231,33 @@ def sphere3D():
     plt.show()
 # %%
 if __name__ == "__main__":
+    from torchvision.transforms import Compose
+    from core.datasets.torch_transforms import Voxelization, ToTensor, ToFullDense
 
-    ROOT_PROJECT = "/home/didi/VSCode/lidar_thesis"
-
-    DATA_SAMPLE_DIR = ROOT_PROJECT + "/Data_sample"
-    SAVE_DIR = ROOT_PROJECT + "/dataset/torch_dataset"
 
     from core.datasets.ts40k import ToTensor, TS40K
 
     #build_data_samples([DATA_SAMPLE_DIR], SAVE_DIR)
-    ts40k = TS40K(dataset_path=SAVE_DIR, transform=ToTensor())
+    vxg_size = (64, 64, 64)
+    composed = Compose([Voxelization([eda.POWER_LINE_SUPPORT_TOWER], vxg_size=vxg_size, vox_size=None),
+                        ToTensor(), 
+                        ToFullDense(apply=(True, True))])
+    
+    ts40k = TS40K(dataset_path=const.TS40K_PATH, transform=composed)
 
-    vox, vox_gt = ts40k[2]
+    vox, vox_gt = ts40k[0]
     vox, vox_gt = vox.to(torch.float), vox_gt.to(torch.float)
     print(vox.shape)
-    # Vox.plot_voxelgrid(vox.numpy()[0])
-    # Vox.plot_voxelgrid(vox_gt.numpy()[0])
 
 
-    
-    # %%
-
-    sphere = negSpherev2('cy', (9, 9, 9), radius=torch.tensor(3), 
-                                          sigma=torch.tensor(2), 
-                                          neg_factor=torch.tensor(1))
+    sphere = negSpherev2('cy', (6, 6, 6), radius=torch.tensor(5), 
+                                          sigma=torch.tensor(1), 
+                                          neg_factor=torch.tensor(0.5))
     kernel = sphere.compute_kernel(True)
 
-    #cy.visualize_kernel()
-    # %%
+
+    Vox.plot_voxelgrid(vox[0])
+
     sphere.convolution(vox.view((1, *vox.shape)).to(sphere.device))
 
-    # %%
-    type(sphere.kernel)
 
-# %%

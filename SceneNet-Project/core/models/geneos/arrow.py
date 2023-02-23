@@ -17,12 +17,13 @@ from mpl_toolkits.mplot3d import Axes3D
 import torch.nn.functional as F
 import torch
 
-
 import sys
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
+sys.path.insert(2, '../../..')
+from scripts import constants as const
 from utils import voxelization as Vox
-from core.datasets.ts40k import ToTensor
+from utils import pcd_processing as eda
 from core.models.geneos.GENEO_kernel_torch import GENEO_kernel_torch
 
 
@@ -120,7 +121,7 @@ class cone_kernel(GENEO_kernel_torch):
 
         geneo_params = {
             'radius' : torch.randint(1, k_size[1], (1,))[0] / 2 ,
-            'apex': torch.randint(0, k_size[0]-1, (1,))[0],
+            'apex': torch.randint(k_size[0]/2, k_size[0]-1, (1,))[0],
             'cone_radius' : torch.randint(1, k_size[1], (1,))[0] / 2,
             'cone_inc' : torch.rand(1,)[0], #float \in [0, 1]
             'sigma' : torch.randint(5, 10, (1,))[0] / 5 #float \in [1, 2]
@@ -222,71 +223,54 @@ class arrow(cone_kernel):
         x_c_norm = torch.linalg.norm(x_c, dim=1, keepdim=True) # Nx1
         gauss_dist = x_c_norm**2 #- (self.radius + epsilon)**2 
 
-        return sig*torch.exp((gauss_dist**2) * (-1 / (2*(rad + epsilon)**2)))
+        return torch.exp((gauss_dist**2) * (-1 / (2*(rad + epsilon)**2)))
 
-    def compute_kernel(self, plot=False):
+    def compute_kernel(self):
 
         floor_idxs = torch.stack(
                         torch.meshgrid(torch.arange(self.kernel_size[1], dtype=torch.float, device=self.device, requires_grad=True), 
                                     torch.arange(self.kernel_size[2], dtype=torch.float, device=self.device, requires_grad=True))
                     ).T.reshape(-1, 2)
+        
+        hc = self.apex.to(torch.int).item() # Even though the apex is a model parameter, it is used as an index, so it must be converted to an int
 
         cylinder_vals = self.gaussian(floor_idxs)
         cylinder_vals = self.sum_zero(cylinder_vals)
         cylinder_vals = torch.t(cylinder_vals).view(self.kernel_size[1], self.kernel_size[2])    
 
-        hc = self.apex.to(torch.int).item() # Even though the apex is a model parameter, it is used as an index, so it must be converted to an int
-    
         kernel = torch.tile(cylinder_vals, (hc, 1, 1))
 
         cone_height = torch.tensor(self.kernel_size[0]) - hc
-        if self.cone_inc >= 1:
-            c_radius_h = torch.full((cone_height.item(),), self.cone_radius, device=self.device, dtype=torch.float)
-        else:
-            #height_factor = torch.linspace(self.cone_inc.item(), 0, cone_height.item(), device=self.device, dtype=torch.float) + 0.01 # Add 0.01 to avoid division by zero
-            base=10
-            #height_factor = torch.flip(torch.logspace(0, 1, steps=cone_height.item(), base=base, device=self.device, dtype=torch.float)/base, (0,))
-            #c_radius_h = self.cone_radius * height_factor / (self.cone_inc + 1e-8)
-            height_factor = torch.logspace(1, self.cone_inc.item(), steps=cone_height.item(), base=base, device=self.device, dtype=torch.float) / base
-            #height_factor = height_factor/torch.max(height_factor)
-            c_radius_h = self.cone_radius * height_factor # * self.cone_inc
+        self.cone_inc = torch.clamp(self.cone_inc, 0, 0.499) # tan is not defined for 90 degrees
 
-        # print(f"c_radius_h = {c_radius_h}")
-        # print(f"height_factor = {height_factor}")
-
-        for h in c_radius_h:
-            height_vals = self.gaussian(floor_idxs, rad=h, sig=None)
+        for h in range(cone_height -1, -1, -1): # to -1 since range is non inclusive of the right bound: [start, end)
+            height_vals = self.gaussian(floor_idxs, rad=self.cone_radius*h*torch.tan(self.cone_inc*torch.pi), sig=None)
             height_vals = self.sum_zero(height_vals)
             height_vals = torch.t(height_vals).view(1, self.kernel_size[1], self.kernel_size[2])  
             kernel = torch.cat((height_vals, kernel), dim=0)
 
-        if plot:
-            print(f"\n{'*'*50}")
-            print(f"kernel shape = {kernel.shape}")
-            print(f"kernel sum = {torch.sum(kernel)}")
-            Vox.plot_voxelgrid(kernel.cpu().detach().numpy())
-
         return kernel
+    
+  
 
 
 # %%
 if __name__ == "__main__":
-    import os
-    from pathlib import Path
-    import torch.nn as nn
-    from datasets.ts40k import TS40KDataset 
+    from torch import nn
+    from torchvision.transforms import Compose
+    from core.datasets.torch_transforms import Voxelization, ToTensor, ToFullDense
 
-
-    ROOT_PROJECT = str(Path(Path(os.getcwd()).parent.absolute()).parent.absolute())
-
-    ROOT_PROJECT = "/home/didi/VSCode/lidar_thesis"
-
-    SAVE_DIR = ROOT_PROJECT + "/dataset/torch_dataset"
+    from core.datasets.ts40k import TS40K
 
     #build_data_samples([DATA_SAMPLE_DIR], SAVE_DIR)
-    ts40k = TS40KDataset(dataset_path=SAVE_DIR, transform=ToTensor())
+    vxg_size = (64, 64, 64)
+    composed = Compose([Voxelization([eda.POWER_LINE_SUPPORT_TOWER], vxg_size=vxg_size, vox_size=None),
+                        ToTensor(), 
+                        ToFullDense(apply=(True, True))])
+    
+    ts40k = TS40K(dataset_path=const.TS40K_PATH, transform=composed)
 
-    vox, vox_gt = ts40k[2]
+    vox, vox_gt = ts40k[0]
     vox, vox_gt = vox.to(torch.float), vox_gt.to(torch.float)
     print(vox.shape)
     # Vox.plot_voxelgrid(vox.numpy()[0])
@@ -302,10 +286,12 @@ if __name__ == "__main__":
                                      radius=torch.tensor(1.0),  
                                      sigma=torch.tensor(1.0), 
                                      apex=nn.Parameter(torch.tensor(5.0)), 
-                                     cone_radius=torch.tensor(5),
+                                     cone_radius=torch.tensor(4),
                                      cone_inc=nn.Parameter(torch.tensor(0.2)))
+    
+    # Vox.plot_voxelgrid(vox[0])
   
-    #conv = cone.convolution(vox.view((1, *vox.shape)).to(cone.device))
+    # cone.convolution(vox.view((1, *vox.shape)).to(cone.device))
 
     type(cone.kernel)
 

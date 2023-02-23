@@ -31,13 +31,14 @@ class GENEO_kernel_torch():
 
         self.volume = torch.prod(torch.tensor(self.kernel_size, device=self.device))
 
-        self.kernel = self.compute_kernel(plot)
+        self.kernel = self.compute_kernel()
         if plot:
+            self.plot_kernel()
             print("\n")
 
 
     @abstractmethod
-    def compute_kernel(self, plot=False) -> torch.Tensor:
+    def compute_kernel(self) -> torch.Tensor:
         """
         Returns a 3D GENEO kernel in torch format
         """
@@ -63,8 +64,11 @@ class GENEO_kernel_torch():
         return conv
 
 
-    def visualize_kernel(self):
-        Vox.plot_voxelgrid(self.kernel.detach().cpu().numpy())
+    def plot_kernel(self):
+        print(f"\n{'*'*50}")
+        print(f"kernel shape = {self.kernel.shape}")
+        print(f"kernel sum = {torch.sum(self.kernel)}")
+        Vox.plot_voxelgrid(self.kernel.cpu().detach().numpy())
 
     @staticmethod
     def mandatory_parameters():

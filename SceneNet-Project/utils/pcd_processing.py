@@ -547,7 +547,7 @@ def color_pointcloud(pcd, classes, load=False, pck_name="class_colors", class_co
     Returns
     -------
     np_colors - np.ndarray:
-        The colors for each class in format (C, 3)
+        The colors for each class in format (N, 3)
     """
     if load:
         np_colors = load_pickle(pck_name)

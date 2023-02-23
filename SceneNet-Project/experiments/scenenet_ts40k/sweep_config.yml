@@ -101,6 +101,8 @@ parameters:
     value: False
   checkpoint_dir:
     value: "experiments/scenenet_ts40k/checkpoints"
+  resume_checkpoint_name:
+    value: FbetaScore # 'FbetaScore', 'val_loss', latest, 'best', 'F1Score'
   checkpoint_every:
     value: 1 # every n epochs
    

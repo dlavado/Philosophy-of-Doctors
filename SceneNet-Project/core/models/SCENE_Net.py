@@ -10,10 +10,9 @@ import os
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 
-from core.models.geneos import GENEO_kernel_torch, cylinder, neg_sphere, arrow
+from core.models.geneos.GENEO_kernel_torch import GENEO_kernel_torch
+from core.models.geneos import cylinder, neg_sphere, arrow
 
-
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def load_state_dict(model_path, gnet_class, model_tag='loss', kernel_size=None):
@@ -56,15 +55,11 @@ def load_state_dict(model_path, gnet_class, model_tag='loss', kernel_size=None):
 
 class GENEO_Layer(nn.Module):
 
-    def __init__(self, geneo_class:GENEO_kernel_torch.GENEO_kernel_torch, kernel_size:tuple=None, smart=False,
-                 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
+    def __init__(self, geneo_class:GENEO_kernel_torch, kernel_size:tuple=None, smart=False):
         super(GENEO_Layer, self).__init__()  
 
         self.geneo_class = geneo_class
-
         self.init_from_config(smart)
-
-        self.device=device
 
         if kernel_size is not None:
             self.kernel_size = kernel_size
@@ -84,10 +79,11 @@ class GENEO_Layer(nn.Module):
         self.name = config['name']
         self.kernel_size = config['kernel_size']
         self.plot = config['plot']
-        self.geneo_params = {}
 
+        self.geneo_params = {}
         for param in config['geneo_params']:
-            t_param = nn.Parameter(config['geneo_params'][param].to(torch.float), requires_grad= not param in config['non_trainable'])
+            t_param = torch.tensor(config['geneo_params'][param], dtype=torch.float)
+            t_param = nn.Parameter(t_param, requires_grad = not param in config['non_trainable'])
             self.geneo_params[param] = t_param
 
         self.geneo_params = nn.ParameterDict(self.geneo_params)

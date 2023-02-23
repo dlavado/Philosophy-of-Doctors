@@ -1,5 +1,4 @@
 
-
 # Description: config file for default parameters of scenenet_ts40k experiment
 # Author: Diogo Mateus
 
@@ -15,7 +14,7 @@ dataset:
 data_path:
   value: ''
 batch_size:
-  value: 4
+  value: 64
 voxel_grid_size:
   value: (64, 64, 64)
 voxel_size:
@@ -32,8 +31,6 @@ test_split:
 # ------------------ #
 model:
   value: 'scenenet'
-#model_params:
-  #geneo_num:
 cylinder_geneo:
   value: 1
 arrow_geneo:
@@ -48,9 +45,9 @@ kernel_size:
 optimizer:
   value: 'sgd'
 learning_rate:
-  value: 0.001
+  value: 0.01
 max_epochs:
-  value: 100
+  value: -1 # -1 for infinite
 gpus:
   value: -1 # -1 for all available gpus
 # ------------------ #
@@ -72,7 +69,7 @@ convex_weight:
 tversky_alpha:
   value: 2
 tversky_beta:
-  value: 2
+  value: 1
 tversky_smooth:
   value: 1.0e-6
 focal_gamma:
@@ -87,16 +84,24 @@ precision: # 16 or 32 FPU precision
 auto_lr_find:
   value: True
 auto_scale_batch_size:
-  value: True
+  value: False
 profiler:
   value: False
+accumulate_grad_batches:
+  value: 1
+save_onnx:
+  value: False
 # ------------------ #
-# Checkpointing config
+# Checkpoint config
 # ------------------ #
 resume_from_checkpoint:
   value: False
 checkpoint_dir:
-  value: "experiments/scenenet_ts40k/checkpoints"
-checkpoint_every:
+  value: /home/didi/VSCode/PhD-Shenanigans/SceneNet-Project/experiments/scenenet_ts40k/wandb/run-20230217_161733-bwsbqxgs/files/checkpoints
+resume_checkpoint_name:
+  value: FBetaScore # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
+checkpoint_every_n_steps:
+  value: 0 # every n steps
   

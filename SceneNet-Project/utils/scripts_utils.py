@@ -1,5 +1,6 @@
 
 import argparse
+from typing import List
 import numpy as np
 import torch
 import random
@@ -7,6 +8,7 @@ import pytorch_lightning as pl
 import sys
 
 from torchmetrics import MetricCollection, JaccardIndex, Precision, Recall, F1Score, FBetaScore, AUROC, AveragePrecision
+import wandb
 
 
 sys.path.insert(0, '..')
@@ -80,3 +82,40 @@ def init_metrics(tau=0.65):
         #AUROC() # Takes too much GPU memory
         #BinnedAveragePrecision(num_classes=1, thresholds=torch.linspace(0.5, 0.95, 20))
     ])
+
+
+def pointcloud_to_wandb(pcd:np.ndarray, input=None, gt=None) -> List[wandb.Object3D]:
+    """
+    Converts a point cloud to a wandb Object3D object.
+
+    Parameters
+    ----------
+
+    `pcd` - np.ndarray:
+        The point cloud to be converted. The shape of the point cloud must be (N, 3) or (N, 4) or (N, 6) where N is the number of points.
+
+    `input` - np.ndarray:
+        The input point cloud. The shape of the point cloud must be (N, 3) or (N, 4) or (N, 6) where N is the number of points.
+
+    `gt` - np.ndarray:
+        The ground truth point cloud. The shape of the point cloud must be (N, 3) or (N, 4) or (N, 6) where N is the number of points.
+
+    Returns
+    -------
+    list of wandb.Object3D
+        A list of Object3D objects that can be logged to wandb.
+    """
+    # Log point clouds to wandb
+    point_clouds = []
+    if input is not None:
+        input_cloud = wandb.Object3D(input)
+        point_clouds.append(input_cloud)
+
+    if gt is not None:
+        ground_truth = wandb.Object3D(gt)
+        point_clouds.append(ground_truth)
+
+    prediction = wandb.Object3D(pcd)
+    point_clouds.append(prediction)
+    
+    return point_clouds

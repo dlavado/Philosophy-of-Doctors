@@ -75,9 +75,9 @@ class LitTS40K(pl.LightningDataModule):
     #     # track whatever you want here
     #     return 
 
-    def load_state_dict(self, state_dict):
-        # restore the state based on what you tracked in (def state_dict)
-        self.current_train_batch_index = state_dict["current_train_batch_index"]
+    # def load_state_dict(self, state_dict):
+    #     # restore the state based on what you tracked in (def state_dict)
+    #     self.current_train_batch_index = state_dict["current_train_batch_index"]
 
     @staticmethod
     def add_model_specific_args(parent_parser):

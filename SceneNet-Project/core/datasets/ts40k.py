@@ -153,7 +153,7 @@ def build_data_samples(data_dirs:List[str], save_dir=os.getcwd(), tower_radius=T
 
 class TS40K(Dataset):
 
-    def __init__(self, dataset_path, split='full', transform=None) -> None:
+    def __init__(self, dataset_path, split='fit', transform=None) -> None:
         """
         Initializes the TS40K dataset
 

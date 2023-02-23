@@ -42,7 +42,7 @@ def get_colour_name(requested_colour):
     return actual_name, closest_name
 
 
-def plot_voxelgrid(grid:Union[np.ndarray, torch.Tensor], color_mode='density', title='VoxelGrid', visual=False, **kwargs):
+def plot_voxelgrid(grid:Union[np.ndarray, torch.Tensor], color_mode='density', title='VoxelGrid', visual=False, plot=True, **kwargs):
     """
     Plots voxel-grid.\\
     Color of the voxels depends on the values of each voxel;
@@ -62,6 +62,20 @@ def plot_voxelgrid(grid:Union[np.ndarray, torch.Tensor], color_mode='density', t
     
     `title` - str:
         Title for the visualization window of the voxelgrid
+
+    `visual` - bool:
+        If True, it shows a legend for the point cloud visualization
+
+    `plot` - bool:
+        If True, it plots the voxelgrid; if False, it returns the voxelgrid colored accordingly.
+
+
+    Returns
+    -------
+    if plot is True:
+        None
+    else:
+        colored pointcloud in (x, y, z, r, g, b) format
 
     """
 
@@ -119,9 +133,13 @@ def plot_voxelgrid(grid:Union[np.ndarray, torch.Tensor], color_mode='density', t
 
     else:
         ValueError(f"color_mode must be in ['coolwarm', 'ranges']; got {color_mode}")
+
    
     pcd = eda.np_to_ply(xyz[:, :-1])
-    eda.color_pointcloud(pcd, xyz[:, -1], class_color=class_colors)
+    xyz_colors = eda.color_pointcloud(pcd, xyz[:, -1], class_color=class_colors)
+
+    if not plot:
+        return np.concatenate((xyz[:, :-1], xyz_colors), axis=1)
 
     eda.visualize_ply([pcd], window_name=title)
 
@@ -185,58 +203,6 @@ def hist_on_voxel(xyz, voxelgrid_dims =(64, 64, 64), voxel_dims=None):
 
     return data
 
-def centroid_hist_on_voxel(xyz:np.ndarray, voxelgrid_dims =(64, 64, 64), voxel_dims=None) -> np.ndarray:
-    """
-    Voxelizes the point cloud xyz and calculates the 
-    centroid of each voxel along with its point density.\\
-
-    Parameters
-    ----------
-    `xyz` - numpy array:
-        Point cloud in (N, 3) format;
-
-    `voxegrid_dims` - tuple int:
-        Dimensions of the voxel grid to be applied to the point cloud
-
-    `voxel_dims` - tuple int:
-        Dimensions of the voxels that compose the voxel_grid that will encase the point cloud
-        if voxel_dims is not None, it overrides voxelgrid_dims;
-
-    
-    Returns
-    -------
-    `data` - np.ndarray with shape (4, `voxelgrid_dims`):\\
-        channel 0 - mean x coordinate\\
-        channel 1 - mean y coordinate\\
-        channel 2 - mean z coordinate\\
-        channel 3 - point density
-
-    """
-    
-    crop_tower_ply = eda.np_to_ply(xyz)
-    pynt, id = eda.voxelize_ply(crop_tower_ply, voxelgrid_dims=voxelgrid_dims, voxel_dims=voxel_dims, plot=False)
-    grid = pynt.structures[id]
-    grid_shape = grid.x_y_z
-
-    data = np.zeros((4, grid_shape[-1], grid_shape[0], grid_shape[1]), dtype=np.float)
-
-    voxs = pd.DataFrame({"vz": grid.voxel_z, "vx": grid.voxel_x, "vy": grid.voxel_y, 
-                        "x": xyz[:, 0], 'y': xyz[:, 1], 'z': xyz[:, 2], 
-                        "points": np.ones_like(grid.voxel_x, dtype=np.float)
-                        })
-    groups = voxs.groupby(["vz", "vx", "vy"]).agg({
-                                                    'x' : 'mean',
-                                                    'y' : 'mean',
-                                                    'z' : 'mean',
-                                                    'points' : 'count'
-                                                    })
-
-    for (z, x, y), centroid in groups.iterrows():
-        data[:, z, x, y] = np.array(centroid).astype(np.float)
-
-    data[3] = (data[3] - np.min(data[3])) / (np.max(data[3]) - np.min(data[3]))
-
-    return data
 
 def classes_on_voxel(xyz, labels, voxel_dims=(64, 64, 64)):
     """
@@ -334,68 +300,6 @@ def reg_on_voxel(xyz, labels, tower_label, voxelgrid_dims=(64, 64, 64), voxel_di
     return data
 
 
-def centroid_reg_on_voxel(xyz:np.ndarray, labels:np.ndarray, tower_label:int, voxelgrid_dims=(64, 64, 64), voxel_dims=None) -> np.ndarray:
-    """
-    Voxelizes the point cloud xyz and computes a regression ground-truth
-    for each voxel demonstrating the percentage of tower_points each voxel contains
-    along with the gt's centroid
-    \n
-    Parameters
-    ----------
-    `xyz` - numpy array:
-        point cloud in (N, 3) format.
-
-    `labels` - 1d numpy array:
-        point labels in (N,) format.
-
-    `voxelgrid_dims` - tuple int:
-        dimensions of the voxel_grid to be applied to the point cloud
-    
-    `voxel_dims` - tuple int:
-        Dimensions of the voxels that compose the voxel_grid that will encase the point cloud
-        if voxel_dims is not None, it overrides voxelgrid_dims;
-
-    Returns
-    -------
-    `data` - np.ndarray with shape (4, `voxelgrid_dims`):\\
-        channel 0 - mean x coordinate\\
-        channel 1 - mean y coordinate\\
-        channel 2 - mean z coordinate\\
-        channel 3 - ground truth tower point density
-    """
-
-    crop_tower_ply = eda.np_to_ply(xyz)
-    pynt, id = eda.voxelize_ply(crop_tower_ply, voxelgrid_dims=voxelgrid_dims, voxel_dims=voxel_dims, plot=False)
-    grid = pynt.structures[id]
-    grid_shape = grid.x_y_z
-
-    data = np.zeros((4, grid_shape[-1], grid_shape[0], grid_shape[1]))
-
-    voxs = pd.DataFrame({"vz": grid.voxel_z, "vx": grid.voxel_x, "vy": grid.voxel_y, 
-                         "x": xyz[:, 0], 'y': xyz[:, 1], 'z': xyz[:, 2], 
-                         "label" : labels.astype(np.float),
-                         "tower" : labels.astype(np.float)})
-
-    def count_towers(x):
-        group = np.array(x)
-        keep = np.array(tower_label).reshape(-1)
-        count = np.isin(group, keep)
-        return np.sum(count)
-
-    totals = voxs.groupby(["vz", "vx", "vy"]).agg({
-                                                'x' : 'mean',
-                                                'y' : 'mean',
-                                                'z' : 'mean',
-                                                'label': 'count', 
-                                                'tower': count_towers
-                                                })
-
-    for (z, x, y), row in totals.iterrows():
-        #row = np.array(row)
-        data[:, z, x, y] = np.array([row['x'], row['y'], row['z'], row["tower"] / row["label"]])
-
-    return data
-
 
 def prob_to_label(voxelgrid:Union[torch.Tensor, np.ndarray], tau:float) -> Union[torch.Tensor, np.ndarray]:
     """
@@ -419,30 +323,42 @@ def prob_to_label(voxelgrid:Union[torch.Tensor, np.ndarray], tau:float) -> Union
         return (voxelgrid >= tau).astype(voxelgrid.dtype)
 
 
-def vxg_to_xyz(vxg:torch.Tensor) -> np.ndarray:
+
+
+def vxg_to_xyz(vxg:torch.Tensor, origin = None, voxel_size = None) -> None:
     """
-    Converts voxel-grid (with centroid) to a raw point cloud.\\
+    Converts voxel-grid to a raw point cloud.\\
     The selected voxels to represent the raw point cloud have label == 1.0\n
 
     Parameters
     ----------
     `vxg` - torch.Tensor:
-        voxel-grid to be transformed with shape (4, voxelgrid_dims)\\
-        4 channels are required - (x, y, z, label)"
+        voxel-grid to be transformed with shape (64, 64, 64) for instance
+
+    `origin` - np.ndarray:
+        (3,) numpy array that encodes the origin of the voxel-grid
+
+    `voxel_size` - np.ndarray:
+        (3,) numpy array that encodes the voxel size of the voxel-grid
 
     Returns
     -------
     `points` - np.ndarray:
-        (N, 3) numpy array that encodes the raw pcd.
+        (N, 4) numpy array that encodes the raw pcd.
     """
+    # point_cloud_np = np.asarray([voxel_volume.origin + pt.grid_index*voxel_volume.voxel_size for pt in voxel_volume.get_voxels()])
 
-    if vxg.shape[0] != 4:
-        ValueError(f"Voxel-grid with incorrect format; 4 channels are required - (x, y, z, label)")
+    shape = vxg.shape
+    origin = np.array([0, 0, 0]) if origin is None else origin
+    voxel_size = np.array([1, 1, 1]) if voxel_size is None else voxel_size
+    grid_indexes = np.indices(shape).reshape(3, -1).T
 
-    #vxg[-1] is the label 
-    points = vxg[:-1, vxg[-1] == 1.0].T
+    points = origin + grid_indexes * voxel_size
 
-    return points.cpu().detach().numpy()
+    labels = np.array([vxg[tuple(index)] for index in grid_indexes])
+
+    return np.concatenate((points, labels.reshape(-1, 1)), axis=1)
+
 
 
 def visualize_pred_vs_gt(pred:np.ndarray, gt:np.ndarray, plot=True):
