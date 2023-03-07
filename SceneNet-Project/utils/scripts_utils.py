@@ -29,13 +29,20 @@ class ParseKwargs(argparse.Action):
             getattr(namespace, self.dest)[key] = value
 
 
-
 def fix_randomness(seed=0):
     np.random.seed(seed=seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     random.seed(seed)
     pl.seed_everything(hash("setting random seeds") % 2**32 - 1)
+
+
+def main_arg_parser():
+    parser = argparse.ArgumentParser(description="Process script arguments")
+
+    parser.add_argument('--wandb_sweep', action='store_true', default=None, help='If True, the script is run by wandb sweep')
+
+    return parser
 
 
 def _resolve_geneo_criterions(criterion_name):

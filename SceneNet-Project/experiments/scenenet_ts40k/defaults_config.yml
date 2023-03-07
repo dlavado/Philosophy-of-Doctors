@@ -19,9 +19,8 @@ voxel_grid_size:
   value: (64, 64, 64)
 voxel_size:
   value: None
-#dataset_params:
 num_workers:
-  value: 4
+  value: 8
 val_split:
   value: 0.1
 test_split:
@@ -43,13 +42,15 @@ kernel_size:
 # training config
 # ------------------ #
 optimizer:
-  value: 'sgd'
+  value: 'adam'
 learning_rate:
   value: 0.01
 max_epochs:
   value: -1 # -1 for infinite
 gpus:
   value: -1 # -1 for all available gpus
+early_stop_metric:
+  value: 'train_FBetaScore'
 # ------------------ #
 #criterion config
 # ------------------ #

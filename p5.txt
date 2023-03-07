@@ -6,9 +6,18 @@ rsync -Prav d.lavado@dicluster:soa_scenenet/scenenet_pipeline/torch_geneo/saved_
 
 rsync -Prav d.lavado@dicluster:PhD-Shenanigans/uncertainty/pipelines/unet_models/ ./uncertainty/pipelines/unet_models/
 
+
+
 rsync -Prav .  d.lavado@dicluster:PhD-Shenanigans
 
+rsync -Prav ./SceneNet-Project/  d.lavado@dicluster:PhD-Shenanigans/SceneNet-Project/
+
+
+
+
 rsync -Prav /media/didi/TOSHIBA\ EXT/SemKITTI/samples/ d.lavado@dicluster:~/SemKITTI/samples/
+
+rsync -Prav /media/didi/TOSHIBA\ EXT/TS40K-NEW/  d.lavado@dicluster:~/TS40K-NEW/
 
 Clip pwd : 
 7AvTmxlxb7qr!2

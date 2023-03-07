@@ -139,7 +139,7 @@ def plot_voxelgrid(grid:Union[np.ndarray, torch.Tensor], color_mode='density', t
     xyz_colors = eda.color_pointcloud(pcd, xyz[:, -1], class_color=class_colors)
 
     if not plot:
-        return np.concatenate((xyz[:, :-1], xyz_colors), axis=1)
+        return np.concatenate((xyz[:, :-1], xyz_colors*255), axis=1) # 255 to convert color to int8
 
     eda.visualize_ply([pcd], window_name=title)
 

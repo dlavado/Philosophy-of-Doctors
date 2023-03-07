@@ -38,14 +38,14 @@ class LitWrapperModel(pl.LightningModule):
         The reset() method is called at the end of each epoch and the update() method is called at the end of each step.
     """
 
-    def __init__(self, model:torch.nn.Module, criterion:torch.nn.Module, optimizer_name:str, learning_rate=1e-2, metric_initilizer=None):
+    def __init__(self, model:torch.nn.Module, criterion:torch.nn.Module, optimizer_name:str, learning_rate=1e-2, metric_initializer=None):
         super().__init__()
         self.model = model
         self.criterion = criterion
-        if metric_initilizer is not None:
-            self.train_metrics = metric_initilizer()
-            self.val_metrics = metric_initilizer()
-            self.test_metrics = metric_initilizer()
+        if metric_initializer is not None:
+            self.train_metrics = metric_initializer()
+            self.val_metrics = metric_initializer()
+            self.test_metrics = metric_initializer()
         else:
             self.train_metrics = None
             self.val_metrics = None
@@ -98,6 +98,12 @@ class LitWrapperModel(pl.LightningModule):
         self.log(f'test_loss', loss, logger=True)
         return pred, loss
     
+    def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> Any:
+        x, _ = batch
+        pred = self(x)
+
+        return pred
+    
     def test_epoch_end(self, outputs) -> None:
         if self.test_metrics is not None: # On epoch metric logging
             self._epoch_end_metric_logging(self.test_metrics, 'test')
@@ -139,11 +145,12 @@ class LitWrapperModel(pl.LightningModule):
 
 class LitSceneNet(LitWrapperModel):
 
-    def __init__(self, geneo_num:dict, kernel_size:Tuple[int], criterion:torch.nn.Module, optimizer:str, learning_rate=1e-2, metric_initilizer=None):
+    def __init__(self, geneo_num:dict, kernel_size:Tuple[int], criterion:torch.nn.Module, optimizer:str, learning_rate=1e-2, metric_initializer=None):
     
         model = SceneNet(geneo_num, kernel_size)
         self.save_hyperparameters('geneo_num', 'kernel_size')
-        super().__init__(model, criterion, optimizer, learning_rate, metric_initilizer)
+        self.logged_batch = False
+        super().__init__(model, criterion, optimizer, learning_rate, metric_initializer)
     
     def training_step(self, batch, batch_idx):
         # As this is a GENEO model, we need to pass the convex coefficients and the GENEO parameters to the loss function
@@ -161,7 +168,7 @@ class LitSceneNet(LitWrapperModel):
         # logging the GENEO parameters and the convex coefficients
         scenenet_params = self.model.get_dict_parameters()
         for name, param in scenenet_params.items():
-            self.log(f'scenenet_{name}', param, on_epoch=True, on_step=False, logger=True)
+            self.log(f'{name}', param, on_epoch=True, on_step=False, logger=True)
         return super().training_epoch_end(outputs)
     
     def validation_step(self, batch, batch_idx):
@@ -186,12 +193,13 @@ class LitSceneNet(LitWrapperModel):
         self.log(f'test_loss', loss, logger=True)
         return loss
     
+    
     # def on_after_backward(self) -> None:
     #   if self.trainer.global_step % 25 == 0:  # don't make the tf file huge
     #         self._check_model_gradients()
     
     def on_before_zero_grad(self, optimizer) -> None:
-        if self.trainer.global_step % 25 == 0:  # don't make the tf file huge
+        if self.trainer.current_epoch % 5 == 0 and self.trainer.global_step % 10 == 0:  # don't make the tf file huge
             self._check_model_gradients()
 
     def _log_pointcloud_wandb(self, pcd, input=None, gt=None, prefix='run'):
@@ -199,18 +207,22 @@ class LitSceneNet(LitWrapperModel):
         self.logger.experiment.log({f'{prefix}_point_cloud': point_clouds})
         #self.log(f'{prefix}_point_cloud', point_clouds, logger=True)
 
+    def on_validation_epoch_end(self) -> None:
+        self.logged_batch = False
+
     
     def on_validation_batch_end(self, outputs, batch: Any, batch_idx: int, dataloader_idx: int) -> None:
         # logging batch point clouds to wandb
-        if self.trainer.global_step % 25 == 0: 
+        if self.trainer.current_epoch % 10 == 0 and not self.logged_batch: 
             x, y = batch 
             pred = torch.squeeze(self(torch.unsqueeze(x[0], dim=0))).detach().cpu().numpy() # 1st batch sample
             pred = Vox.plot_voxelgrid(pred, color_mode='ranges', plot=False)
+            x = torch.squeeze(x[0]).detach().cpu().numpy()
+            x = Vox.plot_voxelgrid(x, color_mode='ranges', plot=False)
             y = torch.squeeze(y[0]).detach().cpu().numpy() # 1st batch sample
             y = Vox.plot_voxelgrid(y, color_mode='ranges', plot=False)
-            assert pred.shape == y.shape
-            assert pred.shape[-1] == 6 # 6 channels, xyzrgb
             self._log_pointcloud_wandb(pred, x, y, prefix=f'val_{self.trainer.global_step}')
+            self.logged_batch = True
 
     @staticmethod
     def add_model_specific_args(parent_parser):

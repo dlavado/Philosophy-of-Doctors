@@ -111,7 +111,7 @@ class GENEO_Loss(WeightedMSE):
 
 class GENEO_Dice_BCE(GENEO_Loss):
 
-    def __init__(self, targets=..., weighting_scheme_path=..., weight_alpha=1, weight_epsilon=0.1, mse_weight=1, convex_weight=1, reduction='mean', **kwargs) -> None:
+    def __init__(self, targets=None, weighting_scheme_path=None, weight_alpha=1, weight_epsilon=0.1, mse_weight=1, convex_weight=1, reduction='mean', **kwargs) -> None:
         super().__init__(targets, weighting_scheme_path, weight_alpha, weight_epsilon, mse_weight, convex_weight, **kwargs)
 
 
@@ -130,7 +130,7 @@ class GENEO_Dice_BCE(GENEO_Loss):
 
 class GENEO_Dice_Loss(GENEO_Loss):
 
-    def __init__(self, targets=..., weighting_scheme_path=..., weight_alpha=1, weight_epsilon=0.1, mse_weight=1, convex_weight=1, **kwargs) -> None:
+    def __init__(self, targets=None, weighting_scheme_path=None, weight_alpha=1, weight_epsilon=0.1, mse_weight=1, convex_weight=1, **kwargs) -> None:
        
         super().__init__(targets, weighting_scheme_path, weight_alpha, weight_epsilon, mse_weight, convex_weight, **kwargs)
         self.dice = BinaryDiceLoss()
@@ -144,7 +144,7 @@ class GENEO_Dice_Loss(GENEO_Loss):
 
 class GENEO_Tversky_Loss(GENEO_Loss):
 
-    def __init__(self, targets=..., weighting_scheme_path=..., weight_alpha=1, weight_epsilon=0.1, mse_weight=1, convex_weight=1, tversky_alpha=0.5, tversky_beta=1, focal_gamma=1, tversky_smooth=1, **kwargs) -> None:
+    def __init__(self, targets=None, weighting_scheme_path=None, weight_alpha=1, weight_epsilon=0.1, mse_weight=1, convex_weight=1, tversky_alpha=0.5, tversky_beta=1, focal_gamma=1, tversky_smooth=1, **kwargs) -> None:
         
         super().__init__(targets, weighting_scheme_path, weight_alpha, weight_epsilon, mse_weight, convex_weight, **kwargs)
 

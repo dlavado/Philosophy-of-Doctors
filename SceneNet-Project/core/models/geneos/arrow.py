@@ -121,7 +121,7 @@ class cone_kernel(GENEO_kernel_torch):
 
         geneo_params = {
             'radius' : torch.randint(1, k_size[1], (1,))[0] / 2 ,
-            'apex': torch.randint(k_size[0]/2, k_size[0]-1, (1,))[0],
+            'apex': torch.randint(int(k_size[0]/2), k_size[0]-1, (1,))[0],
             'cone_radius' : torch.randint(1, k_size[1], (1,))[0] / 2,
             'cone_inc' : torch.rand(1,)[0], #float \in [0, 1]
             'sigma' : torch.randint(5, 10, (1,))[0] / 5 #float \in [1, 2]

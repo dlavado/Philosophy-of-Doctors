@@ -206,20 +206,21 @@ class TS40K(Dataset):
 
         sample = (npy[:, 0:-1], npy[:, -1]) # xyz-coord (N, 3); label (N,) 
 
-        try:
-            if self.transform:
-                sample = self.transform(sample)
-            else:
-                sample = (npy[None, :, 0:-1], npy[None, :, -1]) # xyz-coord (1, N, 3); label (1, N) 
-        
-        except:
-            print(f"Corrupted or Empty Sample: {npy_path}, loading noise instead")
+        while True: # there is a bug with the dataloader or the data is corrupted, idk why it happens
 
-            if self.transform:
-                sample = (np.random.normal(0, 1, (100, 3)), np.random.normal(0, 1, 100))
-                sample = self.transform(sample)
-            else:
-                sample = (np.random.normal(0, 1, (1, 100, 3)), np.random.normal(0, 1, (1, 100))) #batch dim
+            try:
+                if self.transform:
+                    return self.transform(sample)
+                else:
+                    return (npy[None, :, 0:-1], npy[None, :, -1]) # xyz-coord (1, N, 3); label (1, N) 
+            
+            except:
+
+                print(f"Corrupted or Empty Sample: {npy_path}, loading random sample instead...")
+
+                npy_path = os.path.join(self.dataset_path, self.npy_files[random.randint(0, len(self))])
+                npy = np.load(npy_path)
+                sample = (npy[:, 0:-1], npy[:, -1])
 
         return sample
             

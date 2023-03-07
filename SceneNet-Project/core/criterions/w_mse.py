@@ -23,7 +23,7 @@ HIST_PATH = os.path.join(os.getcwd(), 'hist_estimation.pickle')
 
 class WeightedMSE(torch.nn.Module):
 
-    def __init__(self, targets=torch.tensor([]), weighting_scheme_path=HIST_PATH, weight_alpha=1, weight_epsilon=0.1, mse_weight=1, **kwargs) -> None:
+    def __init__(self, targets=None, weighting_scheme_path=HIST_PATH, weight_alpha=1, weight_epsilon=0.1, mse_weight=1, **kwargs) -> None:
         """
 
         Weighted MSE criterion.
@@ -59,10 +59,12 @@ class WeightedMSE(torch.nn.Module):
         if weighting_scheme_path is not None and os.path.exists(weighting_scheme_path):
             self.pik_name = weighting_scheme_path
             self.freqs, self.ranges = load_pickle(self.pik_name)
-        else:
+        elif targets is not None:
             print("calculating histogram estimation...")
             self.freqs, self.ranges = self.hist_frequency_estimation(torch.flatten(targets), plot=False)
             save_pickle((self.freqs, self.ranges), f"{os.path.join('.', 'hist_estimation.pickle')}")
+        else:
+            ValueError("No targets were provided to build the weighting scheme")
         self.freqs = self.freqs.to(self.device)
         self.ranges = self.ranges.to(self.device)
 

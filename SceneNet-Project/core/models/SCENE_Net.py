@@ -102,7 +102,7 @@ class GENEO_Layer(nn.Module):
 
     def compute_kernel(self) -> torch.Tensor:
         geneo = self.geneo_class(self.name, self.kernel_size, plot=self.plot, **self.geneo_params)
-        kernel = geneo.kernel.to(self.device, dtype=torch.double)
+        kernel = geneo.kernel.to(dtype=torch.double)
         return kernel.view(1, *kernel.shape)
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
