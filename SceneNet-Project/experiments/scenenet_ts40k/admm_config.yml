@@ -42,9 +42,9 @@ kernel_size:
 # training config
 # ------------------ #
 optimizer:
-  value: 'adam'
+  value: 'LBFGS' #'sgd' 
 learning_rate:
-  value: 0.001
+  value: 0.8
 max_epochs:
   value: -1 # -1 for infinite
 gpus:
@@ -55,7 +55,7 @@ early_stop_metric:
 #criterion config
 # ------------------ #
 criterion:
-  value: 'geneo_tversky'
+  value: 'focal_tversky'
 weighting_scheme_path:
   value: 'core/criterions/hist_estimation.pickle'
 #criterion_params: # possible criterion params and their values
@@ -105,4 +105,7 @@ checkpoint_every_n_epochs: # This parameter and the next one are mutually exclus
   value: 1 # every n epochs
 checkpoint_every_n_steps:
   value: 0 # every n steps
-  
+
+
+admm_rho:
+  value: 1.0

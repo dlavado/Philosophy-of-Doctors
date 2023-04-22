@@ -1,7 +1,7 @@
 
 from datetime import datetime
 from pprint import pprint
-from typing import List
+from typing import List, Mapping
 import warnings
 import numpy as np
 import sys
@@ -27,10 +27,15 @@ from pytorch_lightning.loggers import WandbLogger
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 
-from constants import ROOT_PROJECT, TS40K_PATH, WEIGHT_SCHEME_PATH, get_experiment_config_path, get_experiment_path
+import constants
 
 import utils.pcd_processing as eda
 import utils.scripts_utils as su
+
+from core.admm_utils.admm_constraints import Arrow_Constraint, Constraint, Convexity_Constraint, Cylinder_Constraint, Nonnegativity_Constraint
+from core.criterions.admm_loss import ADMM_Loss
+from core.criterions.constrained_loss import Constrained_Loss
+
 
 import core.lit_modules.lit_callbacks as lit_callbacks
 import core.lit_modules.lit_model_wrappers as lit_models
@@ -52,6 +57,9 @@ DONE: SCENE NET parameter watch from histograms to line plots
 DONE: update sweeps and ensure that sweeps are working
 DONE: code the GENEO layer differently to try and get a better propragation of the gradients
 """
+
+
+
 
 
 def init_callbacks(ckpt_dir):
@@ -93,7 +101,7 @@ def init_callbacks(ckpt_dir):
 
     early_stop_callback = EarlyStopping(monitor=wandb.config.early_stop_metric, 
                                         min_delta=0.00, 
-                                        patience=25, 
+                                        patience=30, 
                                         verbose=False, 
                                         mode="max")
 
@@ -102,18 +110,18 @@ def init_callbacks(ckpt_dir):
     return callbacks
 
 
-def init_model(criterion, ckpt_path):
+def init_model(model_wrapper_class, criterion, ckpt_path):
 
     if wandb.config.resume_from_checkpoint:
         if not os.path.exists(ckpt_path):
             raise FileNotFoundError(f"Checkpoint {ckpt_path} does not exist.")
         
         print(f"Resuming from checkpoint {ckpt_path}")
-        model = lit_models.LitSceneNet.load_from_checkpoint(ckpt_path,
-                                                            criterion=criterion,
-                                                            optimizer=wandb.config.optimizer,
-                                                            learning_rate=wandb.config.learning_rate,
-                                                            metric_initilizer=su.init_metrics)
+        model = model_wrapper_class.load_from_checkpoint(ckpt_path,
+                                                        criterion=criterion,
+                                                        optimizer=wandb.config.optimizer,
+                                                        learning_rate=wandb.config.learning_rate,
+                                                        metric_initilizer=su.init_metrics)
     else:
         # Model definition
         geneo_config = {
@@ -122,12 +130,12 @@ def init_model(criterion, ckpt_path):
             'neg'  : wandb.config.neg_sphere_geneo, 
         }
 
-        model = lit_models.LitSceneNet(geneo_config,
-                                       ast.literal_eval(wandb.config.kernel_size),
-                                       criterion,
-                                       wandb.config.optimizer,
-                                       wandb.config.learning_rate,
-                                       su.init_metrics)
+        model = model_wrapper_class(geneo_config,
+                                    ast.literal_eval(wandb.config.kernel_size),
+                                    criterion,
+                                    wandb.config.optimizer,
+                                    wandb.config.learning_rate,
+                                    su.init_metrics)
         
     return model
 
@@ -148,6 +156,26 @@ def init_data(data_path):
     
     return data_module
 
+
+def set_up_admm_criterion(base_criterion, model:lit_models.LitSceneNet_ADMM, constraints:Mapping[str, Constraint]):
+
+    return ADMM_Loss(base_criterion, 
+                     constraints, 
+                     model.get_model_parameters(), 
+                     wandb.config.admm_rho,
+                     wandb.config.admm_rho_update_factor,
+                     wandb.config.admm_rho_max,
+                     wandb.config.admm_stepsize,
+                     wandb.config.admm_stepsize_update_factor
+            )
+
+
+def set_up_penalty_criterion(base_criterion, constraints):
+
+    return Constrained_Loss(base_criterion, constraints)
+
+
+
 def main():
     # ------------------------
     # 1 INIT CALLBACKS
@@ -163,8 +191,21 @@ def main():
     callbacks = init_callbacks(ckpt_dir)
 
     # ------------------------
-    # 2 INIT TRAINING CRITERION
+    # 2 INIT MODEL
     # ------------------------
+    if wandb.config.convergence_mode.lower() == 'admm':
+        model = init_model(lit_models.LitSceneNet_ADMM, None, ckpt_path)
+    elif wandb.config.convergence_mode.lower() == 'penalty':
+        model = init_model(lit_models.LitSceneNet_Penalty, None, ckpt_path)
+    elif wandb.config.convergence_mode.lower() == 'auglag':
+        model = init_model(lit_models.LitSceneNet_AugLag, None, ckpt_path)
+    else:
+        raise ValueError(f"Convergence mode {wandb.config.convergence_mode} not recognized.")
+   
+    # ------------------------
+    # 3 INIT TRAINING CRITERION
+    # ------------------------
+
 
     weighting_scheme_path = wandb.config.weighting_scheme_path
 
@@ -175,6 +216,9 @@ def main():
         print(f"Weighting scheme path {weighting_scheme_path} does not exist. Using default scheme.")
         weighting_scheme_path = WEIGHT_SCHEME_PATH
         wandb.config.update({"weighting_scheme_path": weighting_scheme_path}, allow_val_change=True)
+    if not os.path.exists(weighting_scheme_path): # if the path still does not exist
+        ValueError(f"Weighting scheme path {weighting_scheme_path} does not exist.")
+
 
     criterion_params = {
         'weighting_scheme_path' : weighting_scheme_path,
@@ -189,14 +233,26 @@ def main():
     }
 
     criterion_class = su.resolve_criterion(wandb.config.criterion)
-    criterion = criterion_class(**criterion_params)
+    base_criterion = criterion_class(**criterion_params)
 
-    # ------------------------
-    # 3 INIT MODEL
-    # ------------------------
 
-    model = init_model(criterion, ckpt_path)
+    constraints = {
+        'arrow'         : Arrow_Constraint(),
+        'cylinder'      : Cylinder_Constraint(kernel_height=ast.literal_eval(wandb.config.kernel_size)[1]),
+        'convexity'     : Convexity_Constraint(),
+        'nonnegativity' : Nonnegativity_Constraint(),
+    }
 
+
+    if wandb.config.convergence_mode.lower() == 'admm':
+        criterion = set_up_admm_criterion(base_criterion, model, constraints)
+        model.criterion = criterion # dynamically set up model criterion
+    elif wandb.config.convergence_mode.lower() == 'penalty':
+        criterion = set_up_penalty_criterion(base_criterion, constraints)
+        model.criterion = criterion # dynamically set up model criterion
+    elif not wandb.config.convergence_mode.lower() == 'auglag':
+        raise ValueError(f"Convergence mode {wandb.config.convergence_mode} not recognized.")
+    
     # ------------------------
     # 4 INIT DATA MODULE
     # ------------------------
@@ -224,6 +280,7 @@ def main():
     trainer = pl.Trainer(
         logger=wandb_logger,
         callbacks=callbacks,
+        detect_anomaly=True,
         max_epochs=wandb.config.max_epochs,
         gpus=wandb.config.gpus,
         #fast_dev_run = wandb.config.fast_dev_run,
@@ -231,12 +288,14 @@ def main():
         auto_scale_batch_size=wandb.config.auto_scale_batch_size,
         profiler=wandb.config.profiler,
         enable_model_summary=True,
-        accumulate_grad_batches = wandb.config.accumulate_grad_batches
+        accumulate_grad_batches = ast.literal_eval(wandb.config.accumulate_grad_batches),
         #resume_from_checkpoint=ckpt_path
     )
 
-    #if wandb.config.auto_lr_find or wandb.config.auto_scale_batch_size:
-        #trainer.tune(model, data_module) # auto_lr_find and auto_scale_batch_size
+    # if wandb.config.auto_lr_find or wandb.config.auto_scale_batch_size:
+    #     trainer.tune(model, data_module) # auto_lr_find and auto_scale_batch_size
+    #     print(f"Learning rate in use is: {model.hparams.learning_rate}")
+
 
     trainer.fit(model, data_module)
 
@@ -266,8 +325,22 @@ def main():
     trainer.test(model, 
                  datamodule=data_module,
                  ckpt_path=ckpt_path) # use the last checkpoint
+    
 
 if __name__ == '__main__':
+    import pathlib
+    #from constants import ROOT_PROJECT, TS40K_PATH, WEIGHT_SCHEME_PATH
+    ROOT_PROJECT = pathlib.Path(__file__).resolve().parent.parent
+    
+    if "didi" in str(ROOT_PROJECT):
+        EXT_PATH = "/media/didi/TOSHIBA EXT/"
+    else:
+        EXT_PATH = "/home/d.lavado/" #cluster data dir
+
+
+    TS40K_PATH = os.path.join(EXT_PATH, 'TS40K-NEW/')
+    WEIGHT_SCHEME_PATH = os.path.join(ROOT_PROJECT, 'core/criterions/hist_estimation.pickle')
+    EXPERIMENTS_PATH = os.path.join(ROOT_PROJECT, 'experiments')
 
     # --------------------------------
     su.fix_randomness()
@@ -275,14 +348,23 @@ if __name__ == '__main__':
 
     main_parser = su.main_arg_parser().parse_args()
 
-    model_name = 'scenenet'
+    method = main_parser.method
+    model_name = 'admm'
     dataset_name = 'ts40k'
     project_name = f"{model_name}_{dataset_name}"
 
-    config_path = get_experiment_config_path(model_name, dataset_name)
-    experiment_path = get_experiment_path(model_name, dataset_name)
+    run_name = f"{project_name}_{method}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
-    os.environ["WANDB_DIR"] = os.path.abspath(os.path.join(experiment_path, 'wandb'))
+    #config_path = get_experiment_config_path(model_name, dataset_name)
+    experiment_path = os.path.join(EXPERIMENTS_PATH, f"{model_name}_{dataset_name}")
+    # print(pathlib.Path(__file__).resolve().parent.parent)
+    # print(f"Experiment path: {experiment_path}")
+    # print(ROOT_PROJECT)
+    
+    # input("Press Enter to continue...")
+
+
+    os.environ["WANDB_DIR"] = os.path.abspath(experiment_path)
 
     # raw_config = yaml.safe_load(open(config_path))
     # pprint(raw_config)
@@ -294,19 +376,20 @@ if __name__ == '__main__':
     if main_parser.wandb_sweep: 
         #sweep mode
         print("wandb sweep.")
-        wandb.init(project=project_name, 
+        wandb.init(project = project_name, 
                 dir = experiment_path,
-                name = f'{project_name}_{datetime.now().strftime("%Y%m%d-%H%M%S")}',
+                name = run_name,
         )
     else:
         # default mode
-        sweep_config = os.path.join(experiment_path, 'defaults_config.yml')
+        sweep_config = os.path.join(experiment_path, 'admm_config.yml')
+        print(f"Loading config from {sweep_config}")
 
         print("wandb init.")
 
         wandb.init(project=project_name, 
                 dir = experiment_path,
-                name = f'{project_name}_{datetime.now().strftime("%Y%m%d-%H%M%S")}',
+                name = run_name,
                 config=sweep_config,
                 #mode='disabled'
         )

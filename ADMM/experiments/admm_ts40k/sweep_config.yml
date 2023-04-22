@@ -1,0 +1,145 @@
+
+# Description: config file for default parameters of scenenet_ts40k experiment
+# Author: Diogo Mateus
+
+program: admm_main.py
+method: random
+metric:
+  goal: maximize
+  name: val_FBetaScore 
+project: 'admm_ts40k'
+command:
+  #- ${env}
+  - python3
+  - ${program}
+  - --wandb_sweep 
+  - --method 
+  - admm
+  #- ${args}
+parameters:
+  group:
+    value: 'ADMM'
+  output_dir: 
+    value: 'experiments/admm_ts40k/outputs'
+  # ------------------ #
+  # dataset config
+  # ------------------ #
+  dataset:
+    value: 'ts40k'
+  data_path:
+    value: ''
+  batch_size:
+    value: 64
+  voxel_grid_size:
+    value: (64, 64, 64)
+  voxel_size:
+    value: None
+  num_workers:
+    value: 8
+  val_split:
+    value: 0.1
+  test_split:
+    value: 0.3
+  # ------------------ #
+  # model config
+  # ------------------ #
+  model:
+    value: 'scenenet'
+  cylinder_geneo:
+    value: 1
+  arrow_geneo:
+    value: 1
+  neg_sphere_geneo:
+    value: 1
+  kernel_size:
+    value: '(9, 7, 7)'
+  # ------------------ #
+  # training config
+  # ------------------ #
+  optimizer:
+    value: 'adam' #'adam' 
+  learning_rate:
+    min: 0.01
+    max: 0.2
+  max_epochs:
+    value: 80 # -1 for infinite
+  gpus:
+    value: -1 # -1 for all available gpus
+  early_stop_metric:
+    value: 'train_FBetaScore'
+  # ------------------ #
+  #criterion config
+  # ------------------ #
+  criterion:
+    value: 'focal_tversky'
+  weighting_scheme_path:
+    value: 'core/criterions/hist_estimation.pickle'
+  #criterion_params: # possible criterion params and their values
+  weight_alpha:
+    value: 1
+  weight_epsilon:
+    value: 0.1
+  mse_weight:
+    value: 1
+  convex_weight:
+    value: 1
+  tversky_alpha:
+    values: [0.5, 1]
+  tversky_beta:
+    values: [0.5, 1]
+  tversky_smooth:
+    value: 1.0e-6
+  focal_gamma:
+    value: 1
+  # ------------------ #
+  # Lit Trainer config
+  # ------------------ #
+  fast_dev_run:
+    value: True
+  precision: # 16 or 32 FPU precision
+    value: 16
+  auto_lr_find:
+    value: True
+  auto_scale_batch_size:
+    value: False
+  profiler:
+    value: False
+  accumulate_grad_batches:
+    value: None
+  save_onnx:
+    value: False
+  # ------------------ #
+  # Checkpoint config
+  # ------------------ #
+  resume_from_checkpoint:
+    value: False
+  checkpoint_dir:
+    value: /home/didi/VSCode/PhD-Shenanigans/SceneNet-Project/experiments/scenenet_ts40k/wandb/run-20230217_161733-bwsbqxgs/files/checkpoints
+  resume_checkpoint_name:
+    value: FBetaScore # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+  checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
+    value: 1 # every n epochs
+  checkpoint_every_n_steps:
+    value: 0 # every n steps
+  # ------------------ #
+  # ADMM config
+  # ------------------ #
+  convergence_mode:
+    value: 'admm' # 'admm' or 'penalty' or 'auglag'
+    # description: 'Convergence mode of the ADMM algorithm'
+  admm_rho:
+    values: [0.1, 0.5, 1.0]
+    # description: 'Initial value of the penalty parameter of the augmented Lagrangian method'
+  admm_rho_update_factor:
+    value: 1.0
+    #description: 'Factor by which the penalty parameter is updated'
+  admm_stepsize:
+    values: [1.0, 10.0, 100]
+    #description: 'Step size of the ADMM algorithm'
+  admm_stepsize_update_factor:
+    value: 0.5
+    #description: 'Factor by which the step size is updated'
+  admm_rho_max:
+    value: 10
+    #description: 'Maximum value of the penalty parameter'
+    

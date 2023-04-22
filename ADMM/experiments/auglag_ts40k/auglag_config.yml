@@ -3,9 +3,9 @@
 # Author: Diogo Mateus
 
 group:
-  value: 'scenenet_ts40k_test'
+  value: 'auglag'
 output_dir: 
-  value: 'experiments/scenenet_ts40k/outputs'
+  value: 'experiments/auglag/outputs'
 # ------------------ #
 # dataset config
 # ------------------ #
@@ -42,11 +42,11 @@ kernel_size:
 # training config
 # ------------------ #
 optimizer:
-  value: 'adam'
+  value: 'LBFGS' #'sgd' 
 learning_rate:
-  value: 0.001
+  value: 0.1
 max_epochs:
-  value: -1 # -1 for infinite
+  value: 10 # -1 for infinite
 gpus:
   value: -1 # -1 for all available gpus
 early_stop_metric:
@@ -55,7 +55,7 @@ early_stop_metric:
 #criterion config
 # ------------------ #
 criterion:
-  value: 'geneo_tversky'
+  value: 'focal_tversky'
 weighting_scheme_path:
   value: 'core/criterions/hist_estimation.pickle'
 #criterion_params: # possible criterion params and their values
@@ -82,16 +82,20 @@ fast_dev_run:
   value: True
 precision: # 16 or 32 FPU precision
   value: 16
+  description: 'FPU precision'
 auto_lr_find:
   value: True
 auto_scale_batch_size:
   value: False
 profiler:
   value: False
+  description: 'PyTorch Lightning profiler'
 accumulate_grad_batches:
-  value: 1
+  value: None
+  description: 'Accumulate gradients on k batches before performing a backward pass'
 save_onnx:
   value: False
+  description: 'Save model in onnx format'
 # ------------------ #
 # Checkpoint config
 # ------------------ #
@@ -105,4 +109,22 @@ checkpoint_every_n_epochs: # This parameter and the next one are mutually exclus
   value: 1 # every n epochs
 checkpoint_every_n_steps:
   value: 0 # every n steps
+
+  
+
+convergence_mode:
+  value: 'admm' # 'admm' or 'penalty' or 'auglag'
+  description: 'Convergence mode of the ADMM algorithm'
+admm_rho:
+  value: 1.0
+  description: 'Initial value of the penalty parameter of the augmented Lagrangian method'
+admm_rho_update_factor:
+  value: 1.1
+  description: 'Factor by which the penalty parameter is updated'
+admm_rho_max:
+  value: 10
+  description: 'Maximum value of the penalty parameter'
+convergence_iterations:
+  value: 10
+  description: 'Number of iterations of the Augmented Lagrangian method to reach convergence'
   

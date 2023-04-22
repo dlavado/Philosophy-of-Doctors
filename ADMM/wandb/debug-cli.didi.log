@@ -1,0 +1,236 @@
+2023-04-04 16:17:03 ERROR 400 response executing GraphQL.
+2023-04-04 16:17:03 ERROR {"errors":[{"message":"Invalid sweep config: invalid hyperparameter configuration: accumulate_grad_batches","path":["upsertSweep"]}],"data":{"upsertSweep":null}}
+2023-04-04 16:17:03 ERROR Traceback (most recent call last):
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/lib/retry.py", line 131, in __call__
+    result = self._call_fn(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 242, in execute
+    return self.client.execute(*args, **kwargs)  # type: ignore
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 52, in execute
+    result = self._get_result(document, *args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 60, in _get_result
+    return self.transport.execute(document, *args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/transport/requests.py", line 39, in execute
+    request.raise_for_status()
+  File "/home/didi/.local/lib/python3.8/site-packages/requests/models.py", line 953, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 400 Client Error: Bad Request for url: https://api.wandb.ai/graphql
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/normalize.py", line 26, in wrapper
+    return func(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2298, in upsert_sweep
+    raise e
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2283, in upsert_sweep
+    response = self.gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 214, in gql
+    ret = self._retry_gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/lib/retry.py", line 147, in __call__
+    retry_timedelta_triggered = check_retry_fn(e)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/util.py", line 991, in no_retry_4xx
+    raise UsageError(body["errors"][0]["message"])
+wandb.errors.UsageError: Invalid sweep config: invalid hyperparameter configuration: accumulate_grad_batches
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/cli/cli.py", line 102, in wrapper
+    return func(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/cli/cli.py", line 960, in sweep
+    sweep_id, warnings = api.upsert_sweep(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/internal.py", line 102, in upsert_sweep
+    return self.api.upsert_sweep(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/normalize.py", line 64, in wrapper
+    raise CommError(message, err).with_traceback(sys.exc_info()[2])
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/normalize.py", line 26, in wrapper
+    return func(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2298, in upsert_sweep
+    raise e
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2283, in upsert_sweep
+    response = self.gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 214, in gql
+    ret = self._retry_gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/lib/retry.py", line 147, in __call__
+    retry_timedelta_triggered = check_retry_fn(e)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/util.py", line 991, in no_retry_4xx
+    raise UsageError(body["errors"][0]["message"])
+wandb.errors.CommError: Invalid sweep config: invalid hyperparameter configuration: accumulate_grad_batches
+
+2023-04-04 16:17:37 ERROR 400 response executing GraphQL.
+2023-04-04 16:17:37 ERROR {"errors":[{"message":"Invalid sweep config: invalid hyperparameter configuration: accumulate_grad_batches","path":["upsertSweep"]}],"data":{"upsertSweep":null}}
+2023-04-04 16:17:37 ERROR Traceback (most recent call last):
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/lib/retry.py", line 131, in __call__
+    result = self._call_fn(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 242, in execute
+    return self.client.execute(*args, **kwargs)  # type: ignore
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 52, in execute
+    result = self._get_result(document, *args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 60, in _get_result
+    return self.transport.execute(document, *args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/transport/requests.py", line 39, in execute
+    request.raise_for_status()
+  File "/home/didi/.local/lib/python3.8/site-packages/requests/models.py", line 953, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 400 Client Error: Bad Request for url: https://api.wandb.ai/graphql
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/normalize.py", line 26, in wrapper
+    return func(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2298, in upsert_sweep
+    raise e
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2283, in upsert_sweep
+    response = self.gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 214, in gql
+    ret = self._retry_gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/lib/retry.py", line 147, in __call__
+    retry_timedelta_triggered = check_retry_fn(e)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/util.py", line 991, in no_retry_4xx
+    raise UsageError(body["errors"][0]["message"])
+wandb.errors.UsageError: Invalid sweep config: invalid hyperparameter configuration: accumulate_grad_batches
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/cli/cli.py", line 102, in wrapper
+    return func(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/cli/cli.py", line 960, in sweep
+    sweep_id, warnings = api.upsert_sweep(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/internal.py", line 102, in upsert_sweep
+    return self.api.upsert_sweep(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/normalize.py", line 64, in wrapper
+    raise CommError(message, err).with_traceback(sys.exc_info()[2])
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/normalize.py", line 26, in wrapper
+    return func(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2298, in upsert_sweep
+    raise e
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2283, in upsert_sweep
+    response = self.gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 214, in gql
+    ret = self._retry_gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/lib/retry.py", line 147, in __call__
+    retry_timedelta_triggered = check_retry_fn(e)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/util.py", line 991, in no_retry_4xx
+    raise UsageError(body["errors"][0]["message"])
+wandb.errors.CommError: Invalid sweep config: invalid hyperparameter configuration: accumulate_grad_batches
+
+2023-04-04 16:19:47 ERROR 400 response executing GraphQL.
+2023-04-04 16:19:47 ERROR {"errors":[{"message":"Invalid sweep config: invalid hyperparameter configuration: admm_rho","path":["upsertSweep"]}],"data":{"upsertSweep":null}}
+2023-04-04 16:19:47 ERROR Traceback (most recent call last):
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/lib/retry.py", line 131, in __call__
+    result = self._call_fn(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 242, in execute
+    return self.client.execute(*args, **kwargs)  # type: ignore
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 52, in execute
+    result = self._get_result(document, *args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 60, in _get_result
+    return self.transport.execute(document, *args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/transport/requests.py", line 39, in execute
+    request.raise_for_status()
+  File "/home/didi/.local/lib/python3.8/site-packages/requests/models.py", line 953, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 400 Client Error: Bad Request for url: https://api.wandb.ai/graphql
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/normalize.py", line 26, in wrapper
+    return func(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2298, in upsert_sweep
+    raise e
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2283, in upsert_sweep
+    response = self.gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 214, in gql
+    ret = self._retry_gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/lib/retry.py", line 147, in __call__
+    retry_timedelta_triggered = check_retry_fn(e)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/util.py", line 991, in no_retry_4xx
+    raise UsageError(body["errors"][0]["message"])
+wandb.errors.UsageError: Invalid sweep config: invalid hyperparameter configuration: admm_rho
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/cli/cli.py", line 102, in wrapper
+    return func(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/cli/cli.py", line 960, in sweep
+    sweep_id, warnings = api.upsert_sweep(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/internal.py", line 102, in upsert_sweep
+    return self.api.upsert_sweep(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/normalize.py", line 64, in wrapper
+    raise CommError(message, err).with_traceback(sys.exc_info()[2])
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/normalize.py", line 26, in wrapper
+    return func(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2298, in upsert_sweep
+    raise e
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2283, in upsert_sweep
+    response = self.gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 214, in gql
+    ret = self._retry_gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/lib/retry.py", line 147, in __call__
+    retry_timedelta_triggered = check_retry_fn(e)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/util.py", line 991, in no_retry_4xx
+    raise UsageError(body["errors"][0]["message"])
+wandb.errors.CommError: Invalid sweep config: invalid hyperparameter configuration: admm_rho
+
+2023-04-04 16:21:29 ERROR 400 response executing GraphQL.
+2023-04-04 16:21:29 ERROR {"errors":[{"message":"Invalid sweep config: invalid hyperparameter configuration: accumulate_grad_batches","path":["upsertSweep"]}],"data":{"upsertSweep":null}}
+2023-04-04 16:21:30 ERROR Traceback (most recent call last):
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/lib/retry.py", line 131, in __call__
+    result = self._call_fn(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 242, in execute
+    return self.client.execute(*args, **kwargs)  # type: ignore
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 52, in execute
+    result = self._get_result(document, *args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/client.py", line 60, in _get_result
+    return self.transport.execute(document, *args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/vendor/gql-0.2.0/wandb_gql/transport/requests.py", line 39, in execute
+    request.raise_for_status()
+  File "/home/didi/.local/lib/python3.8/site-packages/requests/models.py", line 953, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 400 Client Error: Bad Request for url: https://api.wandb.ai/graphql
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/normalize.py", line 26, in wrapper
+    return func(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2298, in upsert_sweep
+    raise e
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2283, in upsert_sweep
+    response = self.gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 214, in gql
+    ret = self._retry_gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/lib/retry.py", line 147, in __call__
+    retry_timedelta_triggered = check_retry_fn(e)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/util.py", line 991, in no_retry_4xx
+    raise UsageError(body["errors"][0]["message"])
+wandb.errors.UsageError: Invalid sweep config: invalid hyperparameter configuration: accumulate_grad_batches
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/cli/cli.py", line 102, in wrapper
+    return func(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/cli/cli.py", line 960, in sweep
+    sweep_id, warnings = api.upsert_sweep(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/internal.py", line 102, in upsert_sweep
+    return self.api.upsert_sweep(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/normalize.py", line 64, in wrapper
+    raise CommError(message, err).with_traceback(sys.exc_info()[2])
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/apis/normalize.py", line 26, in wrapper
+    return func(*args, **kwargs)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2298, in upsert_sweep
+    raise e
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 2283, in upsert_sweep
+    response = self.gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/internal/internal_api.py", line 214, in gql
+    ret = self._retry_gql(
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/sdk/lib/retry.py", line 147, in __call__
+    retry_timedelta_triggered = check_retry_fn(e)
+  File "/home/didi/.local/lib/python3.8/site-packages/wandb/util.py", line 991, in no_retry_4xx
+    raise UsageError(body["errors"][0]["message"])
+wandb.errors.CommError: Invalid sweep config: invalid hyperparameter configuration: accumulate_grad_batches
+

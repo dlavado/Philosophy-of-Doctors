@@ -32,6 +32,9 @@ from constants import ROOT_PROJECT, TS40K_PATH, WEIGHT_SCHEME_PATH, get_experime
 import utils.pcd_processing as eda
 import utils.scripts_utils as su
 
+from core.constraints import Arrow_Constraint, Cylinder_Constraint, Nonnegativity_Constraint
+from core.criterions.admm_loss import ADMM_Loss
+
 import core.lit_modules.lit_callbacks as lit_callbacks
 import core.lit_modules.lit_model_wrappers as lit_models
 from core.lit_modules.lit_data_wrappers import LitTS40K
@@ -52,6 +55,9 @@ DONE: SCENE NET parameter watch from histograms to line plots
 DONE: update sweeps and ensure that sweeps are working
 DONE: code the GENEO layer differently to try and get a better propragation of the gradients
 """
+
+
+
 
 
 def init_callbacks(ckpt_dir):
@@ -109,7 +115,7 @@ def init_model(criterion, ckpt_path):
             raise FileNotFoundError(f"Checkpoint {ckpt_path} does not exist.")
         
         print(f"Resuming from checkpoint {ckpt_path}")
-        model = lit_models.LitSceneNet.load_from_checkpoint(ckpt_path,
+        model = lit_models.LitSceneNet_ADMM.load_from_checkpoint(ckpt_path,
                                                             criterion=criterion,
                                                             optimizer=wandb.config.optimizer,
                                                             learning_rate=wandb.config.learning_rate,
@@ -122,12 +128,12 @@ def init_model(criterion, ckpt_path):
             'neg'  : wandb.config.neg_sphere_geneo, 
         }
 
-        model = lit_models.LitSceneNet(geneo_config,
-                                       ast.literal_eval(wandb.config.kernel_size),
-                                       criterion,
-                                       wandb.config.optimizer,
-                                       wandb.config.learning_rate,
-                                       su.init_metrics)
+        model = lit_models.LitSceneNet_ADMM(geneo_config,
+                                            ast.literal_eval(wandb.config.kernel_size),
+                                            criterion,
+                                            wandb.config.optimizer,
+                                            wandb.config.learning_rate,
+                                            su.init_metrics)
         
     return model
 
@@ -147,6 +153,24 @@ def init_data(data_path):
                            wandb.config.test_split)
     
     return data_module
+
+
+def set_up_admm_criterion(base_criterion, model:lit_models.LitSceneNet_ADMM):
+
+    constraints = {
+        'arrow'         : Arrow_Constraint(),
+        'cylinder'      : Cylinder_Constraint(kernel_height=ast.literal_eval(wandb.config.kernel_size)[0]),
+        'nonnegativity' : Nonnegativity_Constraint(),
+    }
+
+    # for name, param in model.get_model_parameters().items():
+    #     print(f'{name} : {param} , {type(param)}')
+
+    # input("Press Enter to continue...")
+
+    return ADMM_Loss(base_criterion, constraints, model.get_model_parameters(), wandb.config.admm_rho)
+
+
 
 def main():
     # ------------------------
@@ -189,14 +213,19 @@ def main():
     }
 
     criterion_class = su.resolve_criterion(wandb.config.criterion)
-    criterion = criterion_class(**criterion_params)
+    base_criterion = criterion_class(**criterion_params)
 
     # ------------------------
     # 3 INIT MODEL
     # ------------------------
 
-    model = init_model(criterion, ckpt_path)
+    model = init_model(None, ckpt_path)
 
+    # ------------------------
+
+    criterion = set_up_admm_criterion(base_criterion, model)
+    model.criterion = criterion # dynamically set up model criterion
+    
     # ------------------------
     # 4 INIT DATA MODULE
     # ------------------------
@@ -224,6 +253,7 @@ def main():
     trainer = pl.Trainer(
         logger=wandb_logger,
         callbacks=callbacks,
+        detect_anomaly=True,
         max_epochs=wandb.config.max_epochs,
         gpus=wandb.config.gpus,
         #fast_dev_run = wandb.config.fast_dev_run,
@@ -266,6 +296,7 @@ def main():
     trainer.test(model, 
                  datamodule=data_module,
                  ckpt_path=ckpt_path) # use the last checkpoint
+    
 
 if __name__ == '__main__':
 
@@ -300,7 +331,7 @@ if __name__ == '__main__':
         )
     else:
         # default mode
-        sweep_config = os.path.join(experiment_path, 'defaults_config.yml')
+        sweep_config = os.path.join(experiment_path, 'admm_config.yml')
 
         print("wandb init.")
 
@@ -308,7 +339,7 @@ if __name__ == '__main__':
                 dir = experiment_path,
                 name = f'{project_name}_{datetime.now().strftime("%Y%m%d-%H%M%S")}',
                 config=sweep_config,
-                #mode='disabled'
+                mode='disabled'
         )
 
         #pprint(wandb.config)

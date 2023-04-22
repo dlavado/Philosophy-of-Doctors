@@ -111,11 +111,14 @@ class LitWrapperModel(pl.LightningModule):
     def get_model(self):
         return self.model
     
+    def set_criteria(self, criterion):
+        self.criterion = criterion
+    
     
     def _epoch_end_metric_logging(self, metrics, prefix, print_metrics=False):
         metric_res = metrics.compute()
         if print_metrics:
-            print(f'{"="*10}{ prefix} metrics {"="*10}')
+            print(f'{"="*10} {prefix} metrics {"="*10}')
         for metric_name, metric_val in metric_res.items():
             if print_metrics:
                 print(f'\t{prefix}_{metric_name}: {metric_val}')
@@ -126,7 +129,7 @@ class LitWrapperModel(pl.LightningModule):
         return self._resolve_optimizer()
     
     def _check_model_gradients(self):
-        print(f'\n{"="*10}Model gradients{"="*10}')
+        print(f'\n{"="*10} Model gradients {"="*10}')
         for name, param in self.model.named_parameters():
             print(f'\t{name} -- value: {param.data.item():.5f} grad: {param.grad}')
 
@@ -139,6 +142,8 @@ class LitWrapperModel(pl.LightningModule):
             return torch.optim.SGD(self.model.parameters(), lr=self.hparams.learning_rate)
         elif opt_name == 'rmsprop':
             return torch.optim.RMSprop(self.model.parameters(), lr=self.hparams.learning_rate)
+        elif opt_name == 'lbfgs':
+            return torch.optim.LBFGS(self.model.parameters(), lr=self.hparams.learning_rate, max_iter=30)
         else:
             raise NotImplementedError(f'Optimizer {self.hparams.optimizer_name} not implemented')
 
@@ -150,7 +155,11 @@ class LitSceneNet(LitWrapperModel):
         model = SceneNet(geneo_num, kernel_size)
         self.save_hyperparameters('geneo_num', 'kernel_size')
         self.logged_batch = False
+        self.gradient_check = False
         super().__init__(model, criterion, optimizer, learning_rate, metric_initializer)
+
+    def get_model_parameters(self):
+        return self.model.get_model_parameters()
     
     def training_step(self, batch, batch_idx):
         # As this is a GENEO model, we need to pass the convex coefficients and the GENEO parameters to the loss function
@@ -165,8 +174,9 @@ class LitSceneNet(LitWrapperModel):
         return loss
     
     def training_epoch_end(self, outputs) -> None:
+        self.gradient_check = False
         # logging the GENEO parameters and the convex coefficients
-        scenenet_params = self.model.get_dict_parameters()
+        scenenet_params = self.model.get_model_parameters_in_dict()
         for name, param in scenenet_params.items():
             self.log(f'{name}', param, on_epoch=True, on_step=False, logger=True)
         return super().training_epoch_end(outputs)
@@ -193,14 +203,12 @@ class LitSceneNet(LitWrapperModel):
         self.log(f'test_loss', loss, logger=True)
         return loss
     
-    
-    # def on_after_backward(self) -> None:
-    #   if self.trainer.global_step % 25 == 0:  # don't make the tf file huge
-    #         self._check_model_gradients()
-    
-    def on_before_zero_grad(self, optimizer) -> None:
-        if self.trainer.current_epoch % 5 == 0 and self.trainer.global_step % 10 == 0:  # don't make the tf file huge
+
+    def on_before_optimizer_step(self, optimizer, optimizer_idx: int) -> None:
+        if not self.gradient_check:  # don't make the tf file huge
             self._check_model_gradients()
+            self.gradient_check = True
+        
 
     def _log_pointcloud_wandb(self, pcd, input=None, gt=None, prefix='run'):
         point_clouds = pointcloud_to_wandb(pcd, input, gt)
@@ -236,3 +244,76 @@ class LitSceneNet(LitWrapperModel):
         return parent_parser
         
 
+
+
+class LitSceneNet_ADMM(LitSceneNet):
+
+    def __init__(self, geneo_num:dict, kernel_size:Tuple[int], criterion:torch.nn.Module, optimizer:str, learning_rate=1e-2, metric_initializer=None):
+        super().__init__(geneo_num, kernel_size, criterion, optimizer, learning_rate, metric_initializer)
+        self.lag_mult_check = False
+
+
+
+    def training_step(self, batch, batch_idx):
+        # As this is a GENEO model, we need to pass the convex coefficients and the GENEO parameters to the loss function
+        x, y = batch
+        pred = self(x)
+        loss = self.criterion(pred, y, self.model.get_model_parameters())
+
+        if self.train_metrics is not None: # on step metric logging
+            self.train_metrics(torch.flatten(pred), torch.flatten(y).to(torch.int)).update()
+
+        self.log(f'train_loss', loss, on_epoch=True, on_step=True, prog_bar=True, logger=True)
+        return loss
+    
+
+    # def on_after_backward(self) -> None:
+    #     print(f"{'='*10} Grads {'='*10}")
+    #     for name, param in self.model.named_parameters():
+    #         if param.requires_grad:
+    #             print(name, torch.isfinite(param.grad).all())
+
+    def on_before_zero_grad(self, optimizer) -> None:
+        """
+        After each training step, we update the contraint variables (i.e., \psi) and the lagrangian multipliers (i.e., \lambda)
+        """
+        #print('Update Lagrangian Multipliers and \psi...')
+
+        theta_n = self.model.get_model_parameters(detach=True)
+
+        self.criterion.update_psi(theta_n)
+        self.criterion.update_lag_multipliers(theta_n)
+
+        psi_values = self.criterion.get_psi()
+
+        if not self.lag_mult_check: # don't make the tf file huge
+            print(f"{'='*10} Lag Multipliers {'='*10}")
+            for name, param in self.criterion.get_lag_multipliers().items():
+                print(f"\t{name}: {float(param):.5f} += penalty/2 * ({float(theta_n[name]):.3f} - {float(psi_values[name]):.3f})")
+            self.lag_mult_check = True
+    
+    def on_validation_epoch_end(self) -> None:
+        self.lag_mult_check = False
+        return super().on_validation_epoch_end() 
+    
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        pred = self(x)
+        loss = self.criterion(pred, y, self.model.get_model_parameters())
+
+        if self.val_metrics is not None:
+            self.val_metrics(torch.flatten(pred), torch.flatten(y).to(torch.int)).update() 
+
+        self.log(f'val_loss', loss, on_epoch=True, on_step=True, prog_bar=True, logger=True)
+        return loss
+    
+    def test_step(self, batch, batch_idx):
+        x, y = batch
+        pred = self(x)
+        loss = self.criterion(pred, y, self.model.get_model_parameters())
+
+        if self.test_metrics is not None:
+            self.test_metrics(torch.flatten(pred), torch.flatten(y).to(torch.int)).update() 
+
+        self.log(f'test_loss', loss, logger=True)
+        return loss

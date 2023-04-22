@@ -6,7 +6,6 @@ import torch.nn.functional as F
 import sys
 import os
 
-
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 
@@ -302,10 +301,8 @@ class SceneNet(nn.Module):
     def get_num_total_params(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
     
-    def get_model_parameters(self, detach=False):
-        if detach:
-            return {name: torch.tensor(param.detach()) for name, param in self.named_parameters()}
-        return {name: param for name, param in self.named_parameters()}
+    def get_model_parameters(self) -> nn.ParameterDict:
+        return nn.ParameterDict(dict([(name.replace('.', '_'), p) for name, p in self.named_parameters()]))
 
     def get_geneo_params(self):
         return nn.ParameterDict(dict([(name.replace('.', '_'), p) for name, p in self.named_parameters() if not 'lambda' in name]))
@@ -328,15 +325,41 @@ class SceneNet(nn.Module):
 
         for i, g_name in enumerate(self.geneos):
             if f'lambda_{g_name}' == self.last_lambda:
-                conv_pred += (1 - sum(self.lambdas_dict.values()) + self.lambdas_dict[self.last_lambda])*conv[:, [i]]
+                conv_pred = conv_pred + (1 - sum(self.lambdas_dict.values()) + self.lambdas_dict[self.last_lambda])*conv[:, [i]]
                 #recompute last_lambda's actual value
                 self.lambdas_dict[self.last_lambda] = nn.Parameter(1 - sum(self.lambdas_dict.values()) + self.lambdas_dict[self.last_lambda], requires_grad=False)
             else:
-                conv_pred += self.lambdas_dict[f'lambda_{g_name}']*conv[:, [i]]
+                conv_pred = conv_pred + self.lambdas_dict[f'lambda_{g_name}']*conv[:, [i]]
 
         conv_pred = torch.relu(torch.tanh(conv_pred))
 
         return conv_pred
+    
+    # def forward(self, x:torch.Tensor) -> torch.Tensor:
+
+    #     kernels = torch.stack([self.geneos[geneo].compute_kernel() for geneo in self.geneos])
+    #     conv = F.conv3d(x, kernels, padding='same')
+
+    #     conv_pred = []
+
+    #     for i, g_name in enumerate(self.geneos):
+    #         if f'lambda_{g_name}' == self.last_lambda:
+    #             conv_pred.append( (1 - sum(self.lambdas_dict.values()) + self.lambdas_dict[self.last_lambda])*conv[:, [i]])
+    #             #recompute last_lambda's actual value
+    #             self.lambdas_dict[self.last_lambda] = nn.Parameter(1 - sum(self.lambdas_dict.values()) + self.lambdas_dict[self.last_lambda], requires_grad=False)
+    #         else:
+    #             conv_pred.append(self.lambdas_dict[f'lambda_{g_name}']*conv[:, [i]])
+
+
+    #     conv_pred = torch.sum(torch.cat(conv_pred, dim=1), dim=1, keepdim=True)
+
+    #     conv_pred = torch.relu(torch.tanh(conv_pred))
+
+    #     assert conv_pred.shape == x.shape, f"conv_pred.shape: {conv_pred.shape} != x.shape: {x.shape}"
+
+    #     return conv_pred
+
+
 
 
 
@@ -416,54 +439,6 @@ class SCENENetQuantile(nn.Module):
 
 
 
-
-
-class SCENE_Net_Class(nn.Module):
-
-    def __init__(self, geneo_num=None, plot=True, gnet_requires_grad=True, gnet_model_path = None):
-        super().__init__()
-
-        if gnet_model_path is None:
-            self.gnet = SCENE_Net(geneo_num, plot)
-        else:
-            if os.path.exists(gnet_model_path):
-                chkp = torch.load(gnet_model_path)
-                self.gnet = SCENE_Net(geneo_num=chkp['geneos'])
-                print(f"Loading Model in {gnet_model_path}")
-                self.gnet.load_state_dict(chkp['model_state_dict'])
-            else:
-                ValueError("GENEO Net model path does not exist")
-
-        if not gnet_requires_grad:
-            for param in self.gnet.parameters():
-                param.requires_grad = False
-        
-        tau_min = 0.2
-        tau_max = 0.6
-        self.tau = nn.Parameter((tau_max - tau_min)*torch.rand(1, dtype=torch.float)[0])
-
-        if plot:
-            for name, p in self.named_parameters():
-                print(f"{name}: {p.item():.3f}, trainable:{p.requires_grad}, isleaf:{p.is_leaf}")
-    
-    
-    def get_threshold(self):
-        return self.tau
-
-    def get_geneo_nums(self):
-        return self.gnet.sizes
-
-    def get_cvx_coefficients(self):
-        return self.gnet.lambdas_dict
-
-    def get_geneo_params(self):
-        return nn.ParameterDict(dict([(name.replace('.', '_'), p) for name, p in self.gnet.named_parameters() if not 'lambda' in name]))
-
-    def get_dict_parameters(self):
-        return dict([(n, param.data.item()) for n, param in self.gnet.named_parameters()])
-
-    def forward(self, x:torch.Tensor) -> torch.Tensor:
-        return (self.gnet(x) >= self.tau).to(x.dtype)
 
 def main():
     gnet = SCENE_Net()

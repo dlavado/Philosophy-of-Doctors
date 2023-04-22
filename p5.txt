@@ -6,14 +6,14 @@ rsync -Prav d.lavado@dicluster:soa_scenenet/scenenet_pipeline/torch_geneo/saved_
 
 rsync -Prav d.lavado@dicluster:PhD-Shenanigans/uncertainty/pipelines/unet_models/ ./uncertainty/pipelines/unet_models/
 
-
+wandb sweep ../experiments/admm_ts40k/sweep_config.yml
 
 rsync -Prav .  d.lavado@dicluster:PhD-Shenanigans
 
 rsync -Prav ./SceneNet-Project/  d.lavado@dicluster:PhD-Shenanigans/SceneNet-Project/
 
 
-
+oarsub -I -t besteffort -l {"host in ('sudowoodo-1')"}/nodes=1,walltime=8:00
 
 rsync -Prav /media/didi/TOSHIBA\ EXT/SemKITTI/samples/ d.lavado@dicluster:~/SemKITTI/samples/
 
