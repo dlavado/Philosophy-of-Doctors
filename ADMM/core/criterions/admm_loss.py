@@ -79,8 +79,8 @@ class ADMM_Loss(nn.Module):
             self.theta_k[key] = torch.tensor(theta_p.clone(), requires_grad=False, device='cuda:0')
 
     
-        self.current_constraint_violation  = self.get_constraint_violation(theta_0)
-        #self.best_constraint_violation = self.current_constraint_violation
+        self.current_constraint_norm  = self.get_constraint_violation(theta_0)
+        self.best_constraint_norm = self.current_constraint_norm
 
         self.penalty_factor = init_penalty  # a.k.a., \.rho
         self.max_penalty = max_penalty
@@ -110,7 +110,7 @@ class ADMM_Loss(nn.Module):
         # print(f"theta_n: {np.array(list(theta_n.values()))}")
         # input("Press Enter to continue...")
         
-        return self.objective_function(y_pred, y_gt) + self.ADMM_regularizer(theta_n) + self.Stochastic_ADMM_regularizer(theta_n)
+        return self.objective_function(y_pred, y_gt) + self.ADMM_regularizer(theta_n) # + self.Stochastic_ADMM_regularizer(theta_n)
         #return self.objective_function(y_pred, y_gt) + self.Lagrangian_regularizer(theta_n) + self.aug_Lagrangian_regularizer(theta_n)
         # self.objective_function(y_pred, y_gt)
         # return self.aug_Lagrangian_regularizer(theta_n) + self.Lagrangian_regularizer(theta_n)
@@ -224,6 +224,18 @@ class ADMM_Loss(nn.Module):
     def get_lag_multipliers(self):
         return self.lag_multipliers
     
+
+    def get_best_constraint_norm(self):
+        return self.best_constraint_norm
+    
+    def update_best_constraint_norm(self, theta_n:nn.ParameterDict):
+        """
+        Updates the best constraint norm
+        """
+        self.best_constraint_norm = min(self.best_constraint_norm, self.get_constraint_violation(theta_n))
+
+
+
     def _clone_theta(self, theta:nn.ParameterDict):
         return {key: theta[key].clone() for key in theta}
     

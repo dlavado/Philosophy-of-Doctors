@@ -164,7 +164,7 @@ class cone_kernel(GENEO_kernel_torch):
         x_c_norm = torch.linalg.norm(x_c, dim=1, keepdim=True) # Nx1
         circle_x = x_c_norm**2 - (rad + epsilon)**2 
 
-        return torch.exp((circle_x**2)*(-1 / (2*sig**2)))
+        return sig*torch.exp((circle_x**2)*(-1 / (2*sig**2)))
 
     def sum_zero(self, tensor:torch.Tensor) -> torch.Tensor:
         return tensor - torch.sum(tensor) / torch.prod(torch.tensor(self.kernel_size[1:])) 

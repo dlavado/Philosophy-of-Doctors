@@ -156,7 +156,7 @@ class cylinderv2(cylinder_kernel):
         x_c_norm = torch.linalg.norm(x_c, dim=1, keepdim=True) # Nx1
         gauss_dist = x_c_norm**2 #- (self.radius + epsilon)**2 
 
-        return torch.exp((gauss_dist**2) * (-1 / (2*(self.radius + epsilon)**2)))
+        return self.sigma*torch.exp((gauss_dist**2) * (-1 / (2*(self.radius + epsilon)**2)))
 
 
     def compute_kernel(self, plot=False):
@@ -198,14 +198,14 @@ if __name__ == "__main__":
                         ToTensor(), 
                         ToFullDense(apply=(True, True))])
     
-    ts40k = TS40K(dataset_path=const.TS40K_PATH, transform=composed)
+    #ts40k = TS40K(dataset_path=const.TS40K_PATH, transform=composed)
 
 
-    vox, vox_gt = ts40k[2]
-    vox, vox_gt = vox.to(torch.float), vox_gt.to(torch.float)
-    print(vox.shape)
-    Vox.plot_voxelgrid(vox.numpy()[0])
-    Vox.plot_voxelgrid(vox_gt.numpy()[0])
+    # vox, vox_gt = ts40k[2]
+    # vox, vox_gt = vox.to(torch.float), vox_gt.to(torch.float)
+    # print(vox.shape)
+    # Vox.plot_voxelgrid(vox.numpy()[0])
+    # Vox.plot_voxelgrid(vox_gt.numpy()[0])
     
 
 
@@ -213,9 +213,12 @@ if __name__ == "__main__":
     cy = cylinderv2('cy', (6, 7, 7), radius=torch.tensor(2.5), sigma=torch.tensor(5))
     #kernel = cy.compute_kernel_(True)
 
+    print(cy.kernel.shape)
+    print(cy.kernel[0, :, :])
+
     cy.plot_kernel()
 
-    cy.convolution(vox.view((1, *vox.shape)).to(cy.device),plot=True)
+    #cy.convolution(vox.view((1, *vox.shape)).to(cy.device),plot=True)
 
 
     type(cy.kernel)

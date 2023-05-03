@@ -362,17 +362,17 @@ class LitSceneNet_ADMM(LitSceneNet):
             self.criterion.update_theta_k(theta_n)
             self.criterion.update_psi()
             self.criterion.update_lag_multipliers()
-            if self.global_step % 5 == 0:
-                if self.criterion.current_constraint_violation < constraint_violation:
-                    # if the constraint violation is increasing, we increase the penalty
-                    self.criterion.update_penalty()
-                else:
-                    # otherwise, we increase the stepsize to accelerate convergence
-                    self.criterion.update_stepsize()
-                self.criterion.current_constraint_violation = constraint_violation
+           
+            if self.criterion.best_constraint_norm < constraint_violation:
+                # if the constraint violation is increasing, we increase the penalty
+                self.criterion.update_penalty()
+            else:
+                # otherwise, we increase the stepsize to accelerate convergence
+                self.criterion.update_stepsize()
+                
+            self.criterion.current_constraint_norm = constraint_violation
+            self.criterion.update_best_constraint_norm(theta_n)
         
-            
-
         psi_values = self.criterion.get_psi()
 
         # if self.criterion.get_constraint_violation(theta_n) > 1e-3:
@@ -421,8 +421,6 @@ class LitSceneNet_ADMM(LitSceneNet):
         self.log(f'constraint_violation', constraint_violation, on_epoch=False, on_step=True, prog_bar=False, logger=True)
 
         return super().on_validation_batch_end(outputs, batch, batch_idx, dataloader_idx)
-    
-    
     
 
 class LitSceneNet_AugLag(LitSceneNet):

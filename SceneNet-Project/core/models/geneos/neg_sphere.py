@@ -176,7 +176,7 @@ class negSpherev2(neg_sphere_kernel):
         x_c_norm = torch.linalg.norm(x_c, dim=1, keepdim=True) # Nx1
         gauss_dist = x_c_norm**2 #- (self.radius + epsilon)**2 
 
-        return torch.exp((gauss_dist**2) * (-1 / (2*(rad + epsilon)**2)))
+        return sig*torch.exp((gauss_dist**2) * (-1 / (2*(rad + epsilon)**2)))
 
     def sum_negfactor(self, tensor:torch.Tensor) -> torch.Tensor:
         return tensor - (torch.sum(tensor) + self.neg_factor) / self.volume

@@ -846,25 +846,33 @@ def crop_at_locations(xyz:np.ndarray, coords:np.ndarray, radius:float=0, classes
 if __name__ == "__main__":
 
     LAS_FILES = "/home/didi/VSCode/lidar_thesis/Data_sample"
-    
-    get_tower_files([LAS_FILES])
 
-    # %%
+    NPY_FILES = "/home/didi/VSCode/lidar_thesis/dataset/raw_dataset/samples"
+    
+    # get_tower_files([LAS_FILES])
+
     # convert_las_to_npy([DATA_SAMPLE_DIR, DATA_SAMPLE_DIR + "/npys"])
 
-    tower_files = get_tower_files()
-
-    # %%
+    #tower_files = get_tower_files()
 
     # for tower_file in tower_files:
-    xyz, classes = las_to_numpy(lp.read(tower_files[1]))
+    #xyz, classes = las_to_numpy(lp.read(tower_files[1]))
+
+    for file in os.listdir(NPY_FILES):
+        f_name = os.path.join(NPY_FILES, file)
+        xyz = np.load(f_name, allow_pickle=True)
+        pynt = np_to_ply(xyz[:, :-1])
+        color_pointcloud(pynt, xyz[:, -1])
+        visualize_ply([pynt])
+
+        input("Press Enter to continue...")
 
     # %%
     tower_files = get_tower_files()
 
     for f in tower_files[1:]:
         xyz, classes = las_to_numpy(lp.read(f))
-        # visualize_ply([np_to_ply(xyz)])
+        #visualize_ply([np_to_ply(xyz)])
         crop_two_towers_samples(xyz, classes)
     # %%
 
