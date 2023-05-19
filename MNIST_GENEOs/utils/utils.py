@@ -1,16 +1,30 @@
 
 
+import argparse
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from torchmetrics import Accuracy, MetricCollection
+from torchmetrics import Accuracy, MetricCollection, Precision, Recall
 
+
+
+def main_arg_parser():
+    parser = argparse.ArgumentParser(description="Process script arguments")
+
+    parser.add_argument('--wandb_sweep', action='store_true', default=None, help='If True, the script is run by wandb sweep')
+
+    parser.add_argument('--dataset', type=str, default='mnist', help='Dataset to use')
+    parser.add_argument('--model', type=str, default='cnn', help='Model to use')
+
+    return parser
 
 
 
 def init_metrics(num_classes=10):
     return MetricCollection([
         Accuracy(num_classes=num_classes, multiclass=True),
+        Precision(num_classes=num_classes, multiclass=True),
+        Recall(num_classes=num_classes, multiclass=True)
     ])
 
 

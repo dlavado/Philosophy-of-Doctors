@@ -3,6 +3,7 @@
 import ast
 from datetime import datetime
 from typing import List
+import warnings
 import torch
 from torchvision import transforms
 
@@ -10,6 +11,8 @@ from torchvision import transforms
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as  pl_callbacks
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning.profiler import AdvancedProfiler, SimpleProfiler, PyTorchProfiler
+
 
 # Weights & Biases
 import wandb
@@ -17,12 +20,19 @@ from pytorch_lightning.loggers import WandbLogger
 
 import sys
 import os
+
+
 # Our code
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 
 from core.models.cnn import Lit_CNN_Classifier
-from core.datasets.mnist import MNISTDataModule
+from core.models.resnet import LitResnet
+from core.models.gnet import Lit_IENEONet
+
+
+from core.data_modules.mnist import MNISTDataModule
+from core.data_modules.cifar10 import init_cifar10dm
 
 from core.models.lit_wrapper import callback_model_checkpoint
 from utils import utils
@@ -40,7 +50,7 @@ def init_callbacks(ckpt_dir):
             callback_model_checkpoint(
                 dirpath=ckpt_dir,
                 filename=f"{metric}",
-                monitor=f"train_{metric}",
+                monitor=f"val_{metric}",
                 mode="max",
                 save_top_k=2,
                 save_last=False,
@@ -54,8 +64,8 @@ def init_callbacks(ckpt_dir):
     model_ckpts.append( # train loss checkpoint
         callback_model_checkpoint(
             dirpath=ckpt_dir, #None for default logger dir
-            filename=f"train_loss",
-            monitor=f"train_loss",
+            filename=f"val_loss",
+            monitor=f"val_loss",
             mode="min",
             every_n_epochs=wandb.config.checkpoint_every_n_epochs,
             every_n_train_steps=wandb.config.checkpoint_every_n_steps,
@@ -75,38 +85,105 @@ def init_callbacks(ckpt_dir):
 
     return callbacks
 
-def init_model(model_wrapper_class=Lit_CNN_Classifier, ckpt_path=None):
+
+
+
+def init_cnn(ckpt_path=None, data_module:pl.LightningDataModule=None, num_classes=10):
+    data_module.setup()
+    x = data_module.train_dataloader().dataset[0][0]
+    x = x.unsqueeze(0) # adding batch dimension
+    # print(f"Ghost sample shape: {x.shape}")
+    # input("Press enter to continue...")
+    if wandb.config.resume_from_checkpoint:
+        if not os.path.exists(ckpt_path):
+            raise FileNotFoundError(f"Checkpoint {ckpt_path} does not exist.")
+        
+        print(f"Resuming from checkpoint {ckpt_path}")
+        model = Lit_CNN_Classifier.load_from_checkpoint(ckpt_path,
+                                                        num_classes=num_classes,
+                                                        ghost_sample=x,
+                                                        optimizer_name=wandb.config.optimizer,
+                                                        learning_rate=wandb.config.learning_rate,
+                                                        metric_initializer=utils.init_metrics)
+        
+    else:
+        model = Lit_CNN_Classifier(
+            in_channels=wandb.config.in_channels,
+            hidden_dim=wandb.config.hidden_dim,
+            kernel_size=wandb.config.kernel_size,
+            ghost_sample=x,
+            num_classes=num_classes,
+            optimizer_name=wandb.config.optimizer,
+            learning_rate=wandb.config.learning_rate,
+            metric_initializer=utils.init_metrics,
+        )
+
+    return model
+
+
+def init_resnet(ckpt_path=None, num_classes=10):
+    if wandb.config.resume_from_checkpoint:
+        if not os.path.exists(ckpt_path):
+            raise FileNotFoundError(f"Checkpoint {ckpt_path} does not exist.")
+        
+        print(f"Resuming from checkpoint {ckpt_path}")
+        model = LitResnet.load_from_checkpoint(ckpt_path,
+                                               num_classes=num_classes,
+                                               optimizer_name=wandb.config.optimizer, 
+                                               learning_rate=wandb.config.learning_rate)
+        
+
+    else:
+        model = LitResnet(num_classes=num_classes,
+                          metric_initializer=utils.init_metrics,
+                          optimizer_name=wandb.config.optimizer, 
+                          learning_rate=wandb.config.learning_rate)
+        
+    return model
+
+
+def init_ieneonet(ckpt_path=None, data_module:pl.LightningDataModule=None, num_classes=10):
+    data_module.setup()
+    x = data_module.train_dataloader().dataset[0][0]
+    x = x.unsqueeze(0) # adding batch dimension
 
     if wandb.config.resume_from_checkpoint:
         if not os.path.exists(ckpt_path):
             raise FileNotFoundError(f"Checkpoint {ckpt_path} does not exist.")
         
         print(f"Resuming from checkpoint {ckpt_path}")
-        model = model_wrapper_class.load_from_checkpoint(ckpt_path,
-                                                        optimizer=wandb.config.optimizer,
-                                                        learning_rate=wandb.config.learning_rate,
-                                                        metric_initilizer=utils.init_metrics)
+        model = Lit_IENEONet.load_from_checkpoint(ckpt_path,
+                                                 num_classes=num_classes,
+                                                 ghost_sample=x,    
+                                                 optimizer_name=wandb.config.optimizer,
+                                                 learning_rate=wandb.config.learning_rate,
+                                                 metric_initializer=utils.init_metrics)
+                                                  
         
+
     else:
-        model = model_wrapper_class(
-            in_channels=wandb.config.in_channels,
-            hidden_dim=wandb.config.hidden_dim,
-            kernel_size=wandb.config.kernel_size,
-            optimizer_name=wandb.config.optimizer,
-            learning_rate=wandb.config.learning_rate,
-            metric_initilizer=utils.init_metrics,
-        )
+        model = Lit_IENEONet(in_channels=wandb.config.in_channels,
+                             hidden_dim=wandb.config.hidden_dim,
+                             ghost_sample=x,
+                             kernel_size=ast.literal_eval(wandb.config.kernel_size),
+                             num_classes=num_classes,
+                             optimizer_name=wandb.config.optimizer,
+                             learning_rate=wandb.config.learning_rate,
+                             metric_initializer=utils.init_metrics)
+        
     return model
 
 
-def init_data(data_path):
+def init_mnist(data_path, batch_size):
 
     transform = transforms.Compose([transforms.ToTensor(),
                               transforms.Normalize((0.5,), (0.5,)),
                               ])
     
     mnist = MNISTDataModule(data_dir=data_path,
-                            transform=transform)
+                            transform=transform,
+                            batch_size=batch_size,
+                            num_workers=wandb.config.num_workers,)
     return mnist
 
 
@@ -126,17 +203,38 @@ def main():
     callbacks = init_callbacks(ckpt_dir)
 
 
-    # INIT MODEL
-    # ----------
-
-    model = init_model(Lit_CNN_Classifier, ckpt_path)
-
-
     # INIT DATA
     # ---------
 
     data_path = wandb.config.data_path
-    mnist = init_data(data_path)
+    data_module:pl.LightningDataModule = None
+
+    if wandb.config.dataset == 'mnist':
+        if not os.path.exists(data_path):
+            data_path = MNIST_PATH
+        if not os.path.exists(data_path):
+            raise FileNotFoundError(f"Data path {data_path} does not exist.")
+        data_module = init_mnist(data_path, wandb.config.batch_size)
+    elif wandb.config.dataset == 'cifar10':
+        if not os.path.exists(data_path):
+            data_path = CIFAR10_PATH
+        if not os.path.exists(data_path):
+            raise FileNotFoundError(f"Data path {data_path} does not exist.")
+        data_module = init_cifar10dm(data_path, wandb.config.batch_size)
+    else:
+        ValueError(f"Dataset {wandb.config.dataset} not supported.")
+
+
+    # INIT MODEL
+    # ----------
+    num_classes = 10
+
+    if wandb.config.model == 'cnn':
+        model = init_cnn(ckpt_path, data_module, num_classes)
+    elif wandb.config.model == 'resnet':
+        model = init_resnet(ckpt_path, num_classes)
+    elif wandb.config.model == 'gnet':
+        model = init_ieneonet(ckpt_path, data_module, num_classes)
 
 
     # INIT TRAINER
@@ -148,29 +246,31 @@ def main():
                                name=wandb.run.name, 
                                config=wandb.config)
     
-    wandb_logger.watch(model, log="all", log_freq=100)
+    #wandb_logger.watch(model, log="all", log_freq=100)
 
     trainer = pl.Trainer(
         logger=wandb_logger,
         callbacks=callbacks,
         detect_anomaly=True,
         max_epochs=wandb.config.max_epochs,
-        gpus=wandb.config.gpus,
+        accelerator=wandb.config.accelerator,
+        devices=wandb.config.devices,
         #fast_dev_run = wandb.config.fast_dev_run,
+        profiler=AdvancedProfiler() if wandb.config.profiler else None,
+        precision=16,
         auto_lr_find=wandb.config.auto_lr_find,
         auto_scale_batch_size=wandb.config.auto_scale_batch_size,
-        profiler=wandb.config.profiler,
         enable_model_summary=True,
         accumulate_grad_batches = ast.literal_eval(wandb.config.accumulate_grad_batches),
         #resume_from_checkpoint=ckpt_path
     )
 
     if wandb.config.auto_lr_find or wandb.config.auto_scale_batch_size:
-        trainer.tune(model, mnist) # auto_lr_find and auto_scale_batch_size
+        trainer.tune(model, data_module) # auto_lr_find and auto_scale_batch_size
         print(f"Learning rate in use is: {model.hparams.learning_rate}")
 
 
-    trainer.fit(model, mnist)
+    trainer.fit(model, data_module)
 
     print(f"{'='*20} Model ckpt scores {'='*20}")
 
@@ -178,7 +278,7 @@ def main():
         if isinstance(ckpt, pl_callbacks.ModelCheckpoint):
             print(f"{ckpt.monitor} checkpoint : score {ckpt.best_model_score}")
 
-    wandb_logger.experiment.unwatch(model)
+    #wandb_logger.experiment.unwatch(model)
 
     # 6 TEST
     # ------
@@ -190,13 +290,15 @@ def main():
     if wandb.config.save_onnx:
         print("Saving ONNX model...")
         onnx_file_path = os.path.join(ckpt_dir, f"{project_name}.onnx")
-        input_sample = next(iter(mnist.test_dataloader()))
+        input_sample = next(iter(data_module.test_dataloader()))
         model.to_onnx(onnx_file_path, input_sample, export_params=True)
         wandb_logger.log({"onnx_model": wandb.File(onnx_file_path)})
 
     trainer.test(model, 
-                 datamodule=mnist,
+                 datamodule=data_module,
                  ckpt_path=ckpt_path) # use the last checkpoint
+    
+    wandb_logger.experiment.finish()
     
 
 
@@ -205,10 +307,61 @@ def main():
 
 
 if __name__ == '__main__':
+    import pathlib
+    import utils.utils as utils
+    #from constants import ROOT_PROJECT, TS40K_PATH, WEIGHT_SCHEME_PATH
+    ROOT_PROJECT = pathlib.Path(__file__).resolve().parent.parent
 
-    model_name = 'cnn'
-    dataset_name = 'mnist'
-    project_name = f"{model_name}_{dataset_name}"
+    warnings.filterwarnings("ignore")
 
-    run_name = f"{project_name}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    
+    if "didi" in str(ROOT_PROJECT):
+        EXT_PATH = "/media/didi/TOSHIBA EXT/"
+    else:
+        EXT_PATH = "/home/d.lavado/" #cluster data dir
+
+    MNIST_PATH = os.path.join(ROOT_PROJECT, "datasets", "")
+    CIFAR10_PATH = os.path.join(ROOT_PROJECT, "datasets", "")
+    EXPERIMENTS_PATH = os.path.join(ROOT_PROJECT, "experiments")
+
+
+    # ----------------
+    main_parser = utils.main_arg_parser().parse_args()
+
+    model_name = main_parser.model
+    dataset_name = main_parser.dataset
+
+    project_name = f"ADMM_AUGLAG"
+
+    run_name = f"{project_name}_{model_name}_{dataset_name}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    experiment_path = os.path.join(EXPERIMENTS_PATH, f"{model_name}_{dataset_name}")
+
+    os.environ["WANDB_DIR"] = os.path.abspath(experiment_path)
+
+    print(f"\n\n{'='*50}")
+    print("Entering main method...") 
+
+    if main_parser.wandb_sweep: 
+        #sweep mode
+        print("wandb sweep.")
+        wandb.init(project = project_name, 
+                dir = experiment_path,
+                name = run_name,
+        )
+    else:
+        # default mode
+        sweep_config = os.path.join(experiment_path, 'config.yml')
+        print(f"Loading config from {sweep_config}")
+
+        print("wandb init.")
+
+        wandb.init(project=project_name, 
+                dir = experiment_path,
+                name = run_name,
+                config=sweep_config,
+                mode='disabled'
+        )
+
+        #pprint(wandb.config)
+
     main()

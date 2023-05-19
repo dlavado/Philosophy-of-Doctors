@@ -110,7 +110,7 @@ class ADMM_Loss(nn.Module):
         # print(f"theta_n: {np.array(list(theta_n.values()))}")
         # input("Press Enter to continue...")
         
-        return self.objective_function(y_pred, y_gt) + self.ADMM_regularizer(theta_n) # + self.Stochastic_ADMM_regularizer(theta_n)
+        return self.objective_function(y_pred, y_gt) + self.ADMM_regularizer(theta_n) + self.Stochastic_ADMM_regularizer(theta_n)
         #return self.objective_function(y_pred, y_gt) + self.Lagrangian_regularizer(theta_n) + self.aug_Lagrangian_regularizer(theta_n)
         # self.objective_function(y_pred, y_gt)
         # return self.aug_Lagrangian_regularizer(theta_n) + self.Lagrangian_regularizer(theta_n)
