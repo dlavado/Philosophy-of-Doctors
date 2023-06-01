@@ -10,7 +10,7 @@ dataset:
 data_path:
   value: ../datasets/mnist/
 batch_size:
-  value: 16
+  value: 256
 num_workers:
   value: 12
 # ------------------ #
@@ -64,7 +64,7 @@ precision: # 16 or 32 FPU precision
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: False
+  value: True
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'

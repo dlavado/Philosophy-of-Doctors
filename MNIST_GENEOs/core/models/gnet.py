@@ -1,12 +1,13 @@
 
 
+from typing import Any
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 import torch 
 from torch import nn
 from torch.nn import functional as F
 
 from core.models.FC_Classifier import Classifier_OutLayer
-from core.models.lit_wrapper import LitWrapperModel
+from core.models.lit_modules.lit_wrapper import LitWrapperModel
 from torchmetrics.functional import accuracy
 
 
@@ -92,14 +93,69 @@ class IENEO(nn.Module):
         
         return cvx_comb
 
+
+class IENEO_Fam(nn.Module):
+
+    def __init__(self, num_operators:int, num_gaussians:int, kernel_size:tuple) -> None:
+        super().__init__()
+
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+                
+        self.num_operators = num_operators
+        self.num_gaussians = num_gaussians
+        self.kernel_size = kernel_size
+
+        # centers are the means of the gaussians
+        self.mus = nn.Parameter(torch.rand((num_operators, num_gaussians), requires_grad=True, device=self.device))
+
+        # sigmas are the standard deviations of the gaussians, so they must be positive
+        self.sigmas = nn.Parameter(torch.rand((num_operators, num_gaussians), requires_grad=True, device=self.device))
+
+        # convex combination weights of the gaussians
+        self.lambdas = torch.rand((num_operators, num_gaussians), requires_grad=True, device=self.device)
+        self.lambdas = torch.softmax(self.lambdas, dim=1) # make sure they sum to 1
+        self.lambdas = nn.Parameter(self.lambdas)     
+
+
+    def maintain_convexity(self):
+        with torch.no_grad():
+            self.lambdas[:, -1] = 1 - torch.sum(self.lambdas[:, :-1], dim=1)
+        assert self.lambdas.requires_grad
+
+    def compute_kernel(self):
+        return torch.stack([Gaussian_Kernel(self.kernel_size, stddev=self.sigmas[ij % self.num_operators, ij % self.num_gaussians], 
+                                               mean=self.mus[ij % self.num_operators, ij % self.num_gaussians]).compute_kernel() 
+                                               for ij in range(self.num_operators*self.num_gaussians)])
+
+    def forward(self, x):
+
+        self.kernels = self.compute_kernel()
+        # kernels.shape = (num_operators*num_gaussians, 1, kernel_size[0], kernel_size[1])
         
+        # print(kernels.shape, kernels.device)
+
+        # apply the kernels to the input
+        conv = F.conv2d(x, self.kernels) # shape = (B, num_operators*num_gaussians, H, W)
+        conv = conv.view(conv.shape[0], self.num_operators, self.num_gaussians, *conv.shape[2:]) # shape = (B, num_operators, num_gaussians, H, W)
+
+        # print(conv.shape)
+        # apply the convex combination weights
+        # unsqueeze to regain the channel dimension
+        cvx_comb = torch.sum(conv*self.lambdas[None, :, :, None, None], dim=2)
+
+        # print(cvx_comb.shape)
+        # input("Press Enter to continue...")
+
+        return cvx_comb
+
+
 
 
 
 class IENEO_Layer(nn.Module):
 
 
-    def __init__(self, hidden_dim=128, kernel_size=(3, 3), gauss_hull_num=20) -> None:
+    def __init__(self, hidden_dim=128, kernel_size=(3, 3), gauss_hull_size=10) -> None:
         """
         IENEO Layer is a layer that applies a gaussian hull to the input and then max pools it
 
@@ -122,25 +178,25 @@ class IENEO_Layer(nn.Module):
     
         #self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.gauss_block = self.gaussian_block(hidden_dim, kernel_size, gauss_hull_num)
-        self.norm_pool = nn.Sequential(
-                            nn.BatchNorm2d(hidden_dim),
-                            nn.ReLU(),
-                            nn.MaxPool2d(2, 2)
-                        ).to(self.device)
-    
-    def gaussian_block(self, out_channels, kernel_size, gauss_hull_num):
-        return nn.ModuleList([IENEO(gauss_hull_num, kernel_size).to(self.device) for _ in range(out_channels)]).to(self.device)
 
-        
+        self.ieneo = IENEO_Fam(hidden_dim, gauss_hull_size, kernel_size).to(self.device)
+        self.bn = nn.BatchNorm2d(hidden_dim)
+        self.relu = nn.ReLU()
+        self.maxpool = nn.MaxPool2d(2, 2)
+
+    def get_cvx_coeffs(self):
+        return self.ieneo.lambdas
+
     
     def maintain_convexity(self):
-        self.gauss_block[0].maintain_convexity()
+        self.ieneo.maintain_convexity()
     
     def forward(self, x):
-        gaussians = torch.cat([gauss(x) for gauss in self.gauss_block], dim=1) # BxCxHxW
-
-        return self.norm_pool(gaussians)
+        x = self.ieneo(x)
+        x = self.bn(x)
+        # x = self.relu(x)
+        x = self.maxpool(x)
+        return x
         
 
 
@@ -148,20 +204,26 @@ class IENEO_Layer(nn.Module):
 class IENEONet(nn.Module):
 
 
-    def __init__(self, in_channels=1, hidden_dim=128,ghost_sample:torch.Tensor = None, kernel_size=(3,3), num_classes=10):
+    def __init__(self, in_channels=1, hidden_dim=128,ghost_sample:torch.Tensor = None, gauss_hull_size=5, kernel_size=(3,3), num_classes=10):
         super().__init__()
 
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        self.feature_extractor = IENEO_Layer(hidden_dim, kernel_size).to(device)
+        self.feature_extractor = IENEO_Layer(hidden_dim, kernel_size, gauss_hull_size).to(device)
         ghost_shape = self.feature_extractor(ghost_sample.to(device)).shape
         self.classifier = Classifier_OutLayer(torch.prod(torch.tensor(ghost_shape[1:])), num_classes).to(device)
 
+    def print_cvx_combination(self):
+        print(f"mean cvx combination: {torch.sum(self.feature_extractor.get_cvx_coeffs(), dim=1).mean()}")
+
+    def maintain_convexity(self):
+        self.feature_extractor.maintain_convexity()
 
     def forward(self, x):
         x = self.feature_extractor(x)
         x = self.classifier(x)
         return x
+
     
 
 class Lit_IENEONet(LitWrapperModel):
@@ -170,71 +232,25 @@ class Lit_IENEONet(LitWrapperModel):
                  in_channels=1, 
                  hidden_dim=128, 
                  ghost_sample:torch.Tensor = None,
+                 gauss_hull_size=5,
                  kernel_size=(3,3),
                  num_classes=10,
                  optimizer_name = 'adam', 
                  learning_rate=0.01, 
                  metric_initializer=None):
 
-        model = IENEONet(in_channels, hidden_dim, ghost_sample, kernel_size, num_classes)
+        model = IENEONet(in_channels, hidden_dim, ghost_sample, gauss_hull_size, kernel_size, num_classes)
         criterion = nn.CrossEntropyLoss()
         super().__init__(model, criterion, optimizer_name, learning_rate, metric_initializer)
 
+    def prediction(self, model_output: torch.Tensor) -> torch.Tensor:
+        return torch.argmax(model_output, dim=1)
 
-    def evaluate(self, batch, stage=None):
-        x, y = batch
-        logits = self(x)
 
-        # print(f"Number of parameters: {sum(p.numel() for p in self.model.parameters() if p.requires_grad)}")
-        # for name, param in self.model.named_parameters():
-        #     if param.requires_grad:
-        #         if param.grad is not None:
-        #             print(name, param.data.shape, param.device, param.grad.device)
-        #         else:
-        #             print(name, param.data.shape, param.device, "NONE")
-
-        # print(x.device, y.device, logits.device, self.criterion(logits, y).device)
-        # input("Press Enter to continue...")
-        
-        loss = self.criterion(logits, y)
-        preds = torch.argmax(logits, dim=1)
-        acc = accuracy(preds, y)
-
-        if stage:
-            self.log(f"{stage}_loss", loss, prog_bar=True)
-            self.log(f"{stage}_acc", acc, prog_bar=True)
-
-        return loss, preds, y
-    
-    def training_step(self, batch, batch_idx):
-        loss, preds, y = self.evaluate(batch, "train")
-        if self.train_metrics is not None:
-            self.train_metrics(preds, y).update()
-        return {"loss": loss}
-    
-    def training_step_end(self, step_output: STEP_OUTPUT) -> STEP_OUTPUT:
-        #self.model.feature_extractor.maintain_convexity()
-        return super().training_step_end(step_output)
-    
-    def training_epoch_end(self, outputs) -> None:
-        if self.train_metrics is not None:
-            self._epoch_end_metric_logging(self.train_metrics, 'train', print_metrics=False)
+    def on_train_batch_end(self, outputs: STEP_OUTPUT, batch: Any, batch_idx: int) -> None:
+        # self.model.maintain_convexity()
+        self.model.print_cvx_combination()
+        return super().on_train_batch_end(outputs, batch, batch_idx)
 
     
-    def validation_step(self, batch, batch_idx):
-        loss, preds, y = self.evaluate(batch, "val")
-        acc = accuracy(preds, y)
-        if self.val_metrics is not None:
-            self.val_metrics(preds, y).update()
-        return {"val_loss": loss}
-    
-    def validation_epoch_end(self, outputs) -> None: 
-        if self.val_metrics is not None: # On epoch metric logging
-           self._epoch_end_metric_logging(self.val_metrics, 'val', print_metrics=True)
-    
-    def test_step(self, batch, batch_idx):
-        loss, preds, y = self.evaluate(batch, "test")
-        if self.test_metrics is not None:
-            self.test_metrics(preds, y).update()
-        return {"test_loss": loss}
         

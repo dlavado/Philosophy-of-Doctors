@@ -516,8 +516,6 @@ class LitSceneNet_AugLag(LitSceneNet):
 
 
 
-
-
 class LitSceneNet_Penalty(LitSceneNet):
 
     def __init__(self, geneo_num:dict, kernel_size:Tuple[int], criterion:torch.nn.Module, optimizer:str, learning_rate=1e-2, metric_initializer=None):

@@ -10,16 +10,16 @@ dataset:
 data_path:
   value: ../datasets/mnist/
 batch_size:
-  value: 256
+  value: 512
 num_workers:
-  value: 8
+  value: 12
 # ------------------ #
 # model config
 # ------------------ #
 model:
-  value: 'resnet'
+  value: 'gnet'
 kernel_size:
-  value: 2
+  value: (3, 3)
 hidden_dim:
   value: 128
 in_channels:
@@ -28,13 +28,13 @@ in_channels:
 # training config
 # ------------------ #
 optimizer:
-  value: 'adam' #'adam' 
+  value: 'sgd' #'adam' 
 learning_rate:
-  value: 0.01
+  value: 0.1
 max_epochs:
   value: 10 # -1 for infinite
 accelerator:
-  value: 'gpu' # 'ddp' or 'dp'
+  value: 'gpu'
 devices:
   value: -1 # -1 for all available gpus
 early_stop_metric:
@@ -74,3 +74,26 @@ accumulate_grad_batches:
 save_onnx:
   value: False
   description: 'Save model in onnx format'
+
+
+# ------------------ #
+# Opt Config
+# ------------------ #
+convergence_mode:
+  value: 'admm' # 'admm' or 'penalty' or 'auglag'
+  description: 'Convergence mode of the ADMM algorithm'
+admm_rho:
+  value: 1.0
+  description: 'Initial value of the penalty parameter of the augmented Lagrangian method'
+admm_rho_update_factor:
+  value: 1.0
+  description: 'Factor by which the penalty parameter is updated'
+admm_stepsize:
+  value: 10.0
+  description: 'Step size of the ADMM algorithm'
+admm_stepsize_update_factor:
+  value: 0.9
+  description: 'Factor by which the step size is updated'
+admm_rho_max:
+  value: 10
+  description: 'Maximum value of the penalty parameter'

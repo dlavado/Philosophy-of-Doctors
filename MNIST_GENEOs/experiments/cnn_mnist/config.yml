@@ -10,7 +10,7 @@ dataset:
 data_path:
   value: ../datasets/mnist/
 batch_size:
-  value: 16
+  value: 256
 num_workers:
   value: 8
 # ------------------ #
@@ -19,7 +19,7 @@ num_workers:
 model:
   value: 'cnn'
 kernel_size:
-  value: 2
+  value: 3
 hidden_dim:
   value: 128
 in_channels:

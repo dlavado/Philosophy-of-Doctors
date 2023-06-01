@@ -5,6 +5,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from torchmetrics import Accuracy, MetricCollection, Precision, Recall
+from torchvision import transforms
 
 
 
@@ -26,6 +27,55 @@ def init_metrics(num_classes=10):
         Precision(num_classes=num_classes, multiclass=True),
         Recall(num_classes=num_classes, multiclass=True)
     ])
+
+
+def isomorphic_data_augmentation(rotation=10, color_jitter=False) -> transforms.Compose:
+    """
+    Returns a torchvision.transforms.Compose object that performs data augmentation
+
+    The data augmentation consists of:
+        - Random rotation of the image by a maximum of `rotation` degrees
+        - Random translation of the image by a maximum of 10% of the image size
+        - Random horizontal flip with probability 0.5
+        - Random vertical flip with probability 0.5
+        - Random color jitter with brightness, contrast, saturation and hue all randomly changed by a maximum of 0.1
+        - Normalization of the image to the range [-1, 1]
+
+    Parameters
+    ----------
+
+    rotation : int
+        Maximum number of degrees to rotate the image by
+    
+    color_jitter : bool
+        If True, perform random color jitter on the image
+    """
+
+    T = transforms.Compose([
+        transforms.RandomRotation(rotation),
+        #transforms.RandomAffine(degrees=0, translate=(0.1, 0.1))
+    ])
+    
+    T.transforms.append(transforms.RandomApply(transforms=[transforms.RandomHorizontalFlip()], p=0.5))
+    T.transforms.append(transforms.RandomApply(transforms=[transforms.RandomVerticalFlip()], p=0.5))
+
+    if color_jitter:
+        T.transforms.append(transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.1))
+    
+    T.transforms.extend([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5,), (0.5,))
+    ])
+
+    return T
+
+
+def cifar_data_augmentation():
+    return transforms.AutoAugmentPolicy.CIFAR10
+
+
+def mix_data_augmentation():
+    return transforms.AugMix()
 
 
 
