@@ -72,8 +72,9 @@ class Augmented_Lagrangian_Loss(nn.Module):
         super().__init__()
 
         self.objective_function = objective_function
+        self.data_fid_weight = 1.5 # weight of the data fidelity term in the loss function.
 
-        self.constraints = constraints
+        self.constraints:Mapping[str, Constraint] = constraints
 
         if Lag_initializer is None:
             self.model_params, self.lag_multipliers = {}, {}
@@ -112,9 +113,8 @@ class Augmented_Lagrangian_Loss(nn.Module):
             The ground truth output.
         """
 
-        return self.objective_function(y_pred, y_gt) + \
-               self.Lagrangian_regularizer() + \
-               self.aug_Lagrangian_regularizer()
+        return self.data_fid_weight * self.objective_function(y_pred, y_gt) + \
+               self.aug_Lagrangian_regularizer() + self.Lagrangian_regularizer()
 
     
     def aug_Lagrangian_regularizer(self):
@@ -124,12 +124,12 @@ class Augmented_Lagrangian_Loss(nn.Module):
         i.e., || `constraint_function`(\.theta) ||_2^2
         """
 
-        pows = [abs(eval) for eval in self.constraint_on_params().values()]
+        pows = [torch.norm(eval, p=2) for eval in self.constraint_on_params().values()]
         
         return (self.penalty_factor/2) * sum(pows)
     
     def Lagrangian_regularizer(self):
-        return sum([(self.lag_multipliers[key]*eval).abs().sum() for key, eval in self.constraint_on_params().items()])
+        return sum([torch.norm(self.lag_multipliers[key]*eval, p=1) for key, eval in self.constraint_on_params().items()])
 
     
     def _compute_constraint_norm(self) -> float:
@@ -151,12 +151,14 @@ class Augmented_Lagrangian_Loss(nn.Module):
         Computes the constraint violation w.r.t. theta_n.
         """
         if model_params is None:
-            model_params = self.model_params.items()
+            model_params = self.model_params
+        else:
+            model_params = {p_name: p for p_name, p in model_params}
 
         constraint_eval = torch.tensor(0.0, device='cuda:0')    
 
         for constraint in self.constraints.values():
-            constraint_eval += constraint.evaluate_constraint(model_params)/constraint.weight
+            constraint_eval += constraint.evaluate_constraint(model_params.items())/constraint.weight
 
         return constraint_eval
 
@@ -166,7 +168,7 @@ class Augmented_Lagrangian_Loss(nn.Module):
         Computes the constraint violation w.r.t. theta_n.
         """
 
-        eval_constraint = {key: torch.tensor(0.0, requires_grad=False, device='cuda:0') for key in self.model_params}
+        eval_constraint = {key: torch.zeros_like(param, requires_grad=False, device='cuda:0') for key, param in self.model_params.items()}
         for constraint in self.constraints.values():
             for key, eval in constraint._constraint_on_params(self.model_params.items()).items():
                 eval_constraint[key] += eval
@@ -187,7 +189,7 @@ class Augmented_Lagrangian_Loss(nn.Module):
         eval = self.constraint_on_params()
         for key in self.lag_multipliers:
             self.lag_multipliers[key] = self.penalty_factor * eval[key]
-            # self.lag_multipliers[key] = self.lag_multipliers[key] + self.penalty_factor * eval[key]
+            #self.lag_multipliers[key] = self.lag_multipliers[key] + self.penalty_factor * eval[key]
 
     def update_best_constraint_norm(self):
         """

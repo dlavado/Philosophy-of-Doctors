@@ -2,6 +2,9 @@ from typing import Any, Iterable, Iterator, Tuple
 import torch
 import pytorch_lightning as pl
 from torch import nn
+import sys
+
+from core.models.gnet import IENEONet
 
 
 
@@ -28,15 +31,16 @@ class LitWrapperModel(pl.LightningModule):
         The reset() method is called at the end of each epoch and the update() method is called at the end of each step.
     """
 
-    def __init__(self, model:torch.nn.Module, criterion:torch.nn.Module, optimizer_name:str, learning_rate=1e-2, metric_initializer=None):
+    def __init__(self, model:torch.nn.Module, criterion:torch.nn.Module, optimizer_name:str, learning_rate=1e-2, metric_initializer=None, **kwargs):
         super().__init__()
         self.model = model
         self.criterion = criterion
 
+
         if metric_initializer is not None:
-            self.train_metrics = metric_initializer()
-            self.val_metrics = metric_initializer()
-            self.test_metrics = metric_initializer()
+            self.train_metrics = metric_initializer(kwargs['num_classes'])
+            self.val_metrics = metric_initializer(kwargs['num_classes'])
+            self.test_metrics = metric_initializer(kwargs['num_classes'])
         else:
             self.train_metrics = None
             self.val_metrics = None
@@ -143,14 +147,60 @@ class LitWrapperModel(pl.LightningModule):
     
 
 
+class Lit_IENEONet(LitWrapperModel):
+    
+    def __init__(self, 
+                 in_channels=1, 
+                 hidden_dim=128, 
+                 ghost_sample:torch.Tensor = None,
+                 gauss_hull_size=5,
+                 kernel_size=(3,3),
+                 num_classes=10,
+                 optimizer_name = 'adam', 
+                 learning_rate=0.01, 
+                 metric_initializer=None):
+
+        model = IENEONet(in_channels, hidden_dim, ghost_sample, gauss_hull_size, kernel_size, num_classes)
+        criterion = nn.CrossEntropyLoss() 
+        super().__init__(model, criterion, optimizer_name, learning_rate, metric_initializer, num_classes=num_classes)
+
+    def prediction(self, model_output: torch.Tensor) -> torch.Tensor:
+        return torch.argmax(model_output, dim=1)
+    
+    def print_cvx_combination(self) -> str:
+        return self.model.print_cvx_combination()
+    
+    def evaluate(self, batch, stage=None, metric=None, prog_bar=True, logger=True):
+        x, y = batch
+        out = self(x)
+        loss = self.criterion(out, y) + self.model.nonneg_loss()
+        preds = self.prediction(out)
+        
+        if stage:
+            on_step = stage == "train" 
+            self.log(f"{stage}_loss", loss, on_epoch=True, on_step=on_step, prog_bar=prog_bar, logger=logger)
+
+            if metric:
+                met = metric(preds, y)
+                self.log(f"{stage}_{metric.__name__}", met, on_epoch=True, on_step=False, prog_bar=True, logger=True)
+
+        return loss, preds, y
+    
+    def maintain_convexity(self):
+        self.model.maintain_convexity()
+
+    def on_train_batch_end(self, outputs, batch: Any, batch_idx: int) -> None:
+        self.maintain_convexity()
+        print(self.model.print_cvx_combination())
+        return super().on_train_batch_end(outputs, batch, batch_idx)
 
 
 class Lit_ADMM_Wrapper(LitWrapperModel):
 
 
-    def __init__(self, model: nn.Module, criterion: nn.Module, optimizer_name: str, learning_rate=0.01, metric_initializer=None):
+    def __init__(self, model: nn.Module, criterion: nn.Module, optimizer_name: str, learning_rate=0.01, metric_initializer=None, **kwargs):
         self.lag_mult_check = False
-        super().__init__(model, criterion, optimizer_name, learning_rate, metric_initializer)
+        super().__init__(model, criterion, optimizer_name, learning_rate, metric_initializer, **kwargs)
 
 
     def prediction(self, model_output: torch.Tensor) -> torch.Tensor:
@@ -189,6 +239,9 @@ class Lit_ADMM_Wrapper(LitWrapperModel):
         constraint_violation = self.criterion.get_constraint_violation()
 
         if not self.lag_mult_check: # don't make the tf file huge
+            if isinstance(self.model, Lit_IENEONet):
+                print(f"{'='*5}> {self.model.print_cvx_combination()}")
+            
             print(f"{'='*5}> Constraint Violation: {constraint_violation:.3f}")
             print(f"{'='*5}> best_constraint_norm: {self.criterion.best_constraint_norm:.3f}")
             print(f"{'='*5}> Penalty: {self.criterion.penalty_factor:.3f}")
@@ -202,24 +255,30 @@ class Lit_ADMM_Wrapper(LitWrapperModel):
             self.criterion.update_theta_k()
             self.criterion.update_psi()
            
-            if float(self.criterion.best_constraint_norm) <= constraint_violation:
+            if float(self.criterion.best_constraint_norm) < constraint_violation:
                 # if the constraint violation is increasing, we increase the penalty
                 self.criterion.update_penalty()
-                self.criterion.update_lag_multipliers()
             else:
                 # otherwise, we increase the stepsize to accelerate convergence
-                self.criterion.update_stepsize()            
+                self.criterion.update_stepsize()   
+                self.criterion.update_lag_multipliers()         
                 
             self.criterion.current_constraint_norm = constraint_violation
             self.criterion.update_best_constraint_norm()
 
-        return self.model.on_train_batch_end(outputs, batch, batch_idx)
+            # if self.criterion.ADMM_regularizer(self.named_parameters()) + self.criterion.Stochastic_ADMM_regularizer(self.named_parameters()) < self.criterion.objective_function(self(batch[0]), batch[1]):
+            #     self.criterion.update_penalty(0.5)
+
+        return super().on_train_batch_end(outputs, batch, batch_idx)
 
    
     
     def on_validation_epoch_end(self) -> None:
         self.lag_mult_check = False
         return super().on_validation_epoch_end() 
+    
+    def configure_optimizers(self):
+        return self.model.configure_optimizers()
     
 
     def on_validation_batch_end(self, outputs, batch: Any, batch_idx: int, dataloader_idx: int) -> None:
@@ -234,9 +293,9 @@ class Lit_ADMM_Wrapper(LitWrapperModel):
 
 class Lit_AugLag_Wrapper(LitWrapperModel):
 
-    def __init__(self, model: nn.Module, criterion: nn.Module, optimizer_name: str, learning_rate=0.01, metric_initializer=None):
+    def __init__(self, model: nn.Module, criterion: nn.Module, optimizer_name: str, learning_rate=0.01, metric_initializer=None, **kwargs):
         self.lag_mult_check = False
-        super().__init__(model, criterion, optimizer_name, learning_rate, metric_initializer)
+        super().__init__(model, criterion, optimizer_name, learning_rate, metric_initializer, **kwargs)
 
     def prediction(self, model_output: torch.Tensor) -> torch.Tensor:
         return self.model.prediction(model_output)
@@ -284,18 +343,23 @@ class Lit_AugLag_Wrapper(LitWrapperModel):
 
 
         if not self.lag_mult_check: # don't make the tf file huge
+            if isinstance(self.model, Lit_IENEONet):
+                print(f"{'='*5}> {self.model.print_cvx_combination()}")
             print(f"{'='*5}> Constraint Violation: {self.criterion.get_constraint_violation():.3f}")
             print(f"{'='*5}> best_constraint_norm: {self.criterion.best_constraint_norm:.3f}")
             print(f"{'='*5}> Penalty: {self.criterion.penalty_factor:.3f}")
             print(f"{'='*5}> Objective_function loss: {self.criterion.objective_function(self(batch[0]), batch[1]):.3f}")
             print(f"{'='*5}> Lagrangian loss: {self.criterion.Lagrangian_regularizer():.3f}")
-            print(f"{'='*5}> constraint norm loss: {self.criterion.aug_Lagrangian_regularizer():.3f}")
+            print(f"{'='*5}> Aug Lag loss: {self.criterion.aug_Lagrangian_regularizer():.3f}")
             self.lag_mult_check = True
-        return self.model.on_train_batch_end(outputs, batch, batch_idx)
+        return super().on_train_batch_end(outputs, batch, batch_idx)
     
     def on_validation_epoch_end(self) -> None:
         self.lag_mult_check = False
         return super().on_validation_epoch_end() 
+    
+    def configure_optimizers(self):
+        return self.model.configure_optimizers()
     
     def on_validation_batch_end(self, outputs, batch: Any, batch_idx: int, dataloader_idx: int) -> None:
         
@@ -309,8 +373,8 @@ class Lit_AugLag_Wrapper(LitWrapperModel):
 
 class Lit_FixedPenalty_Wrapper(LitWrapperModel):
 
-    def __init__(self, model: nn.Module, criterion: nn.Module, optimizer_name: str, learning_rate=0.01, metric_initializer=None):
-        super().__init__(model, criterion, optimizer_name, learning_rate, metric_initializer)
+    def __init__(self, model: nn.Module, criterion: nn.Module, optimizer_name: str, learning_rate=0.01, metric_initializer=None, **kwargs):
+        super().__init__(model, criterion, optimizer_name, learning_rate, metric_initializer, **kwargs)
 
     def prediction(self, model_output: torch.Tensor) -> torch.Tensor:
         return self.model.prediction(model_output)
@@ -336,6 +400,12 @@ class Lit_FixedPenalty_Wrapper(LitWrapperModel):
 
 
         return loss, preds, y 
+    
+    # def on_after_backward(self) -> None:
+        # for name, param in self.model.named_parameters():
+        #     if 'lambda' in name:
+        #         print(f"{'='*5}> {name}:\n {param.grad}")
+               
 
 
     def on_validation_epoch_end(self) -> None:
@@ -343,15 +413,24 @@ class Lit_FixedPenalty_Wrapper(LitWrapperModel):
         return super().on_validation_epoch_end() 
     
 
+    def configure_optimizers(self):
+        return self.model.configure_optimizers()
+    
+
     def on_train_batch_end(self, outputs, batch: Any, batch_idx: int) -> None:
         if not self.lag_mult_check: # don't make the tf file huge
+            if isinstance(self.model, Lit_IENEONet):
+                print(f"{'='*5}> {self.model.print_cvx_combination()}")
             print(f"{'='*5}> Constraint Violation: {self.criterion.get_constraint_violation():.3f}")
             print(f"{'='*5}> Objective_function loss: {self.criterion.objective_function(self(batch[0]), batch[1]):.3f}")
             print(f"{'='*5}> Constraint Norm loss: {self.criterion._compute_constraint_norm():.3f}")
 
             self.lag_mult_check = True
+        
+        if isinstance(self.model, Lit_IENEONet):
+            self.model.maintain_convexity()
 
-        return self.model.on_train_batch_end(outputs, batch, batch_idx)
+        return super().on_train_batch_end(outputs, batch, batch_idx)
     
 
     def on_validation_batch_end(self, outputs, batch: Any, batch_idx: int, dataloader_idx: int) -> None:

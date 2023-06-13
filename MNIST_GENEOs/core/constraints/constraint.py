@@ -8,6 +8,8 @@ import torch.nn.functional as F
 import numpy as np
 import sys
 
+from core.models.gnet import Gaussian_Kernels
+
 
 class Constraint(nn.Module):
 
@@ -90,7 +92,7 @@ class Lp_Constraint(Constraint):
         return self.weight * self.constraint_function(model_parameters)
     
     def _constraint_on_params(self, model_parameters: Iterator[Tuple[str, nn.Parameter]]) -> dict:
-        return {p_name: torch.norm(p_value, p=self.p) for p_name, p_value in model_parameters} # the constraint is always satisfied
+        return {p_name: self.weight * p_value.abs() for p_name, p_value in model_parameters} # the constraint is always satisfied
     
     def update_psi(self, psi: dict, 
                          theta: dict, 
@@ -101,20 +103,20 @@ class Lp_Constraint(Constraint):
 
         eval = {}
         for p_name, p_value in psi.items():
-                # if the constraint is satisfied, then the update is just the sum of the lagrangian multiplier and the primal variable
-                # else, the psi value is 0
-                val = torch.zeros_like(p_value)
-                satisfy = theta[p_name] + lag_multiplier[p_name] # constraint satisfied
-                val[p_value == 0] = satisfy[p_value == 0]
-                eval[p_name] = val
+                # where p_value == 0, the constraint is statisfied, so -> psi = theta + lag_multiplier
+                eval[p_name] = torch.where(p_value == 0, theta[p_name] + lag_multiplier[p_name], torch.zeros_like(p_value))
 
         return eval
     
 
+
+def compute_kernels(kernel_size, sigmas, mus):
+        return Gaussian_Kernels(kernel_size, torch.ones_like(sigmas), sigmas, mus).compute_kernels()
+
 class Orthogonality_Constraint(Constraint):
 
 
-    def __init__(self, weight:float, ieneo=False) -> None:
+    def __init__(self, weight:float, ieneo = None) -> None:
         """
         Orthogonal constraint for the kernels of a Conv2d layer.
         
@@ -125,7 +127,7 @@ class Orthogonality_Constraint(Constraint):
         """
         super().__init__(weight, "Orthogonality")
 
-        self.ieneo = ieneo # if True, then the constraint is evaluated on the kernels resulting from the ieneo layer
+        self.ieneo_ksize = ieneo # if not none, then it must be the kernel size of the IENEO layer
 
     def conv_orth_dist(self, kernel, stride = 1):
         """
@@ -174,8 +176,7 @@ class Orthogonality_Constraint(Constraint):
         if mat.shape[0] < mat.shape[1]:
             mat = mat.permute(1,0)
         return torch.norm( torch.t(mat)@mat - torch.eye(mat.shape[1]).cuda())
-
-        
+      
     def constraint_function(self, weight:torch.Tensor, conv=True) -> float:
 
         if conv:
@@ -202,9 +203,21 @@ class Orthogonality_Constraint(Constraint):
 
         orthogonality_penalty = 0.0
 
-        for p_name, p_value in model_parameters:
-            if 'weight' in p_name:
-                orthogonality_penalty += self.constraint_function(p_value, 'conv' in p_name)
+        if self.ieneo_ksize: # IENEO NN has a special constraint for the kernels of the IENEO layer
+            mus, sigmas = None, None
+            for p_name, p_value in model_parameters:
+                if 'mus' in p_name:
+                    mus = p_value
+                elif 'sigmas' in p_name:
+                    sigmas = p_value
+                elif 'weight' in p_name:
+                    orthogonality_penalty += self.constraint_function(p_value, 'conv' in p_name)
+            kernels = compute_kernels(self.ieneo_ksize, mus, sigmas) 
+            orthogonality_penalty += self.constraint_function(kernels, conv=True)
+        else:
+            for p_name, p_value in model_parameters:
+                if 'weight' in p_name:
+                    orthogonality_penalty += self.constraint_function(p_value, 'conv' in p_name)
         return self.weight * orthogonality_penalty
     
     def _constraint_on_params(self, model_parameters: Iterator[Tuple[str, nn.Parameter]]) -> dict:
@@ -212,9 +225,9 @@ class Orthogonality_Constraint(Constraint):
         const = {}
         for p_name, p_value in model_parameters:
             if 'weight' in p_name and 'conv' in p_name:
-                const[p_name] = self.constraint_function(p_value)/p_value.numel()
+                const[p_name] = self.weight * torch.full_like(p_value, float(self.constraint_function(p_value))/p_value.numel())
             else:
-                const[p_name] = torch.tensor(0.0, device=p_value.device)
+                const[p_name] = torch.zeros_like(p_value, device=p_value.device)
         return const
     
     def update_psi(self, psi:dict, 
@@ -228,14 +241,23 @@ class Orthogonality_Constraint(Constraint):
         # the constraint is always satisfied, so the update is just the sum of the lagrangian multiplier and the primal variable
 
         eval = {}
-
+       
         for p_name, p_value in psi.items():
             if 'weight' in p_name:
                 # if conv weights, apply the constraint
-                eval[p_name] = torch.full_like(theta[p_name], self.constraint_function(p_value, 'conv' in p_name)/p_value.numel())
-            # else:
-            #     # if not conv weights, the constraint is always satisfied
-            #     eval[p_name] = theta[p_name] + lag_multiplier[p_name]
+                eval[p_name] = self.weight * torch.full_like(theta[p_name], self.constraint_function(p_value, 'conv' in p_name)/p_value.numel())
+            
+            if self.ieneo_ksize:
+                if 'mus' in p_name:
+                    mus_name, mus = p_name, p_value
+                elif 'sigmas' in p_name:
+                    sigmas_name, sigmas = p_name, p_value
+
+        if self.ieneo_ksize:
+            ortho = self.constraint_function(compute_kernels(self.ieneo_ksize, mus, sigmas), conv=True)
+
+            eval[mus_name] = self.weight * torch.full_like(mus, ortho/(mus.numel() + sigmas.numel()))
+            eval[sigmas_name] = self.weight * torch.full_like(sigmas, ortho/(mus.numel() + sigmas.numel()))
 
         return eval
     
@@ -244,7 +266,7 @@ class Orthogonality_Constraint(Constraint):
 class Nonnegativity_Constraint(Constraint):
     
         def __init__(self, weight:float, param_name = None) -> None:
-            super().__init__(weight, 'nonnegativity')
+            super().__init__(weight, f'{param_name}_NonNegativity')
 
             # In case we want to apply the constraint to a specific parameter
             self.param_name = param_name
@@ -293,14 +315,10 @@ class Nonnegativity_Constraint(Constraint):
 
             psi_n_plus_1 = {}
             
-            for key in eval:
-                if eval[key] == 0: # If the constraint is satisfied, then we update the \psi value.
-                    psi_n_plus_1[key] = torch.tensor(theta[key] + lag_multiplier[key], device=psi[key].device, dtype=psi[key].dtype)
-                    #print(f'psi[{key}] = {psi[key]} = {theta[key]} + {lag_multiplier[key]}')
-                else: 
-                    # if the constraint is not satisfied, that means that the \psi value is non-negative, 
-                    # thus we project it to the feasible set, i.e., to 0.
-                    psi_n_plus_1[key] = torch.tensor(0.0, device=psi[key].device, dtype=psi[key].dtype)
+            for key, e in eval.items():
+                psi_n_plus_1[key] = e 
+                # where eval is 0, the constraint is satisfied, so psi -> theta + lag_multiplier
+                psi_n_plus_1[key] = torch.where(e == 0, theta[key] + lag_multiplier[key], torch.zeros_like(psi[key], device=psi[key].device, dtype=psi[key].dtype))
 
             return psi_n_plus_1
 
@@ -330,15 +348,19 @@ class Convexity_Constraint(Constraint):
 
         return self.weight * self.constraint_function(model_parameters)
     
+    
 
     def _constraint_on_params(self, model_parameters: Iterator[Tuple[str, nn.Parameter]]) -> dict:
 
         for p_name, p_value in model_parameters:
             if self.cvx_coeff_name in p_name:
                 # soft_cvx represents the intended values for the convex coeffcients while respecting their magnitude.
-                soft_cvx = (1 - torch.sum(p_value, dim=p_value.dim()-1)).abs()
+                soft_cvx = 1 - torch.sum(p_value, dim=p_value.dim()-1)
+
+                zeros = torch.zeros_like(p_value, device=soft_cvx.device, dtype=soft_cvx.dtype)
+                zeros[:, -1] = soft_cvx.abs()
                 
-                return {p_name: soft_cvx} # The difference between the intended values and the actual values is the penalty.
+                return {p_name: zeros}
         
 
     def update_psi(self, psi:dict, theta:dict, lag_multiplier: dict) -> dict:
@@ -357,70 +379,14 @@ class Convexity_Constraint(Constraint):
 
         psi_n_plus_1 = {}
         
-        for key in eval:
-            if eval[key] == 0: # If the constraint is satisfied, then we update the \psi value.
-                psi_n_plus_1[key] = torch.tensor(theta[key] + lag_multiplier[key], device=psi[key].device, dtype=psi[key].dtype)
-                #print(f'psi[{key}] = {psi[key]} = {theta[key]} + {lag_multiplier[key]}')
-            else: 
-                # if the constraint is not satisfied, that means that the \psi value is non-negative, 
-                # thus we project it to the feasible set, i.e., to 0.
-                psi_n_plus_1[key] = torch.zeros_like(psi[key], device=psi[key].device, dtype=psi[key].dtype)
-
+        for key, e in eval.items():
+            e = torch.relu(-e)
+            e = torch.where(e == 0, theta[key] + lag_multiplier[key], e)
+            psi_n_plus_1[key] = e
+           
         return psi_n_plus_1
     
 
-
-class Convex_Square_Constraint(Constraint):
-
-    def __init__(self, weight:float, cvx_coeff_name) -> None:
-        super().__init__(weight, 'convex_square')
-
-        self.cvx_coeff_name = cvx_coeff_name
-
-    def constraint_function(self, model_parameters:Iterator[Tuple[str, nn.Parameter]]) -> float:
-
-        
-        for p_name, p_value in model_parameters:
-            if self.cvx_coeff_name in p_name:
-                cvx_penalty = 1 - torch.sum(torch.pow(p_value, 2), dim=p_value.dim()-1)
-
-        return cvx_penalty.sum()
-
-
-    def evaluate_constraint(self, model_parameters:Iterator[Tuple[str, nn.Parameter]]) -> float:
-        """
-        Evaluates the constraint function.
-        """
-
-        return self.weight * self.constraint_function(model_parameters)
-    
-
-    def _constraint_on_params(self, model_parameters: Iterator[Tuple[str, nn.Parameter]]) -> dict:
-
-        for p_name, p_value in model_parameters:
-            if self.cvx_coeff_name in p_name:
-                # soft_cvx represents the intended values for the convex coeffcients while respecting their magnitude.
-                soft_cvx = torch.softmax(torch.pow(p_value, 2), dim=p_value.dim()-1)
-                
-                return {p_name: p_value - soft_cvx} # The difference between the intended values and the actual values is the penalty.
-        
-
-    def update_psi(self, psi:dict, theta:dict, lag_multiplier: dict):
-        """
-        Updates the \psi values of the ADMM algothm.
-
-        Convexity constraint is applied to all parameters in \psi
-
-        Returns
-        -------
-        psi : nn.ParameterDict
-            The updated \psi values
-        """
-        
-        return self._constraint_on_params(psi.items())
-
-
-    
 
 
     

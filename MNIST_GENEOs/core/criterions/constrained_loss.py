@@ -63,11 +63,14 @@ class Constrained_Loss(nn.Module):
         constraint_norm = 0.0
 
         for constraint in self.constraints.values():
-            #print(f"Constraint {constraint}: {constraint.evaluate_constraint(self.model_params.items())}")
+            # print(f"Constraint {constraint}: {constraint.evaluate_constraint(self.model_params.items())}")
             constraint_norm += constraint.evaluate_constraint(self.model_params.items())
 
-        return constraint_norm
+        if constraint_norm > 100.0:
+            return torch.log(torch.tensor(constraint_norm, device='cuda:0')) # log is used to stabilize the training process
         
+        return constraint_norm
+
 
 
     def get_constraint_violation(self, model_params:Iterator[Tuple[str, nn.Parameter]]=None) -> float:
@@ -75,11 +78,14 @@ class Constrained_Loss(nn.Module):
         Computes the constraint violation w.r.t. theta_n.
         """
         if model_params is None:
-            model_params = self.model_params.items()
+            model_params = self.model_params
+        else:
+            model_params = {p_name: p for p_name, p in model_params}
 
         constraint_eval = torch.tensor(0.0, device='cuda:0')    
 
         for constraint in self.constraints.values():
-            constraint_eval += constraint.evaluate_constraint(model_params)/constraint.weight
+            weight = constraint.weight if constraint.weight > 0 else 1.0
+            constraint_eval += constraint.evaluate_constraint(model_params.items())/weight
 
         return constraint_eval

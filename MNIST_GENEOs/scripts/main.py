@@ -28,11 +28,13 @@ sys.path.insert(1, '../..')
 
 from core.models.cnn import Lit_CNN_Classifier
 from core.models.resnet import LitResnet
-from core.models.gnet import Lit_IENEONet
+from core.models.lit_modules.lit_wrapper import Lit_IENEONet
+
 
 
 from core.data_modules.mnist import MNISTDataModule
 from core.data_modules.cifar10 import init_cifar10dm
+
 
 from core.models.lit_modules.lit_callbaks import callback_model_checkpoint
 from utils import utils
@@ -79,7 +81,7 @@ def init_callbacks(ckpt_dir):
                                         min_delta=0.00, 
                                         patience=30, 
                                         verbose=False, 
-                                        mode="max")
+                                        mode="min")
 
     callbacks.append(early_stop_callback)
 
@@ -128,7 +130,7 @@ def init_resnet(ckpt_path=None, num_classes=10):
         
         print(f"Resuming from checkpoint {ckpt_path}")
         model = LitResnet.load_from_checkpoint(ckpt_path,
-                                               num_classes=num_classes,
+                                               num_classes=wandb.config.num_classes,
                                                optimizer_name=wandb.config.optimizer, 
                                                learning_rate=wandb.config.learning_rate,
                                                metric_initializer=utils.init_metrics
@@ -136,8 +138,10 @@ def init_resnet(ckpt_path=None, num_classes=10):
         
 
     else:
-        model = LitResnet(num_classes=num_classes,
+        model = LitResnet(num_classes=wandb.config.num_classes,
+                          in_channels=wandb.config.in_channels,
                           optimizer_name=wandb.config.optimizer, 
+                          pretrained=wandb.config.pretrained,
                           learning_rate=wandb.config.learning_rate,
                           metric_initializer=utils.init_metrics
                         )
@@ -150,8 +154,6 @@ def init_ieneonet(ckpt_path=None, data_module:pl.LightningDataModule=None, num_c
     x = data_module.train_dataloader().dataset[0][0]
     x = x.unsqueeze(0) # adding batch dimension
 
-    gaussian_hull_size = 10
-
     if wandb.config.resume_from_checkpoint:
         if not os.path.exists(ckpt_path):
             raise FileNotFoundError(f"Checkpoint {ckpt_path} does not exist.")
@@ -160,7 +162,7 @@ def init_ieneonet(ckpt_path=None, data_module:pl.LightningDataModule=None, num_c
         model = Lit_IENEONet.load_from_checkpoint(ckpt_path,
                                                  num_classes=num_classes,
                                                  ghost_sample=x, 
-                                                 gauss_hull_size = gaussian_hull_size,   
+                                                 gauss_hull_size = wandb.config.gaussian_mixture_size,   
                                                  optimizer_name=wandb.config.optimizer,
                                                  learning_rate=wandb.config.learning_rate,
                                                  metric_initializer=utils.init_metrics)
@@ -171,7 +173,7 @@ def init_ieneonet(ckpt_path=None, data_module:pl.LightningDataModule=None, num_c
         model = Lit_IENEONet(in_channels=wandb.config.in_channels,
                              hidden_dim=wandb.config.hidden_dim,
                              ghost_sample=x,
-                             gauss_hull_size = gaussian_hull_size,
+                             gauss_hull_size = wandb.config.gaussian_mixture_size,
                              kernel_size=ast.literal_eval(wandb.config.kernel_size),
                              num_classes=num_classes,
                              optimizer_name=wandb.config.optimizer,
@@ -288,7 +290,7 @@ def main():
         trainer.tune(model, data_module) # auto_lr_find and auto_scale_batch_size
         print(f"Learning rate in use is: {model.hparams.learning_rate}")
 
-
+    
     trainer.fit(model, data_module)
 
     print(f"{'='*20} Model ckpt scores {'='*20}")
@@ -370,7 +372,7 @@ if __name__ == '__main__':
         )
     else:
         # default mode
-        sweep_config = os.path.join(experiment_path, 'config.yml')
+        sweep_config = os.path.join(experiment_path, 'opt_config.yml')
         print(f"Loading config from {sweep_config}")
 
         print("wandb init.")

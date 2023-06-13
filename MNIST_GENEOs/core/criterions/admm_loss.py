@@ -65,8 +65,11 @@ class ADMM_Loss(nn.Module):
         super().__init__()
 
         self.objective_function = objective_function
+        self.data_fid_weight = 1.5 # weight of the data fidelity term in the loss function.
 
         self.constraints:Mapping[str, Constraint] = constraints
+
+        self.constraint_weight = max([c.weight for c in constraints.values()])
 
         self.model_params = {}
 
@@ -115,9 +118,8 @@ class ADMM_Loss(nn.Module):
 
         """
         
-        return  self.objective_function(y_pred, y_gt) + \
-                self.ADMM_regularizer(self.model_params.items()) + \
-                self.Stochastic_ADMM_regularizer(self.model_params.items())
+        return  self.data_fid_weight   * self.objective_function(y_pred, y_gt) + \
+                self.constraint_weight * ( self.ADMM_regularizer(self.model_params.items()) + self.Stochastic_ADMM_regularizer(self.model_params.items()) )
     
     
     def Stochastic_ADMM_regularizer(self, theta_n:Iterator[Tuple[str, nn.Parameter]]):
@@ -125,7 +127,7 @@ class ADMM_Loss(nn.Module):
         || \.theta_k+1 - \.theta_k ||_2^2 / (2 * stepsize)
         """
 
-        diff_norm = [torch.norm(torch.tensor(p_value - self.theta_k[p_name]), p=2) for p_name, p_value in theta_n]
+        diff_norm = [torch.norm(p_value - self.theta_k[p_name], p=2) for p_name, p_value in theta_n]
 
         return sum(diff_norm) / (2*self.stepsize)
     
@@ -134,7 +136,8 @@ class ADMM_Loss(nn.Module):
         """
         || \.theta - \psi + \.lambda ||_2^2
         """
-        pows = [torch.pow(p_value - self.psi[p_name] + self.lag_multipliers[p_name], 2).sum() for p_name, p_value in theta_n] # tradtional ADMM formulation
+        pows = [torch.norm(p_value - self.psi[p_name] + self.lag_multipliers[p_name], 2) for p_name, p_value in theta_n] # tradtional ADMM formulation
+
 
         return (self.penalty_factor/2) * sum(pows) # L2 norm
 
@@ -145,12 +148,14 @@ class ADMM_Loss(nn.Module):
         Computes the constraint violation w.r.t. theta_n.
         """
         if model_params is None:
-            model_params = self.model_params.items()
+            model_params = self.model_params
+        else:
+            model_params = {p_name: p for p_name, p in model_params}
 
         constraint_eval = torch.tensor(0.0, device='cuda:0')    
 
         for constraint in self.constraints.values():
-            constraint_eval += constraint.evaluate_constraint(model_params)/constraint.weight
+            constraint_eval += constraint.evaluate_constraint(model_params.items())/constraint.weight
 
         return constraint_eval
 
@@ -181,16 +186,21 @@ class ADMM_Loss(nn.Module):
 
         for key in self.lag_multipliers:
             # Lagrangian multipliers are updated by adding the offset between \.theta and \psi. These should be non-negative.
-            self.lag_multipliers[key] = self.penalty_factor * (self.theta_k[key] - self.psi[key]).abs()
-            #self.lag_multipliers[key] = self.lag_multipliers[key] + self.penalty_factor * (self.theta_k[key] - self.psi[key]).abs()
+            self.lag_multipliers[key] = self.penalty_factor * (self.theta_k[key] - self.psi[key])
+            # self.lag_multipliers[key] = self.lag_multipliers[key] + self.penalty_factor * (self.theta_k[key] - self.psi[key])
         
 
     def update_stepsize(self):
         self.stepsize = self.stepsize * self.stepsize_update_factor
         
-    def update_penalty(self):
+    def update_penalty(self, factor=None):
+        if factor is None:
+            factor = self.penalty_update_factor
+        else:
+            self.penalty_factor = min(self.penalty_factor * factor, self.max_penalty)
+
         if self.constraint_tolerance_counter > self.constraint_tolerance:
-            self.penalty_factor = min(self.penalty_factor * self.penalty_update_factor, self.max_penalty)
+            self.penalty_factor = min(self.penalty_factor * factor, self.max_penalty)
             self.constraint_tolerance_counter = 0
         else:
             self.constraint_tolerance_counter += 1

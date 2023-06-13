@@ -1,36 +1,40 @@
 group:
-  value: 'MNIST'
+  value: 'CIFAR10'
 output_dir: 
   value: 'experiments/$model_$dataset/outputs'
 # ------------------ #
 # dataset config
 # ------------------ #
 dataset:
-  value: 'mnist'
+  value: 'cifar10'
 data_path:
-  value: ../datasets/mnist/
+  value: ../datasets/cifar10/
 batch_size:
   value: 256
 num_workers:
-  value: 8
+  value: 12
+num_classes:
+  value: 10
 # ------------------ #
 # model config
 # ------------------ #
 model:
-  value: 'cnn'
+  value: 'resnet'
 kernel_size:
-  value: 3
+  value: 2
 hidden_dim:
   value: 128
 in_channels:
-  value: 1
+  value: 3
+pretrained:
+  value: True
 # ------------------ #
 # training config
 # ------------------ #
 optimizer:
-  value: 'sgd' #'adam' 
+  value: 'adam' #'adam' 
 learning_rate:
-  value: 0.01
+  value: 0.001
 max_epochs:
   value: 10 # -1 for infinite
 accelerator:
@@ -64,7 +68,7 @@ precision: # 16 or 32 FPU precision
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: False
+  value: True
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'
@@ -74,3 +78,40 @@ accumulate_grad_batches:
 save_onnx:
   value: False
   description: 'Save model in onnx format'
+
+# ------------------ #
+# Opt Config
+# ------------------ #
+convergence_mode:
+  value: 'admm' # 'admm' or 'penalty' or 'auglag'
+  description: 'Convergence mode of the ADMM algorithm'
+admm_rho:
+  value: 1.0
+  description: 'Initial value of the penalty parameter of the augmented Lagrangian method'
+admm_rho_update_factor:
+  value: 1.00
+  description: 'Factor by which the penalty parameter is updated'
+admm_stepsize:
+  value: 10.0
+  description: 'Step size of the ADMM algorithm'
+admm_stepsize_update_factor:
+  value: 1.0
+  description: 'Factor by which the step size is updated'
+admm_rho_max:
+  value: 10
+  description: 'Maximum value of the penalty parameter'
+convergence_iterations:
+  value: 5
+  description: 'Number of iterations of the Augmented Lagrangian method to reach convergence'
+# ------------------ #
+# Constraint Config
+# ------------------ #
+ortho_weight:
+  value: 0.1
+  description: 'Orthogonality constraint weight'
+sparse_weight:
+  value: 0.1
+  description: 'Sparsity constraint weight'
+magnitude_weight:
+  value: 0.1
+  description: 'Magnitude constraint weight'

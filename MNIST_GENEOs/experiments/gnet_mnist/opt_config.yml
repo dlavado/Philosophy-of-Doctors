@@ -10,9 +10,11 @@ dataset:
 data_path:
   value: ../datasets/mnist/
 batch_size:
-  value: 512
+  value: 256
 num_workers:
   value: 12
+num_classes:
+  value: 10
 # ------------------ #
 # model config
 # ------------------ #
@@ -24,15 +26,17 @@ hidden_dim:
   value: 128
 in_channels:
   value: 1
+gaussian_mixture_size:
+  value: 10
 # ------------------ #
 # training config
 # ------------------ #
 optimizer:
-  value: 'sgd' #'adam' 
+  value: 'adam' #'adam' 
 learning_rate:
-  value: 0.1
+  value: 0.01
 max_epochs:
-  value: 10 # -1 for infinite
+  value: 80 # -1 for infinite
 accelerator:
   value: 'gpu'
 devices:
@@ -97,3 +101,24 @@ admm_stepsize_update_factor:
 admm_rho_max:
   value: 10
   description: 'Maximum value of the penalty parameter'
+convergence_iterations:
+  value: 5
+  description: 'Number of iterations of the Augmented Lagrangian method to reach convergence'
+# ------------------ #
+# Constraint Config
+# ------------------ #
+ortho_weight:
+  value: 0.0
+  description: 'Orthogonality constraint weight'
+# sparse_weight:
+#   value: 0.2
+#   description: 'Sparsity constraint weight'
+magnitude_weight:
+  value: 0.0
+  description: 'Magnitude constraint weight'
+convex_weight:
+  value: 0.0
+  description: 'Convexity constraint weight'
+nonneg_weight:
+  value: 0.0
+  description: 'Non-negativity constraint weight'

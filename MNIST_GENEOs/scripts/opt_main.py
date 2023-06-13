@@ -12,7 +12,7 @@ from torch import nn
 import pytorch_lightning as pl
 import pytorch_lightning.callbacks as  pl_callbacks
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
-from pytorch_lightning.profiler import AdvancedProfiler, SimpleProfiler, PyTorchProfiler
+from pytorch_lightning.callbacks import LearningRateMonitor, TQDMProgressBar
 
 
 # Weights & Biases
@@ -23,7 +23,6 @@ import sys
 import os
 
 
-
 # Our code
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
@@ -32,11 +31,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from core.models.cnn import Lit_CNN_Classifier
 from core.models.resnet import LitResnet
-from core.models.gnet import Lit_IENEONet
+from core.models.lit_modules.lit_wrapper import Lit_IENEONet
+from core.models.vgg16 import LitVGG11
+
 
 
 from core.data_modules.mnist import MNISTDataModule
-from core.data_modules.cifar10 import init_cifar10dm
+from core.data_modules.cifar10 import CIFAR100DataModule, init_cifar10dm
 
 from core.models.lit_modules.lit_callbaks import callback_model_checkpoint
 from utils import utils
@@ -62,7 +63,7 @@ def init_callbacks(ckpt_dir):
                 filename=f"val_{metric}",
                 monitor=f"val_{metric}",
                 mode="max",
-                save_top_k=2,
+                save_top_k=1,
                 save_last=False,
                 every_n_epochs=wandb.config.checkpoint_every_n_epochs,
                 every_n_train_steps=wandb.config.checkpoint_every_n_steps,
@@ -85,18 +86,22 @@ def init_callbacks(ckpt_dir):
 
     callbacks.extend(model_ckpts)
 
-    early_stop_callback = EarlyStopping(monitor=wandb.config.early_stop_metric, 
-                                        min_delta=0.00, 
-                                        patience=30, 
-                                        verbose=False, 
-                                        mode="max")
+    # early_stop_callback = EarlyStopping(monitor=wandb.config.early_stop_metric, 
+    #                                     min_delta=0.00, 
+    #                                     patience=30, 
+    #                                     verbose=False, 
+    #                                     mode="min")
 
-    callbacks.append(early_stop_callback)
+    # callbacks.append(early_stop_callback)
+
+    other_callbacks = [LearningRateMonitor(logging_interval="step"), TQDMProgressBar(refresh_rate=10)]
+    callbacks.extend(other_callbacks)
 
     return callbacks
 
 
-def init_cnn(ckpt_path=None, data_module:pl.LightningDataModule=None, num_classes=10):
+
+def init_cnn(ckpt_path=None, data_module:pl.LightningDataModule=None):
     data_module.setup()
     x = data_module.train_dataloader().dataset[0][0]
     x = x.unsqueeze(0) # adding batch dimension
@@ -108,7 +113,7 @@ def init_cnn(ckpt_path=None, data_module:pl.LightningDataModule=None, num_classe
         
         print(f"Resuming from checkpoint {ckpt_path}")
         model = Lit_CNN_Classifier.load_from_checkpoint(ckpt_path,
-                                                    num_classes=num_classes,
+                                                    num_classes=wandb.config.num_classes,
                                                     ghost_sample=x,
                                 )
         
@@ -118,20 +123,20 @@ def init_cnn(ckpt_path=None, data_module:pl.LightningDataModule=None, num_classe
             hidden_dim=wandb.config.hidden_dim,
             kernel_size=wandb.config.kernel_size,
             ghost_sample=x,
-            num_classes=num_classes,
+            num_classes=wandb.config.num_classes,
         )
 
     return model
 
 
-def init_resnet(ckpt_path=None, num_classes=10):
+def init_resnet(ckpt_path=None):
     if wandb.config.resume_from_checkpoint:
         if not os.path.exists(ckpt_path):
             raise FileNotFoundError(f"Checkpoint {ckpt_path} does not exist.")
         
         print(f"Resuming from checkpoint {ckpt_path}")
         model = LitResnet.load_from_checkpoint(ckpt_path,
-                                               num_classes=num_classes,
+                                               num_classes=wandb.config.num_classes,
                                                optimizer_name=wandb.config.optimizer, 
                                                learning_rate=wandb.config.learning_rate,
                                                metric_initializer=utils.init_metrics
@@ -139,21 +144,46 @@ def init_resnet(ckpt_path=None, num_classes=10):
         
 
     else:
-        model = LitResnet(num_classes=num_classes,
+        model = LitResnet(num_classes=wandb.config.num_classes,
+                          in_channels=wandb.config.in_channels,
                           optimizer_name=wandb.config.optimizer, 
+                          pretrained=wandb.config.pretrained,
                           learning_rate=wandb.config.learning_rate,
                           metric_initializer=utils.init_metrics
                         )
         
     return model
 
+def init_vgg11(ckpt_path=None):
+    if wandb.config.resume_from_checkpoint:
+        if not os.path.exists(ckpt_path):
+            raise FileNotFoundError(f"Checkpoint {ckpt_path} does not exist.")
+        
+        print(f"Resuming from checkpoint {ckpt_path}")
+        model = LitVGG11.load_from_checkpoint(ckpt_path,
+                                               num_classes=wandb.config.num_classes,
+                                               optimizer_name=wandb.config.optimizer, 
+                                               learning_rate=wandb.config.learning_rate,
+                                               metric_initializer=utils.init_metrics
+                                            )
+        
 
-def init_ieneonet(ckpt_path=None, data_module:pl.LightningDataModule=None, num_classes=10):
+    else:
+        model = LitVGG11(num_classes=wandb.config.num_classes,
+                         in_channels=wandb.config.in_channels,
+                         optimizer_name=wandb.config.optimizer, 
+                         pretrained=wandb.config.pretrained,
+                         learning_rate=wandb.config.learning_rate,
+                         metric_initializer=utils.init_metrics
+                        )
+        
+    return model
+
+
+def init_ieneonet(ckpt_path=None, data_module:pl.LightningDataModule=None):
     data_module.setup()
     x = data_module.train_dataloader().dataset[0][0]
     x = x.unsqueeze(0) # adding batch dimension
-
-    gaussian_hull_size = 5
 
     if wandb.config.resume_from_checkpoint:
         if not os.path.exists(ckpt_path):
@@ -161,9 +191,9 @@ def init_ieneonet(ckpt_path=None, data_module:pl.LightningDataModule=None, num_c
         
         print(f"Resuming from checkpoint {ckpt_path}")
         model = Lit_IENEONet.load_from_checkpoint(ckpt_path,
-                                                 num_classes=num_classes,
+                                                 num_classes=wandb.config.num_classes,
                                                  ghost_sample=x, 
-                                                 gauss_hull_size = gaussian_hull_size,   
+                                                 gauss_hull_size = wandb.config.gaussian_mixture_size,   
                                                  optimizer_name=wandb.config.optimizer,
                                                  learning_rate=wandb.config.learning_rate,
                                                  metric_initializer=utils.init_metrics)
@@ -174,9 +204,9 @@ def init_ieneonet(ckpt_path=None, data_module:pl.LightningDataModule=None, num_c
         model = Lit_IENEONet(in_channels=wandb.config.in_channels,
                              hidden_dim=wandb.config.hidden_dim,
                              ghost_sample=x,
-                             gauss_hull_size = gaussian_hull_size,
+                             gauss_hull_size = wandb.config.gaussian_mixture_size,
                              kernel_size=ast.literal_eval(wandb.config.kernel_size),
-                             num_classes=num_classes,
+                             num_classes=wandb.config.num_classes,
                              optimizer_name=wandb.config.optimizer,
                              learning_rate=wandb.config.learning_rate,
                              metric_initializer=utils.init_metrics)
@@ -199,6 +229,12 @@ def init_mnist(data_path, batch_size, fit_transform=None, test_transform=None):
     return mnist
 
 
+def init_cifar100(data_path, batch_size):
+
+    return CIFAR100DataModule(data_dir=data_path,
+                              batch_size=batch_size)                                
+
+
 def init_trainer(wandb_logger, callbacks, ckpt_path=None):
     return pl.Trainer(
             logger=wandb_logger,
@@ -209,7 +245,7 @@ def init_trainer(wandb_logger, callbacks, ckpt_path=None):
             accelerator=wandb.config.accelerator,
             devices=wandb.config.devices,
             #fast_dev_run = wandb.config.fast_dev_run,
-            profiler=AdvancedProfiler() if wandb.config.profiler else None,
+            profiler=wandb.config.profiler if wandb.config.profiler else None,
             precision=wandb.config.precision,
             auto_lr_find=wandb.config.auto_lr_find,
             auto_scale_batch_size=wandb.config.auto_scale_batch_size,
@@ -253,14 +289,30 @@ def auglag_training(logger, callbacks, base_criterion, model:LitWrapperModel, co
     best_constraint_norm = None
     convergence_iterations = wandb.config.convergence_iterations
     for k in range(convergence_iterations):
-        penalty_factor = wandb.config.admm_rho * (k+1)
+        penalty_factor = (wandb.config.admm_rho / convergence_iterations) * (k+1)
 
         # ------------------------
         criterion = set_augLag_criterion(base_criterion, model, constraints, penalty_factor, best_constraint_norm, lagrangian_multipliers)
         model.criterion = criterion # dynamically set up model criterion
         # ------------------------
 
-        trainer = init_trainer(logger, callbacks)
+        trainer = pl.Trainer(
+            logger=logger,
+            callbacks=callbacks,
+            detect_anomaly=True,
+            #
+            max_epochs=int(wandb.config.max_epochs/convergence_iterations),
+            accelerator=wandb.config.accelerator,
+            devices=wandb.config.devices,
+            #fast_dev_run = wandb.config.fast_dev_run,
+            profiler= wandb.config.profiler if wandb.config.profiler else None,
+            precision=wandb.config.precision,
+            auto_lr_find=wandb.config.auto_lr_find,
+            auto_scale_batch_size=wandb.config.auto_scale_batch_size,
+            enable_model_summary=True,
+            accumulate_grad_batches = ast.literal_eval(wandb.config.accumulate_grad_batches),
+            resume_from_checkpoint=None
+        )
 
         if wandb.config.auto_lr_find or wandb.config.auto_scale_batch_size:
             trainer.tune(model, data_module) # auto_lr_find and auto_scale_batch_size
@@ -318,36 +370,48 @@ def main():
         if not os.path.exists(data_path):
             raise FileNotFoundError(f"Data path {data_path} does not exist.")
         data_module = init_cifar10dm(data_path, wandb.config.batch_size)
+    elif wandb.config.dataset == 'cifar100': 
+        if not os.path.exists(data_path):
+            data_path = CIFAR100_PATH
+        if not os.path.exists(data_path):
+            raise FileNotFoundError(f"Data path {data_path} does not exist.")
+        data_module = init_cifar100(data_path, wandb.config.batch_size)   
     else:
         ValueError(f"Dataset {wandb.config.dataset} not supported.")
 
 
-
     # INIT MODEL
     # ----------
-    num_classes = 10
 
     constraints = None
 
     if wandb.config.model == 'cnn':
-        model = init_cnn(ckpt_path, data_module, num_classes)
+        model = init_cnn(ckpt_path, data_module)
         constraints = {
-        'l2' : constraint.Lp_Constraint(weight=0.05, p=2),
-        'ortho' : constraint.Orthogonality_Constraint(weight=0.2),
+        'l2' : constraint.Lp_Constraint(weight=wandb.config.magnitude_weight, p=2),
+        'ortho' : constraint.Orthogonality_Constraint(weight=wandb.config.ortho_weight),
         }
     elif wandb.config.model == 'resnet':
-        model = init_resnet(ckpt_path, num_classes)
+        model = init_resnet(ckpt_path)
         constraints = {
-        'l1' : constraint.Lp_Constraint(weight=0.3, p=1),
-        'ortho' : constraint.Orthogonality_Constraint(weight=0.2),
+        'l1' : constraint.Lp_Constraint(weight=wandb.config.sparse_weight, p=1),
+        'ortho' : constraint.Orthogonality_Constraint(weight=wandb.config.ortho_weight),
         }
     elif wandb.config.model == 'gnet':
-        model = init_ieneonet(ckpt_path, data_module, num_classes)
+        model = init_ieneonet(ckpt_path, data_module) 
+        gmix_size = wandb.config.gaussian_mixture_size
         constraints = {
-            'l2' : constraint.Lp_Constraint(weight=0.1, p=2),
-            'ortho' : constraint.Orthogonality_Constraint(weight=0.2),
-            'convex' : constraint.Convexity_Constraint(weight=0.3, cvx_coeff_name='lambda'),
-            'nonneg' : constraint.Nonnegativity_Constraint(weight=0.3, param_name='lambda'),
+            'l2' : constraint.Lp_Constraint(weight=wandb.config.magnitude_weight, p=2),
+            'ortho' : constraint.Orthogonality_Constraint(weight=wandb.config.ortho_weight, ieneo=ast.literal_eval(wandb.config.kernel_size)),
+            'convex' : constraint.Convexity_Constraint(weight=wandb.config.convex_weight, cvx_coeff_name='lambda'),
+            'nonneg_cvx_coeffs' : constraint.Nonnegativity_Constraint(weight=wandb.config.nonneg_weight, param_name='lambda'),
+            'nonneg_stds' : constraint.Nonnegativity_Constraint(weight=wandb.config.nonneg_weight, param_name='sigmas'),
+        }
+    elif wandb.config.model == 'vgg11':
+        model = init_vgg11(ckpt_path)
+        constraints = {
+        'l1' : constraint.Lp_Constraint(weight=wandb.config.sparse_weight, p=1),
+        'ortho' : constraint.Orthogonality_Constraint(weight=wandb.config.ortho_weight),
         }
     else:
         ValueError(f"Model {wandb.config.model} not supported.")
@@ -359,18 +423,17 @@ def main():
     base_criterion = nn.CrossEntropyLoss()
 
     if wandb.config.convergence_mode.lower() == 'admm':
-        model = Lit_ADMM_Wrapper(model, None, wandb.config.optimizer, wandb.config.learning_rate, utils.init_metrics)
+        model = Lit_ADMM_Wrapper(model, None, wandb.config.optimizer, wandb.config.learning_rate, utils.init_metrics, num_classes = wandb.config.num_classes)
         criterion = set_admm_criterion(base_criterion, model, constraints)
         model.criterion = criterion # dynamically set up model criterion
     elif wandb.config.convergence_mode.lower() == 'penalty':
-        model = Lit_FixedPenalty_Wrapper(model, None, wandb.config.optimizer, wandb.config.learning_rate, utils.init_metrics)
+        model = Lit_FixedPenalty_Wrapper(model, None, wandb.config.optimizer, wandb.config.learning_rate, utils.init_metrics, num_classes = wandb.config.num_classes)
         criterion = Constrained_Loss(model.named_parameters(), base_criterion, constraints)
         model.criterion = criterion # dynamically set up model criterion
     elif wandb.config.convergence_mode.lower() == 'auglag':
-        model = Lit_AugLag_Wrapper(model, None, wandb.config.optimizer, wandb.config.learning_rate, utils.init_metrics)
+        model = Lit_AugLag_Wrapper(model, None, wandb.config.optimizer, wandb.config.learning_rate, utils.init_metrics, num_classes = wandb.config.num_classes)
     else:
         ValueError(f"Convergence mode {wandb.config.convergence_mode} not supported.")
-
 
     # INIT TRAINER
     # ------------
@@ -448,6 +511,7 @@ if __name__ == '__main__':
 
     MNIST_PATH = os.path.join(ROOT_PROJECT, "datasets", "")
     CIFAR10_PATH = os.path.join(ROOT_PROJECT, "datasets", "")
+    CIFAR100_PATH = os.path.join(ROOT_PROJECT, "datasets", "")
     EXPERIMENTS_PATH = os.path.join(ROOT_PROJECT, "experiments")
 
 
@@ -459,14 +523,14 @@ if __name__ == '__main__':
     model_name = main_parser.model
     dataset_name = main_parser.dataset
 
-    project_name = f"ADMM_AUGLAG"
+    project_name = f"ADMM_AUGLAG_{dataset_name.upper()}"
 
-    run_name = f"{project_name}_{model_name}_{dataset_name}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    run_name = f"{model_name}_{dataset_name}_{main_parser.opt_mode}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
     experiment_path = os.path.join(EXPERIMENTS_PATH, f"{model_name}_{dataset_name}")
 
     os.environ["WANDB_DIR"] = os.path.abspath(experiment_path)
 
-    print(f"\n\n{'='*50}")
+    print(f"\n\n{'='*100}")
     print("Entering main method...") 
 
     if main_parser.wandb_sweep: 
@@ -478,15 +542,15 @@ if __name__ == '__main__':
         )
     else:
         # default mode
-        sweep_config = os.path.join(experiment_path, 'opt_config.yml')
-        print(f"Loading config from {sweep_config}")
+        run_config = os.path.join(experiment_path, 'opt_config.yml')
+        print(f"Loading config from {run_config}")
 
         print("wandb init.")
 
         wandb.init(project=project_name, 
                 dir = experiment_path,
                 name = run_name,
-                config=sweep_config,
+                config=run_config,
                 mode='disabled'
         )
 

@@ -1,9 +1,8 @@
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
-from torchmetrics.functional import accuracy
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
 
@@ -13,21 +12,20 @@ from core.models.lit_modules.lit_wrapper import LitWrapperModel
 
 def create_model(in_channels, num_classes, pretrained=False):
     if pretrained:
-        model = torchvision.models.resnet18(pretrained=pretrained)
-        model.conv1 = nn.Conv2d(in_channels, model.conv1.out_channels, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
-        model.fc = nn.Linear(model.fc.in_features, num_classes)
-        model.maxpool = nn.Identity()
+        model = torchvision.models.vgg16(pretrained=pretrained)
+        model.classifier[6] = nn.Linear(model.classifier[6].in_features, num_classes)
+        model.features[0] = nn.Conv2d(in_channels, model.features[0].out_channels, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        model.features[1] = nn.Identity()
         return model
     
 
-    model = torchvision.models.resnet18(pretrained=pretrained, num_classes=num_classes)
-    model.conv1 = nn.Conv2d(in_channels, model.conv1.out_channels, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
-    model.maxpool = nn.Identity()
+    model = torchvision.models.vgg16(pretrained=pretrained, num_classes=num_classes)
+    model.features[0] = nn.Conv2d(in_channels, model.features[0].out_channels, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    model.features[1] = nn.Identity()
     return model
 
 
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-class LitResnet(LitWrapperModel):
+class LitVGG11(LitWrapperModel):
 
     def __init__(self, 
                  num_classes: int, 
@@ -49,7 +47,6 @@ class LitResnet(LitWrapperModel):
     def prediction(self, model_output: torch.Tensor) -> torch.Tensor:
         return torch.argmax(model_output, dim=1)
     
-
     def configure_optimizers(self):
         optimizer = torch.optim.SGD(
             self.model.parameters(),
@@ -68,6 +65,3 @@ class LitResnet(LitWrapperModel):
                 },
             }
     
-
-    
-
