@@ -155,7 +155,8 @@ class ADMM_Loss(nn.Module):
         constraint_eval = torch.tensor(0.0, device='cuda:0')    
 
         for constraint in self.constraints.values():
-            constraint_eval += constraint.evaluate_constraint(model_params.items())/constraint.weight
+            weight = constraint.weight if constraint.weight > 0 else 1.0
+            constraint_eval += constraint.evaluate_constraint(model_params.items())/weight
 
         return constraint_eval
 

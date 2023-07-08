@@ -23,7 +23,7 @@ def main_arg_parser():
 
 def init_metrics(num_classes=10):
     return MetricCollection([
-        Accuracy(num_classes=num_classes, multiclass=True),
+        Accuracy(task='multiclass', num_classes=num_classes, multiclass=True),
         # Precision(num_classes=num_classes, multiclass=True),
         # Recall(num_classes=num_classes, multiclass=True)
     ])

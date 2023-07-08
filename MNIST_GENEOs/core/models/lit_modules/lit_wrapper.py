@@ -269,6 +269,9 @@ class Lit_ADMM_Wrapper(LitWrapperModel):
             # if self.criterion.ADMM_regularizer(self.named_parameters()) + self.criterion.Stochastic_ADMM_regularizer(self.named_parameters()) < self.criterion.objective_function(self(batch[0]), batch[1]):
             #     self.criterion.update_penalty(0.5)
 
+        if isinstance(self.model, Lit_IENEONet):
+            self.model.maintain_convexity()
+
         return super().on_train_batch_end(outputs, batch, batch_idx)
 
    
@@ -341,6 +344,8 @@ class Lit_AugLag_Wrapper(LitWrapperModel):
                 self.criterion.increase_penalty()
                 # The lagrangian multipliers are maintained since it the constraints are not better satisfied by the current model parameters  
 
+        if isinstance(self.model, Lit_IENEONet):
+            self.model.maintain_convexity()
 
         if not self.lag_mult_check: # don't make the tf file huge
             if isinstance(self.model, Lit_IENEONet):

@@ -32,7 +32,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from core.models.cnn import Lit_CNN_Classifier
 from core.models.resnet import LitResnet
 from core.models.lit_modules.lit_wrapper import Lit_IENEONet
-from core.models.vgg16 import LitVGG11
+from core.models.vgg13 import LitVGG11
 
 
 
@@ -40,7 +40,7 @@ from core.data_modules.mnist import MNISTDataModule
 from core.data_modules.cifar10 import CIFAR100DataModule, init_cifar10dm
 
 from core.models.lit_modules.lit_callbaks import callback_model_checkpoint
-from utils import utils
+
 
 from core.criterions.admm_loss import ADMM_Loss
 from core.criterions.aug_Lag_loss import Augmented_Lagrangian_Loss
@@ -322,6 +322,8 @@ def auglag_training(logger, callbacks, base_criterion, model:LitWrapperModel, co
 
         lagrangian_multipliers = criterion.get_lag_multipliers()
         best_constraint_norm = criterion.get_best_constraint_norm()
+
+        torch.cuda.empty_cache()
         
         print(f"\nBest constraint norm : {best_constraint_norm}\n{'='*50}\n\n")
 
@@ -419,7 +421,6 @@ def main():
 
     # INIT CRITERION
     # --------------
-    
     base_criterion = nn.CrossEntropyLoss()
 
     if wandb.config.convergence_mode.lower() == 'admm':
@@ -472,10 +473,6 @@ def main():
     # 6 TEST
     # ------
 
-    if not os.path.exists(ckpt_path):
-        print(f"Checkpoint {ckpt_path} does not exist. Using last checkpoint.")
-        ckpt_path = None
-
     if wandb.config.save_onnx:
         print("Saving ONNX model...")
         onnx_file_path = os.path.join(ckpt_dir, f"{project_name}.onnx")
@@ -483,22 +480,24 @@ def main():
         model.to_onnx(onnx_file_path, input_sample, export_params=True)
         wandb_logger.log({"onnx_model": wandb.File(onnx_file_path)})
 
+    if not os.path.exists(ckpt_path):
+        print(f"Checkpoint {ckpt_path} does not exist. Using last checkpoint.")
+        ckpt_path = 'best'
+
+
     trainer.test(model, 
                  datamodule=data_module,
                  ckpt_path=ckpt_path) # use the last checkpoint
+
     
     wandb_logger.experiment.finish()
-    
-
-
 
 
 
 
 if __name__ == '__main__':
     import pathlib
-    import utils.utils as utils
-    #from constants import ROOT_PROJECT, TS40K_PATH, WEIGHT_SCHEME_PATH
+    import my_utils.utils as utils
     ROOT_PROJECT = pathlib.Path(__file__).resolve().parent.parent
 
     warnings.filterwarnings("ignore")
@@ -551,7 +550,7 @@ if __name__ == '__main__':
                 dir = experiment_path,
                 name = run_name,
                 config=run_config,
-                mode='disabled'
+                # mode='disabled'
         )
 
         #pprint(wandb.config)

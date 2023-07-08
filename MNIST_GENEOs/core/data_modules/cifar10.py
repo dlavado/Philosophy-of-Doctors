@@ -1,8 +1,8 @@
 
-
 from pl_bolts.datamodules import CIFAR10DataModule
 from pl_bolts.transforms.dataset_normalizations import cifar10_normalization
 import pytorch_lightning as pl
+
 
 import torchvision
 from torch.utils.data import DataLoader, random_split

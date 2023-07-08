@@ -66,9 +66,9 @@ class Gaussian_Kernels(nn.Module):
         center = torch.tensor([(self.kernel_size[0]-1)/2, (self.kernel_size[1]-1)/2], dtype=torch.float, requires_grad=True, device=self.device)
         try:
             x_c = x - center # Nx2
-            x_c_norm = torch.linalg.norm(x_c, dim=1) # N
-            gauss_dist = x_c_norm[None, None, :]**2 - self.means[:, :, None]**2 # 128x10xN 
-            gauss = torch.normal(gauss_dist, self.stds[:, :, None] + epsilon)
+            x_c_norm = torch.linalg.norm(x_c, dim=1).to(self.device) # N
+            gauss_dist = x_c_norm[None, None, :]**2 - (self.means[:, :, None]**2).to(self.device) # 128x10xN 
+            gauss = torch.normal(gauss_dist, torch.relu(self.stds[:, :, None]) + epsilon)
             # gauss = torch.exp((gauss_dist**2) * (-1 / (2*(self.stds[:, :, None] + epsilon)**2))) # 128x10xN
             # gauss = torch.nan_to_num(gauss, nan=0.0, posinf=0.0, neginf=0.0)
             #return self.factors[:, :, None]*gauss
@@ -78,8 +78,8 @@ class Gaussian_Kernels(nn.Module):
             print(f"stds: {self.stds.shape}\n {self.stds}")
             print(f"means: {self.means.shape}\n {self.means}")
             print(f"gauss dist: {gauss_dist.shape}\n {gauss_dist}")
-            print((gauss_dist**2) * (-1 / (2*(self.stds[:, :, None] + epsilon)**2)))
-            print(torch.exp((gauss_dist**2) * (-1 / (2*(self.stds[:, :, None] + epsilon)**2))))
+            # print((gauss_dist**2) * (-1 / (2*(self.stds[:, :, None] + epsilon)**2)))
+            gauss = torch.normal(gauss_dist.cpu(), torch.relu(self.stds[:, :, None].cpu()) + epsilon).to(self.device)
 
         return gauss
 
@@ -125,7 +125,7 @@ class IENEO_Fam(nn.Module):
         # sigmas are the standard deviations of the gaussians, so they must be positive
         self.sigmas = torch.randn((num_operators, num_gaussians), requires_grad=True, device=self.device)
         self.sigmas = torch.abs(self.sigmas) + 1e-8 # make sure they are positive
-        self.sigmas = nn.Parameter(self.sigmas)
+        self.sigmas = nn.Parameter(self.sigmas).to(self.device)
 
         # convex combination weights of the gaussians
         self.lambdas = torch.rand((num_operators, num_gaussians), requires_grad=True, device=self.device)
@@ -134,9 +134,9 @@ class IENEO_Fam(nn.Module):
 
     def maintain_convexity(self):
         with torch.no_grad():
-            self.lambdas = torch.relu(torch.tanh(self.lambdas))
+            self.lambdas = nn.Parameter(torch.relu(torch.tanh(self.lambdas)), requires_grad=True).to(self.device)
             self.lambdas[:, -1] = 1 - torch.sum(self.lambdas[:, :-1], dim=1)
-            self.lambdas = nn.Parameter(self.lambdas, requires_grad=True)
+            # self.lambdas = nn.Parameter(lambdas, requires_grad=True)
         # self.lambdas = nn.Parameter(torch.relu(torch.tanh(self.lambdas)), requires_grad=True)
         # self.lambdas[:, -1] = 1 - torch.sum(self.lambdas[:, :-1], dim=1)
         # self.lambdas = nn.Parameter(torch.softmax(self.lambdas, dim=1)) # make sure they sum to 1
@@ -153,6 +153,7 @@ class IENEO_Fam(nn.Module):
         # print(kernels.shape, kernels.device)
 
         # apply the kernels to the input
+        self.kernels = torch.cat([self.kernels for _ in range(x.shape[1])], dim=1)
         conv = F.conv2d(x, self.kernels) # shape = (B, num_operators*num_gaussians, H, W)
         conv_view = conv.view(conv.shape[0], self.num_operators, self.num_gaussians, *conv.shape[2:]) # shape = (B, num_operators, num_gaussians, H, W)
 
@@ -210,7 +211,7 @@ class IENEO_Layer(nn.Module):
     def forward(self, x):
         x = self.ieneo(x)
         x = self.bn(x)
-        # x = self.relu(x)
+        x = self.relu(x)
         x = self.maxpool(x)
         return x
         

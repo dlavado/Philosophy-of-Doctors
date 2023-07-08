@@ -10,7 +10,7 @@ dataset:
 data_path:
   value: ../datasets/mnist/
 batch_size:
-  value: 256
+  value: 128
 num_workers:
   value: 12
 num_classes:
@@ -36,7 +36,7 @@ optimizer:
 learning_rate:
   value: 0.01
 max_epochs:
-  value: 80 # -1 for infinite
+  value: 10 # -1 for infinite
 accelerator:
   value: 'gpu'
 devices:
@@ -51,7 +51,7 @@ resume_from_checkpoint:
 checkpoint_dir:
   value:
 resume_checkpoint_name:
-  value: val_loss
+  value: val_MulticlassAccuracy
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:
@@ -68,7 +68,7 @@ precision: # 16 or 32 FPU precision
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: False
+  value: True
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'
@@ -84,7 +84,7 @@ save_onnx:
 # Opt Config
 # ------------------ #
 convergence_mode:
-  value: 'admm' # 'admm' or 'penalty' or 'auglag'
+  value: 'auglag' # 'admm' or 'penalty' or 'auglag'
   description: 'Convergence mode of the ADMM algorithm'
 admm_rho:
   value: 1.0

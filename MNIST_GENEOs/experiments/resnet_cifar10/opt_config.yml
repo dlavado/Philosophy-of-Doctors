@@ -1,5 +1,5 @@
-group:
-  value: 'CIFAR10'
+project: 
+  value: 'ADMM_AUGLAG_CIFAR10'
 output_dir: 
   value: 'experiments/$model_$dataset/outputs'
 # ------------------ #
@@ -36,7 +36,7 @@ optimizer:
 learning_rate:
   value: 0.001
 max_epochs:
-  value: 10 # -1 for infinite
+  value: 50 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -51,7 +51,7 @@ resume_from_checkpoint:
 checkpoint_dir:
   value:
 resume_checkpoint_name:
-  value: val_loss
+  value: val_Accuracy
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:
@@ -107,11 +107,11 @@ convergence_iterations:
 # Constraint Config
 # ------------------ #
 ortho_weight:
-  value: 0.1
+  value: 0.01
   description: 'Orthogonality constraint weight'
 sparse_weight:
-  value: 0.1
+  value: 0.01
   description: 'Sparsity constraint weight'
 magnitude_weight:
-  value: 0.1
+  value: 0.01
   description: 'Magnitude constraint weight'

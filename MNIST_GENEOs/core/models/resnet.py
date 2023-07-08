@@ -38,35 +38,34 @@ class LitResnet(LitWrapperModel):
                  metric_initializer=None):
 
         model = create_model(in_channels, num_classes, pretrained=pretrained)
-        criterion = F.nll_loss
+        criterion = nn.CrossEntropyLoss()
         super().__init__(model, criterion, optimizer_name, learning_rate, metric_initializer, num_classes=num_classes)
 
 
     def forward(self, x):
-        out = self.model(x)
-        return F.log_softmax(out, dim=1)
+        return self.model(x)
     
     def prediction(self, model_output: torch.Tensor) -> torch.Tensor:
         return torch.argmax(model_output, dim=1)
     
 
-    def configure_optimizers(self):
-        optimizer = torch.optim.SGD(
-            self.model.parameters(),
-            lr=self.hparams.learning_rate,
-            momentum=0.9,
-            weight_decay=5e-4,
-        )
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": ReduceLROnPlateau(optimizer, mode="max", factor=0.01, patience=5, verbose=False),
-                "monitor": "val_Accuracy",
-                "frequency": 1,
-                # If "monitor" references validation metrics, then "frequency" should be set to a
-                # multiple of "trainer.check_val_every_n_epoch".
-                },
-            }
+    # def configure_optimizers(self):
+    #     optimizer = torch.optim.SGD(
+    #         self.model.parameters(),
+    #         lr=self.hparams.learning_rate,
+    #         momentum=0.9,
+    #         weight_decay=5e-4,
+    #     )
+    #     return {
+    #         "optimizer": optimizer,
+    #         "lr_scheduler": {
+    #             "scheduler": ReduceLROnPlateau(optimizer, mode="max", factor=0.01, patience=5, verbose=False),
+    #             "monitor": "val_Accuracy",
+    #             "frequency": 1,
+    #             # If "monitor" references validation metrics, then "frequency" should be set to a
+    #             # multiple of "trainer.check_val_every_n_epoch".
+    #             },
+    #         }
     
 
     

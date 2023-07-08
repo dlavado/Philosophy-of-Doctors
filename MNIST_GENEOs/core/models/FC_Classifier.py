@@ -13,15 +13,14 @@ class Classifier_OutLayer(nn.Module):
         """
         super().__init__()
         #self.l1 = torch.nn.Linear(28*28, self.hparams.in_channels)
-
+       
         self.l2 = torch.nn.Linear(in_channels, num_classes)
  
     def forward(self, x):
         #x = x.view(x.size(dim=0), -1) # flatten
         x = torch.flatten(x, start_dim=1)
-        # x = torch.relu(self.l1(x))
-        # x = torch.relu(self.l2(x))
-        return self.l2(x)
+        x = self.l2(x)
+        return x
  
     def _compute_loss(self, logits, y):
         return F.cross_entropy(logits, y)

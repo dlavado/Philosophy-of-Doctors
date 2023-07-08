@@ -1,5 +1,5 @@
-group:
-  value: 'CIFAR10'
+project: 
+  value: 'ADMM_AUGLAG_CIFAR10'
 output_dir: 
   value: 'experiments/$model_$dataset/outputs'
 # ------------------ #
@@ -51,7 +51,7 @@ resume_from_checkpoint:
 checkpoint_dir:
   value:
 resume_checkpoint_name:
-  value: val_loss
+  value: val_MulticlassAccuracy
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:
@@ -68,7 +68,7 @@ precision: # 16 or 32 FPU precision
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: True
+  value: False
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'
@@ -107,11 +107,11 @@ convergence_iterations:
 # Constraint Config
 # ------------------ #
 ortho_weight:
-  value: 0.0
+  value: 0.01
   description: 'Orthogonality constraint weight'
 sparse_weight:
-  value: 0.0
+  value: 0.01
   description: 'Sparsity constraint weight'
 magnitude_weight:
-  value: 0.0
+  value: 0.01
   description: 'Magnitude constraint weight'

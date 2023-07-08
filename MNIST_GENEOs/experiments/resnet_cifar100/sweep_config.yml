@@ -6,7 +6,7 @@ program: opt_main.py
 method: random
 metric:
   goal: maximize
-  name: val_Accuracy 
+  name: val_MulticlassAccuracy 
 project: 'ADMM_AUGLAG_CIFAR100'
 variables:
   - &dataset 'cifar100'
@@ -70,7 +70,7 @@ parameters:
   checkpoint_dir:
     value:  'experiments/resnet_cifar100/checkpoints'
   resume_checkpoint_name:
-    value: val_Accuracy
+    value: val_MulticlassAccuracy
   checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
     value: 1 # every n epochs
   checkpoint_every_n_steps:

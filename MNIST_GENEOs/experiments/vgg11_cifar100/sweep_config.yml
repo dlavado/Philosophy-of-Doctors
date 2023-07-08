@@ -127,11 +127,11 @@ parameters:
   # Constraint Config
   # ------------------ #
   ortho_weight:
-    min: 0.01
-    max: 0.5
+    min: 0.001
+    max: 0.1
     #description: 'Orthogonality constraint weight'
   sparse_weight:
-    min: 0.01
-    max: 0.5
+    min: 0.001
+    max: 0.1
     #description: 'L1 constraint weight'
     

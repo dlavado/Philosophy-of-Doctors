@@ -49,7 +49,7 @@ resume_from_checkpoint:
 checkpoint_dir:
   value:
 resume_checkpoint_name:
-  value: val_Accuracy
+  value: val_MulticlassAccuracy
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:

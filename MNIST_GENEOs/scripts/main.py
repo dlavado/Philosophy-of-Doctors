@@ -330,7 +330,7 @@ def main():
 
 if __name__ == '__main__':
     import pathlib
-    import utils.utils as utils
+    import my_utils.utils as utils
     #from constants import ROOT_PROJECT, TS40K_PATH, WEIGHT_SCHEME_PATH
     ROOT_PROJECT = pathlib.Path(__file__).resolve().parent.parent
 

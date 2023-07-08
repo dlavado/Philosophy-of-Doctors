@@ -6,7 +6,7 @@ program: opt_main.py
 method: random
 metric:
   goal: maximize
-  name: val_Accuracy 
+  name: val_MulticlassAccuracy 
 project: 'ADMM_AUGLAG_MNIST'
 variables:
   - &dataset 'mnist'
@@ -32,11 +32,11 @@ parameters:
   data_path:
     value: ../datasets/mnist/
   batch_size:
-    value: 128
+    value: 256
   num_workers:
     value: 12
   num_classes:
-    value: 100
+    value: 10
   # ------------------ #
   # model config
   # ------------------ #
@@ -45,7 +45,7 @@ parameters:
   kernel_size:
     value: (3, 3)
   hidden_dim:
-    value: 128
+    value: 64
   in_channels:
     value: 1
   gaussian_mixture_size:
@@ -54,7 +54,7 @@ parameters:
   # training config
   # ------------------ #
   optimizer:
-    value: 'sgd' #'adam' 
+    value: 'adam' #'adam' 
   learning_rate:
     min: 0.001
     max: 0.1
@@ -74,7 +74,7 @@ parameters:
   checkpoint_dir:
     value:  'experiments/gnet_mnist/checkpoints'
   resume_checkpoint_name:
-    value: val_Accuracy
+    value: val_MulticlassAccuracy
   checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
     value: 1 # every n epochs
   checkpoint_every_n_steps:
@@ -91,7 +91,7 @@ parameters:
   auto_lr_find:
     value: False
   auto_scale_batch_size:
-    value: True
+    value: False
   profiler:
     value: False
     # description: 'PyTorch Lightning profiler'
@@ -106,7 +106,7 @@ parameters:
   # Opt Config
   # ------------------ #
   convergence_mode:
-    values: ['penalty', 'admm', 'auglag'] # 'admm' or 'penalty' or 'auglag'
+    values: ['auglag', 'admm', 'penalty'] # 'admm' or 'penalty' or 'auglag'
     #description: 'Convergence mode of the ADMM algorithm'
   admm_rho:
     min: 0.1
@@ -131,18 +131,18 @@ parameters:
   # Constraint Config
   # ------------------ #
   ortho_weight:
-    min: 0.01
-    max: 0.5
+    min: 0.001
+    max: 0.1
     #description: 'Orthogonality constraint weight'
   magnitude_weight:
-    min: 0.01
-    max: 0.5
+    min: 0.001
+    max: 0.1
     #description: 'Magnitude constraint weight'
   convex_weight:
-    min: 0.01
-    max: 1.0
+    min: 0.001
+    max: 0.1
     #description: 'Convexity constraint weight'
   nonneg_weight:
-    min: 0.01
-    max: 1.0
+    min: 0.001
+    max: 0.1
     #description: 'Non-negativity constraint weight'
