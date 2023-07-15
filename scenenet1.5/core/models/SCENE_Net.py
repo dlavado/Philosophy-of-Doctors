@@ -13,6 +13,7 @@ sys.path.insert(1, '../..')
 from core.models.geneos.GENEO_kernel_torch import GENEO_kernel_torch
 from core.models.geneos import cylinder, neg_sphere, arrow
 import utils.voxelization as Vox
+from core.datasets.torch_transforms import Normalize_PCD
 
 
 
@@ -336,6 +337,8 @@ class SceneNet(nn.Module):
             else:
                 conv_pred.append(self.lambdas_dict[f'lambda_{g_name}']*conv[:, [i]])
         
+        conv_pred = torch.cat(conv_pred, dim=1)
+        
         return torch.sum(conv_pred, dim=1, keepdim=True) # (batch, 1, z, x, y)
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
@@ -348,7 +351,12 @@ class SceneNet(nn.Module):
         return conv_pred
 
 
-class SceneNet_semseg(nn.Module):
+class SceneNet_multiclass(nn.Module):
+    """
+
+    SceneNet 1.5 - 3D Convolutional Neural Network for Scene Classification based on GENEOs
+    multiclass is accomplished by adding a fully connected layer after the last convolutional layer
+    """
 
 
     def __init__(self, 
@@ -356,21 +364,37 @@ class SceneNet_semseg(nn.Module):
                 kernel_size:tuple=None,
                 hidden_dims:List[int]=None,
                 num_classes:int=2,
-                plot:bool=False, 
-                device:str='cuda') -> None:
+                plot:bool=False) -> None:
         
-        self.scenenet = SceneNet(geneo_num, kernel_size, plot, device)
+        super(SceneNet_multiclass, self).__init__()
+        
+        self.scenenet = SceneNet(geneo_num, kernel_size, plot)
+
+        self.feat_dim = sum(geneo_num.values()) + 4 # +1 for the cvx combination and +3 for the point locations
 
         self.convs = []
         self.bns = []
         self.num_classes = num_classes
 
+        self.normalize_pt_locs = Normalize_PCD()
+
+        self.convs.append(nn.Conv1d(self.feat_dim, hidden_dims[0], kernel_size=1))
+        self.bns.append(nn.BatchNorm1d(hidden_dims[0]))
+
         for i in range(len(hidden_dims)-1):
             self.convs.append(nn.Conv1d(hidden_dims[i], hidden_dims[i+1], kernel_size=1))
             self.bns.append(nn.BatchNorm1d(hidden_dims[i+1]))
         
-        self.out_conv = nn.Conv1d(hidden_dims[-1], num_classes, kernel_size=1)
+        self.convs = nn.ModuleList(self.convs)
+        self.bns = nn.ModuleList(self.bns)
+        
+        self.out_conv = nn.Conv1d(hidden_dims[-1], num_classes, kernel_size=1).to('cuda:0')
 
+    def get_geneo_params(self):
+        return self.scenenet.get_geneo_params()
+
+    def get_cvx_coefficients(self):
+        return self.scenenet.get_cvx_coefficients()
 
     def forward(self, x:torch.Tensor, pt_loc:torch.Tensor) -> torch.Tensor:
         """
@@ -398,25 +422,49 @@ class SceneNet_semseg(nn.Module):
 
         conv_pts = Vox.vox_to_pts(conv, pt_loc) # (batch, P, num_geneos)
 
+
         observer = self.scenenet._observer_cvx_combination(conv) # (batch, 1, z, x, y)
         observer = torch.relu(torch.tanh(observer))
 
         observer_pts = Vox.vox_to_pts(observer, pt_loc) # (batch, P, 1)
 
-        x = torch.cat([pt_loc, conv_pts, observer_pts], dim=2) # (batch, P, 3+num_geneos+1)
+        # normalize pt_locs
+        pt_loc = self.normalize_pt_locs.normalize(pt_loc.to(torch.float32))
+
+        x = torch.cat([pt_loc, conv_pts, observer_pts], dim=2).to(torch.float32) # (batch, P, 3+num_geneos+1)
+
+        x = x.transpose(2,1).contiguous() # (batch, 3+num_geneos+1, P)
 
         for conv, bn in zip(self.convs, self.bns):
-            x = torch.relu(bn(conv(x)))
+            x = torch.relu(bn(conv(x))) # (batch, hidden_dims[i+1], P)
         
-        x = self.out_conv(x) # (batch, P, num_classes)
+        x = self.out_conv(x) # (batch, num_classes, P)
 
-        x = x.transpose(2,1).contiguous() # (batch, num_classes, P)
-        x = F.log_softmax(x.view(-1, self.num_classes), dim=-1) # (batch*P, num_classes)
-        x = x.view(batch_size, num_points, self.num_classes) # (batch, P, num_classes)
+        # x = x.transpose(2,1).contiguous() # (batch, P, num_classes)
+        # x = F.log_softmax(x, dim=-1) 
 
         return x
     
-    def _compute_loss(self, pred:torch.Tensor, target:torch.Tensor, weights:torch.Tensor=None) -> torch.Tensor:
+    def prediction(self, model_output:torch.Tensor) -> torch.Tensor:
+        """
+
+        Parameters
+        ----------
+
+        `model_output`: torch.Tensor
+            Output tensor of shape (batch, num_classes, P)
+
+        Returns
+        -------
+
+        `pts`: torch.Tensor
+            Output tensor of shape (batch, P)
+        """
+
+        return torch.argmax(model_output.permute(0, 2, 1), dim=2) # (batch, P)
+
+    
+    def _compute_loss(pred:torch.Tensor, target:torch.Tensor, weights:torch.Tensor=None) -> torch.Tensor:
         """
 
         Parameters
@@ -449,7 +497,20 @@ class SceneNet_semseg(nn.Module):
 
 
 
+class SceneNet_multilabel(nn.Module):
+    
+    def __init__(self, 
+                geneo_num:Mapping[str, int]=None, 
+                kernel_size:tuple=None,
+                num_classes:int=2,
+                plot:bool=False, 
+                device:str='cuda') -> None:
+        
+        self.scenenets = []
 
+        for i in range(num_classes):
+            self.scenenets.append(SceneNet(geneo_num, kernel_size, plot, device))
+        
 
 def main():
     gnet = SCENE_Net()
@@ -477,7 +538,7 @@ if __name__ == "__main__":
     MODEL_PATH = "/home/didi/VSCode/soa_scenenet/scenenet_pipeline/torch_geneo/saved_scnets/models_geneo/2022-08-04 16:29:24.530075/gnet.pt"
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    gnet = SceneNet_semseg(None, (9, 6, 6))
+    gnet = SceneNet_multiclass(None, (9, 6, 6))
 
     for name, param in gnet.named_parameters():
         print(f"{name} = {param.item():.4f}")

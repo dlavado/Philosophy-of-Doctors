@@ -15,13 +15,15 @@ class Classifier_OutLayer(nn.Module):
         """
         super().__init__()
         self.hidden_layers = [torch.nn.Linear(in_features=hidden_dims[i], out_features=hidden_dims[i+1]) for i in range(len(hidden_dims)-1)]
+        self.bns = [torch.nn.BatchNorm1d(num_features=hidden_dims[i]) for i in range(len(hidden_dims)-1)]
         self.out_layer = torch.nn.Linear(in_features=hidden_dims[-1], out_features=num_classes)
 
 
     def forward(self, x):
         
-        for layer in self.hidden_layers:
-            x = layer(x)
+        for i in range(len(self.hidden_layers)):
+            x = self.hidden_layers[i](x)
+            x = self.bns[i](x)
             x = F.relu(x)
 
         x = self.out_layer(x)

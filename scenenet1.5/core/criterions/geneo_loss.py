@@ -1,6 +1,6 @@
 
-# %% 
 import os
+from typing import Iterable, Tuple
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
@@ -22,16 +22,65 @@ def load_pickle(filename):
     return data
 
 
-class GENEO_Loss(WeightedMSE):
+class GENEO_Loss(torch.nn.Module):
     """
     GENEO Loss is a custom loss for SCENE-Net that takes into account data imbalance
     w.r.t. regression and punishes convex coefficient that fall out of admissible values
     """
 
-    def __init__(self, targets=..., weighting_scheme_path=..., weight_alpha=1, weight_epsilon=0.1, mse_weight=1, convex_weight=1, **kwargs) -> None:
+    def __init__(self,
+                 base_criterion, 
+                 gnet_params,
+                 cvx_coeffs,
+                 convex_weight=0.1,
+                ) -> None:
+        """
+
+        GENEO Loss is a custom loss for SCENE-Net that takes into account data imbalance.
+        It is composed of a base criterion (e.g. MSE) and a convexity penalty.
+        The convexity penalty is composed of two terms:
+            - a penalty on the convex coefficients that are not positive
+            - a penalty on the convex coefficients that do not sum to 1
+
+        The convexity penalty is weighted by a convex_weight parameter.
+
+        Parameters
+        ----------
+
+        `base_criterion`: torch.nn.Module
+            The base criterion to be used for the loss (e.g. MSE, BCE, etc.)
+
+        `gnet_params`: torch.nn.ParameterDict
+            The parameters of the GENEO network
+
+        `cvx_coeffs`: torch.nn.ParameterDict
+            The convex coefficients of the GENEO network
+
+        `convex_weight`: float
+            The weight of the convexity penalty
+
+        """
+
+        super(GENEO_Loss, self).__init__()
         
-        super().__init__(targets, weighting_scheme_path, weight_alpha, weight_epsilon, mse_weight, **kwargs)
+        self.base_criterion = base_criterion
         self.cvx_w = convex_weight
+        
+        self.cvx_coeffs = cvx_coeffs
+        self.geneo_params = gnet_params
+        
+        self.relu = torch.nn.ReLU()
+
+    def forward(self, y_pred:torch.Tensor, y_gt:torch.Tensor):
+
+        dense_criterion = self.base_criterion(y_pred, y_gt)
+        
+        cvx_penalty = self.cvx_loss(self.cvx_coeffs)
+        
+        non_positive_penalty = self.positive_regularizer(self.geneo_params)
+        
+        return dense_criterion + self.cvx_w * (cvx_penalty + non_positive_penalty)
+       
 
     def cvx_loss(self, cvx_coeffs:torch.nn.ParameterDict):
         """
@@ -41,25 +90,15 @@ class GENEO_Loss(WeightedMSE):
         This results from the the relaxation of the cvx restriction: sum(cvx_coeffs) == 1
         """
 
-        #penalties = [self.relu(-phi)**2 for phi in cvx_coeffs.values()]
-        #print([(p, p.requires_grad) for p in penalties])
-
         if len(cvx_coeffs) == 0:
             return 0
 
         last_phi = [phi_name for phi_name in cvx_coeffs if not cvx_coeffs[phi_name].requires_grad][0]
 
-        #assert sum([self.relu(-phi)**2 for phi in cvx_coeffs.values()]).requires_grad
 
-        #assert np.isclose(sum(cvx_coeffs.values()).data.item(), 1), sum(cvx_coeffs.values()).data.item()
-
-        # return self.rho * (sum([self.relu(-phi)**2 for phi_n, phi in cvx_coeffs.items() if phi_n != last_phi])
-        #                     + self.relu(-(1 - sum(cvx_coeffs.values()) + cvx_coeffs[last_phi]))**2
-        #                 )
-
-        return self.cvx_w * (sum([self.relu(-phi) for phi_n, phi in cvx_coeffs.items() if phi_n != last_phi])
+        return sum([self.relu(-phi) for phi_n, phi in cvx_coeffs.items() if phi_n != last_phi]) \
                     + self.relu(-(1 - sum(cvx_coeffs.values()) + cvx_coeffs[last_phi]))
-                )
+                
 
     def positive_regularizer(self, params:torch.nn.ParameterDict):
         """
@@ -68,17 +107,8 @@ class GENEO_Loss(WeightedMSE):
         if len(params) == 0:
             return 0
 
-        return self.cvx_w * sum([self.relu(-g) for g in params.values()])
-
-    def forward(self, y_pred:torch.Tensor, y_gt:torch.Tensor, cvx_coeffs:torch.nn.ParameterDict, geneo_params:torch.nn.ParameterDict):
-
-        dense_criterion = super().forward(y_pred, y_gt)
-        
-        cvx_penalty = self.cvx_loss(cvx_coeffs)
-        
-        non_positive_penalty = self.positive_regularizer(geneo_params)
-        
-        return dense_criterion + cvx_penalty + non_positive_penalty
+        return  sum([self.relu(-g) for g in params.values()])
+ 
     
     def __str__(self):
         return f"GENEO Loss with mse_weight={self.mse_weight} and alpha={self.weight_alpha} and epsilon={self.weight_epsilon}"
@@ -91,57 +121,59 @@ class GENEO_Loss(WeightedMSE):
         return parent_parser
 
 
+class Tversky_Wrapper_Loss(torch.nn.Module):
 
-class GENEO_Dice_BCE(GENEO_Loss):
+    def __init__(self,
+                base_criterion, 
+                tversky_alpha=0.5, 
+                tversky_beta=1, 
+                focal_gamma=1, 
+                tversky_smooth=1,
+                **kwargs) -> None:
+        """
+        Adds the Tversky loss to the base criterion.
+        The Tversky loss is a generalization of the Dice loss and Focal Loss that allows to weight the false positives and false negatives differently,
+        and to focus on hard examples.
 
-    def __init__(self, targets=None, weighting_scheme_path=None, weight_alpha=1, weight_epsilon=0.1, mse_weight=1, convex_weight=1, reduction='mean', **kwargs) -> None:
-        super().__init__(targets, weighting_scheme_path, weight_alpha, weight_epsilon, mse_weight, convex_weight, **kwargs)
+        Parameters
+        ----------
+
+        `base_criterion`: torch.nn.Module
+            The base criterion to be used for the loss (e.g. MSE, BCE, etc.)
+
+        `tversky_alpha`: float
+            The weight of the false positives
+            if alpha > beta -> more weight on false positives
+
+        `tversky_beta`: float
+            The weight of the false negatives
+            if alpha = beta -> Dice loss
+            if alpha < beta -> more weight on false negatives
+
+        `focal_gamma`: float
+            The focus parameter of the focal loss
+
+        `tversky_smooth`: float
+            The smoothing parameter of the Tversky loss
 
 
-        self.dice_bce = BinaryDiceLoss_BCE(targets, weighting_scheme_path, weight_alpha, convex_weight, weight_epsilon, mse_weight, reduction=reduction)
+        """
 
-
-    def forward(self, y_pred:torch.Tensor, y_gt:torch.Tensor, cvx_coeffs:torch.nn.ParameterDict, geneo_params:torch.nn.ParameterDict):
-
-
-        return self.mse_weight*self.dice_bce(y_pred, y_gt) + self.cvx_loss(cvx_coeffs) + self.positive_regularizer(geneo_params)
-    
-    @staticmethod
-    def add_model_specific_args(parent_parser):
-        return super().add_model_specific_args(parent_parser)
-
-
-class GENEO_Dice_Loss(GENEO_Loss):
-
-    def __init__(self, targets=None, weighting_scheme_path=None, weight_alpha=1, weight_epsilon=0.1, mse_weight=1, convex_weight=1, **kwargs) -> None:
-       
-        super().__init__(targets, weighting_scheme_path, weight_alpha, weight_epsilon, mse_weight, convex_weight, **kwargs)
-        self.dice = BinaryDiceLoss()
-
-
-    def forward(self, y_pred:torch.Tensor, y_gt:torch.Tensor, cvx_coeffs:torch.nn.ParameterDict, geneo_params:torch.nn.ParameterDict):
-
-        dense_criterion = WeightedMSE.forward(self, y_pred, y_gt)
-
-        return dense_criterion + self.dice(y_pred, y_gt) + self.cvx_loss(cvx_coeffs) + self.positive_regularizer(geneo_params)
-
-class GENEO_Tversky_Loss(GENEO_Loss):
-
-    def __init__(self, targets=None, weighting_scheme_path=None, weight_alpha=1, weight_epsilon=0.1, mse_weight=1, convex_weight=1, tversky_alpha=0.5, tversky_beta=1, focal_gamma=1, tversky_smooth=1, **kwargs) -> None:
+        super(Tversky_Wrapper_Loss, self).__init__()
         
-        super().__init__(targets, weighting_scheme_path, weight_alpha, weight_epsilon, mse_weight, convex_weight, **kwargs)
+        self.base_criterion = base_criterion
 
         # gamma = 1 -> no focal loss ; gamma > 1 -> more focus on hard examples ; gamma < 1 -> less focus on hard examples
         self.tversky = FocalTverskyLoss(tversky_alpha, tversky_beta, focal_gamma, tversky_smooth)
 
 
-    def forward(self, y_pred:torch.Tensor, y_gt:torch.Tensor, cvx_coeffs:torch.nn.ParameterDict, geneo_params:torch.nn.ParameterDict):
+    def forward(self, y_pred:torch.Tensor, y_gt:torch.Tensor):
 
-        dense_criterion = WeightedMSE.forward(self, y_pred, y_gt)
+        dense_criterion = self.base_criterion(y_pred, y_gt)
 
         tversky_crit = self.tversky(y_pred, y_gt)
 
-        return dense_criterion + tversky_crit + self.cvx_loss(cvx_coeffs) + self.positive_regularizer(geneo_params)
+        return dense_criterion + tversky_crit
     
     @staticmethod
     def add_model_specific_args(parent_parser):
@@ -150,7 +182,6 @@ class GENEO_Tversky_Loss(GENEO_Loss):
 
 
 
-# %%
 if __name__ == '__main__':
    
     from core.datasets.ts40k import torch_TS40Kv2

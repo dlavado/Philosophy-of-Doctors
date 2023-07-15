@@ -76,13 +76,14 @@ class FocalTverskyLoss(nn.Module):
         self.tversky_beta = tversky_beta
         self.tversky_smooth = tversky_smooth
         self.focal_gamma = focal_gamma
-
-
-    def forward(self, inputs, targets):
+       
         
-        #flatten label and prediction tensors
-        # inputs = inputs.view(-1)
-        # targets = targets.view(-1)
+
+    def forward(self, inputs:torch.Tensor, targets:torch.Tensor):
+        
+        # flatten label and prediction tensors
+        inputs = torch.argmax(inputs.permute(0, 2, 1), dim=2).view(-1) # [B, P, C] -> [B, C, P] -> [B*C*P]
+        targets = targets.view(-1)
         
         #True Positives, False Positives & False Negatives
         TP = (inputs * targets).sum()    

@@ -2,8 +2,8 @@
 # Description: config file for default parameters of scenenet_ts40k experiment
 # Author: Diogo Mateus
 
-group:
-  value: 'scenenet_ts40k_test'
+project:
+  value: 'SceneNet1.5'
 output_dir: 
   value: 'experiments/scenenet_ts40k/outputs'
 # ------------------ #
@@ -13,31 +13,38 @@ dataset:
   value: 'ts40k'
 data_path:
   value: ''
+num_classes:
+  value: 4
 batch_size:
-  value: 64
+  value: 2
 voxel_grid_size:
   value: (64, 64, 64)
 voxel_size:
   value: None
 num_workers:
-  value: 8
+  value: 12
 val_split:
   value: 0.1
 test_split:
   value: 0.3
+fps_points:
+  value: 10000 
+  description: 'Number of points to sample from the point cloud with farthest point sampling'
 # ------------------ #
 # model config
 # ------------------ #
 model:
   value: 'scenenet'
 cylinder_geneo:
-  value: 1
+  value: 10
 arrow_geneo:
-  value: 1
+  value: 10
 neg_sphere_geneo:
-  value: 1
+  value: 10
 kernel_size:
-  value: (9, 5, 5)
+  value: (5, 5, 5)
+hidden_dims:
+  value: "[512, 256, 128, 64, 32]"
 # ------------------ #
 # training config
 # ------------------ #
@@ -46,16 +53,19 @@ optimizer:
 learning_rate:
   value: 0.001
 max_epochs:
-  value: -1 # -1 for infinite
+  value: 50 # -1 for infinite
 gpus:
   value: -1 # -1 for all available gpus
 early_stop_metric:
-  value: 'train_FBetaScore'
+  value: 'train_MulticlassJaccardIndex'
 # ------------------ #
 #criterion config
 # ------------------ #
 criterion:
   value: 'geneo_tversky'
+geneo_criterion:
+  value: True
+  description: 'If True, uses the geneo wrapper criterion, otherwise uses the standard criterion'
 weighting_scheme_path:
   value: 'core/criterions/hist_estimation.pickle'
 #criterion_params: # possible criterion params and their values
@@ -98,9 +108,9 @@ save_onnx:
 resume_from_checkpoint:
   value: False
 checkpoint_dir:
-  value: /home/didi/VSCode/PhD-Shenanigans/SceneNet-Project/experiments/scenenet_ts40k/wandb/run-20230217_161733-bwsbqxgs/files/checkpoints
+  value: 'experiments/scenenet_ts40k/checkpoints'
 resume_checkpoint_name:
-  value: FBetaScore # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+  value: val_MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:

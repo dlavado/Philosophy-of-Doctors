@@ -12,6 +12,7 @@ import ast
 # Vanilla PyTorch
 import torch
 from torchvision.transforms import Compose
+import torch.nn.functional as F
 
 
 # PyTorch Lightning
@@ -22,6 +23,7 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 # Weights & Biases
 import wandb
 from pytorch_lightning.loggers import WandbLogger
+
 
 # Our code
 sys.path.insert(0, '..')
@@ -35,14 +37,10 @@ import utils.scripts_utils as su
 import core.lit_modules.lit_callbacks as lit_callbacks
 import core.lit_modules.lit_model_wrappers as lit_models
 from core.lit_modules.lit_data_wrappers import LitTS40K
+from core.criterions.geneo_loss import GENEO_Loss
 
-from core.datasets.torch_transforms import Farthest_Point_Sampling, Normalize_PCD, Voxelization, ToTensor, ToFullDense, Voxelization_withPCD
 
-
-"""
-TODO: add CLI that overrides default_config.yml
-TODO: differiantiate between fine-tuning and resume-training
-"""
+from core.datasets.torch_transforms import Farthest_Point_Sampling, Normalize_Labels, ToTensor, Voxelization_withPCD
 
 
 
@@ -58,7 +56,7 @@ def init_callbacks(ckpt_dir):
             lit_callbacks.callback_model_checkpoint(
                 dirpath=ckpt_dir,
                 filename=f"{metric}",
-                monitor=f"train_{metric}",
+                monitor=f"val_{metric}",
                 mode="max",
                 save_top_k=2,
                 save_last=False,
@@ -72,8 +70,8 @@ def init_callbacks(ckpt_dir):
     model_ckpts.append( # train loss checkpoint
         lit_callbacks.callback_model_checkpoint(
             dirpath=ckpt_dir, #None for default logger dir
-            filename=f"train_loss",
-            monitor=f"train_loss",
+            filename=f"val_loss",
+            monitor=f"val_loss",
             mode="min",
             every_n_epochs=wandb.config.checkpoint_every_n_epochs,
             every_n_train_steps=wandb.config.checkpoint_every_n_steps,
@@ -83,13 +81,13 @@ def init_callbacks(ckpt_dir):
 
     callbacks.extend(model_ckpts)
 
-    early_stop_callback = EarlyStopping(monitor=wandb.config.early_stop_metric, 
-                                        min_delta=0.00, 
-                                        patience=25, 
-                                        verbose=False, 
-                                        mode="max")
+    # early_stop_callback = EarlyStopping(monitor=wandb.config.early_stop_metric, 
+    #                                     min_delta=0.00, 
+    #                                     patience=25, 
+    #                                     verbose=False, 
+    #                                     mode="max")
 
-    callbacks.append(early_stop_callback)
+    # callbacks.append(early_stop_callback)
 
     return callbacks
 
@@ -101,11 +99,12 @@ def init_model(criterion, ckpt_path):
             raise FileNotFoundError(f"Checkpoint {ckpt_path} does not exist.")
         
         print(f"Resuming from checkpoint {ckpt_path}")
-        model = lit_models.LitSceneNet.load_from_checkpoint(ckpt_path,
-                                                            criterion=criterion,
-                                                            optimizer=wandb.config.optimizer,
-                                                            learning_rate=wandb.config.learning_rate,
-                                                            metric_initilizer=su.init_metrics)
+        model = lit_models.LitSceneNet_multiclass.load_from_checkpoint(ckpt_path,
+                                                                criterion=criterion,
+                                                                optimizer=wandb.config.optimizer,
+                                                                learning_rate=wandb.config.learning_rate,
+                                                                metric_initilizer=su.init_metrics
+                                                            )
     else:
         # Model definition
         geneo_config = {
@@ -114,12 +113,17 @@ def init_model(criterion, ckpt_path):
             'neg'  : wandb.config.neg_sphere_geneo, 
         }
 
-        model = lit_models.LitSceneNet(geneo_config,
-                                       ast.literal_eval(wandb.config.kernel_size),
-                                       criterion,
-                                       wandb.config.optimizer,
-                                       wandb.config.learning_rate,
-                                       su.init_metrics)
+        hidden_dims = ast.literal_eval(wandb.config.hidden_dims)
+
+        model = lit_models.LitSceneNet_multiclass(geneo_config,
+                                        ast.literal_eval(wandb.config.kernel_size),
+                                        hidden_dims,
+                                        wandb.config.num_classes,
+                                        criterion,
+                                        wandb.config.optimizer,
+                                        wandb.config.learning_rate,
+                                        su.init_metrics
+                                    )
         
     return model
 
@@ -128,12 +132,15 @@ def init_ts40k(data_path):
     vxg_size = ast.literal_eval(wandb.config.voxel_grid_size) # default is 64^3
     vox_size = ast.literal_eval(wandb.config.voxel_size) # only use vox_size after training or with batch_size = 1
     composed = Compose([
-                        Farthest_Point_Sampling(),
+                        ToTensor(),
+
+                        Farthest_Point_Sampling(wandb.config.fps_points),
         
                         Voxelization_withPCD([eda.POWER_LINE_SUPPORT_TOWER, eda.MAIN_POWER_LINE, eda.MEDIUM_VEGETAION, eda.LOW_VEGETATION], 
                                              vxg_size=vxg_size, vox_size=vox_size
                                             ),
-                        ToTensor(), 
+
+                        Normalize_Labels()
                     ])
 
     data_module = LitTS40K(data_path,
@@ -141,7 +148,8 @@ def init_ts40k(data_path):
                            composed,
                            wandb.config.num_workers,
                            wandb.config.val_split,
-                           wandb.config.test_split)
+                           wandb.config.test_split
+                        )
     
     return data_module
 
@@ -160,8 +168,17 @@ def main():
 
     callbacks = init_callbacks(ckpt_dir)
 
+
     # ------------------------
-    # 2 INIT TRAINING CRITERION
+    # 2 INIT MODEL
+    # ------------------------
+
+    # TODO: add resume training
+    # criterion will be dynamically assigned; GENEO criterion require model parameters
+    model = init_model(None, ckpt_path)
+
+    # ------------------------
+    # 3 INIT TRAINING CRITERION
     # ------------------------
 
     weighting_scheme_path = wandb.config.weighting_scheme_path
@@ -179,21 +196,29 @@ def main():
         'weight_alpha': wandb.config.weight_alpha,
         'weight_epsilon': wandb.config.weight_epsilon,
         'mse_weight': wandb.config.mse_weight,
-        'convex_weight': wandb.config.convex_weight,
         'tversky_alpha': wandb.config.tversky_alpha,
         'tversky_beta': wandb.config.tversky_beta,
         'tversky_smooth': wandb.config.tversky_smooth,
         'focal_gamma': wandb.config.focal_gamma,
     }
 
+    
+    criterion = torch.nn.CrossEntropyLoss(ignore_index=0) # default criterion; idx zero is noise
+
+    
+    if wandb.config.geneo_criterion:
+        criterion = GENEO_Loss(criterion, 
+                                model.get_geneo_params(),
+                                model.get_cvx_coefficients(),
+                                convex_weight=wandb.config.convex_weight,
+                            )
+        
+
     criterion_class = su.resolve_criterion(wandb.config.criterion)
-    criterion = criterion_class(**criterion_params)
 
-    # ------------------------
-    # 3 INIT MODEL
-    # ------------------------
+    criterion = criterion_class(criterion, **criterion_params)
 
-    model = init_model(criterion, ckpt_path)
+    model.criterion = criterion # assign criterion to model
 
     # ------------------------
     # 4 INIT DATA MODULE
@@ -215,7 +240,8 @@ def main():
     wandb_logger = WandbLogger(project=f"{project_name}",
                                log_model=True, 
                                name=wandb.run.name, 
-                               config=wandb.config)
+                               config=wandb.config
+                            )
     
     trainer = pl.Trainer(
         logger=wandb_logger,
@@ -231,8 +257,8 @@ def main():
         #resume_from_checkpoint=ckpt_path
     )
 
-    if wandb.config.auto_lr_find or wandb.config.auto_scale_batch_size:
-        trainer.tune(model, data_module) # auto_lr_find and auto_scale_batch_size
+    # if wandb.config.auto_lr_find or wandb.config.auto_scale_batch_size:
+    #     trainer.tune(model, data_module) # auto_lr_find and auto_scale_batch_size
 
     trainer.fit(model, data_module)
 
@@ -241,8 +267,6 @@ def main():
     for ckpt in trainer.callbacks:
         if isinstance(ckpt, pl_callbacks.ModelCheckpoint):
             print(f"{ckpt.monitor} checkpoint : score {ckpt.best_model_score}")
-
-    wandb_logger.experiment.unwatch(model)
 
     # ------------------------
     # 6 TEST
@@ -304,7 +328,7 @@ if __name__ == '__main__':
                 dir = experiment_path,
                 name = f'{project_name}_{datetime.now().strftime("%Y%m%d-%H%M%S")}',
                 config=sweep_config,
-                mode='disabled'
+                # mode='disabled'
         )
 
         #pprint(wandb.config)

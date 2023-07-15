@@ -59,7 +59,7 @@ class LitTS40K(pl.LightningDataModule):
             self.predict_ds = TS40K(self.data_dir, split="test", transform=self.transform)
         
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
+        return DataLoader(self.train_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, pin_memory=True)
 
     def val_dataloader(self):
         return DataLoader(self.val_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)

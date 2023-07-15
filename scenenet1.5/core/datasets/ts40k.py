@@ -200,30 +200,18 @@ class TS40K(Dataset):
         try:
             npy = np.load(npy_path)
         except:
-            print(f"Unreadable file: {npy_path}, loading random sample instead...")
-            npy_path = os.path.join(self.dataset_path, self.npy_files[random.randint(0, len(self))])
-            npy = np.load(npy_path)
+            print(f"Unreadable file: {npy_path}")
+        
+        sample = (npy[None, :, 0:-1], npy[None, :, -1]) # xyz-coord (1, N, 3); label (1, N) 
 
-        sample = (npy[:, 0:-1], npy[:, -1]) # xyz-coord (N, 3); label (N,) 
 
-        while True: # there is a bug with the dataloader or the data is corrupted, idk why it happens
-
-            try:
-                if self.transform:
-                    return self.transform(sample)
-                else:
-                    return (npy[None, :, 0:-1], npy[None, :, -1]) # xyz-coord (1, N, 3); label (1, N) 
-            
-            except:
-
-                print(f"Corrupted or Empty Sample: {npy_path}, loading random sample instead...")
-
-                npy_path = os.path.join(self.dataset_path, self.npy_files[random.randint(0, len(self))])
-                npy = np.load(npy_path)
-                sample = (npy[:, 0:-1], npy[:, -1])
-
+        if self.transform:
+            sample = self.transform(sample)
+            #print(f"Transformed sample: {sample[0].shape}, {sample[1].shape}, {sample[2].shape}")
+            return sample
+        
         return sample
-    
+                
 
 
             
@@ -234,10 +222,14 @@ def main():
     ROOT_PROJECT = Path(os.path.abspath(__file__)).parents[3].resolve()
 
     #EXT_DIR = "/media/didi/TOSHIBA EXT/LIDAR/"
-    EXT_DIR = "/media/didi/TOSHIBA EXT"
-    SAVE_DIR = "/media/didi/TOSHIBA EXT/TS40K-NEW/"
+    EXT_DIR = constants.EXT_PATH
+    TS40K_DIR = os.join(EXT_DIR, "TS40K-Dataset")
+    #EXT_DIR = "/media/didi/TOSHIBA EXT"
+    SAVE_PATH = os.path.join(TS40K_DIR, "TS40K-NEW")
 
-    build_data_samples([os.path.join(EXT_DIR, 'LIDAR'), os.path.join(EXT_DIR, 'Labelec_LAS')], SAVE_DIR)
+    build_data_samples([os.path.join(TS40K_DIR, 'LIDAR'), os.path.join(TS40K_DIR, 'Labelec_LAS')], SAVE_PATH, data_split={'fit': 0.8, 'test': 0.2})
+
+    input("Press Enter to continue...")
 
     #composed = Compose([ToTensor(), AddPad((3, 3, 3, 3, 3, 3))]) 
     vxg_size  = (64, 64, 64)
@@ -285,6 +277,8 @@ def main():
 
 
 if __name__ == "__main__":
+
+    from scripts import constants
     main()
 
 # %%

@@ -7,7 +7,7 @@ import random
 import pytorch_lightning as pl
 import sys
 
-from torchmetrics import MetricCollection, JaccardIndex, Precision, Recall, F1Score, FBetaScore, AUROC, AveragePrecision
+from torchmetrics import MetricCollection, JaccardIndex, F1Score, Accuracy, Precision, Recall
 import wandb
 
 
@@ -16,8 +16,7 @@ sys.path.insert(0, '..')
 from core.criterions.dice_loss import BinaryDiceLoss, BinaryDiceLoss_BCE
 from core.criterions.tversky_loss import FocalTverskyLoss, TverskyLoss
 from core.criterions.w_mse import WeightedMSE
-from core.criterions.geneo_loss import GENEO_Loss, GENEO_Dice_BCE, GENEO_Dice_Loss, GENEO_Tversky_Loss
-
+from core.criterions.geneo_loss import GENEO_Loss, Tversky_Wrapper_Loss
 
 
 
@@ -49,12 +48,8 @@ def _resolve_geneo_criterions(criterion_name):
     criterion_name = criterion_name.lower()
     if criterion_name == 'geneo':
         return GENEO_Loss
-    elif criterion_name == 'geneo_dice_bce':
-        return GENEO_Dice_BCE
-    elif criterion_name == 'geneo_dice':
-        return GENEO_Dice_Loss
     elif criterion_name == 'geneo_tversky':
-        return GENEO_Tversky_Loss
+        return Tversky_Wrapper_Loss
     else:
         raise NotImplementedError(f'GENEO Criterion {criterion_name} not implemented')
 
@@ -77,17 +72,17 @@ def resolve_criterion(criterion_name):
         raise NotImplementedError(f'Criterion {criterion_name} not implemented')
     
 
-def init_metrics(tau=0.65):
+def init_metrics(task='multiclass', tau=0.5, num_classes=2, ignore_index=0):
+
+    params = {'task': task, 'num_classes': num_classes, 'ignore_index': ignore_index, 'threshold': tau}
+    # 'multidim_average': 'global'
     return MetricCollection([
-        JaccardIndex(num_classes=2, threshold=tau),
-        Precision(threshold=tau),
-        Recall(threshold=tau),
-        F1Score(threshold=tau),
-        FBetaScore(beta=0.5, threshold=tau),
-        #AveragePrecision(),
-        #Accuracy(threshold=tau),
-        #AUROC() # Takes too much GPU memory
-        #BinnedAveragePrecision(num_classes=1, thresholds=torch.linspace(0.5, 0.95, 20))
+        JaccardIndex(**params, average='macro'),
+        # JaccardIndex(**params, average=None),
+        F1Score(**params, average=None),
+        Precision(**params, average='macro'),
+        Recall(**params, average='micro'),
+        Accuracy(**params, average=None),
     ])
 
 

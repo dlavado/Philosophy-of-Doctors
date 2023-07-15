@@ -195,6 +195,12 @@ def voxelize_sample(xyz, labels, keep_labels, voxelgrid_dims=(64, 64, 64), voxel
     `point_locations` - np.ndarray withg shape (N, 3)
         point locations in the voxel grid
     """
+    to_tensor = False
+    if isinstance(xyz, torch.Tensor):
+        xyz = xyz.numpy()
+        to_tensor = True
+    if isinstance(labels, torch.Tensor):
+        labels = labels.numpy()
 
     crop_tower_ply = eda.np_to_ply(xyz)
     pynt, id = eda.voxelize_ply(crop_tower_ply, voxelgrid_dims=voxelgrid_dims, voxel_dims=voxel_dims, plot=False)
@@ -216,7 +222,7 @@ def voxelize_sample(xyz, labels, keep_labels, voxelgrid_dims=(64, 64, 64), voxel
     
     groups = voxs.groupby(['z', 'x', 'y'])
 
-    point_locations = np.array(list(groups.groups.keys())) # shape = (N, 3)
+    point_locations = np.column_stack((grid.voxel_z, grid.voxel_x, grid.voxel_y))
 
     def voxel_label(x):
         group = np.array(x)
@@ -233,10 +239,90 @@ def voxelize_sample(xyz, labels, keep_labels, voxelgrid_dims=(64, 64, 64), voxel
         inp[zxy] = 1.0 if row['points'] > 0 else 0.0
 
         gt[zxy] = eda.DICT_NEW_LABELS[row['labels']] # convert EDP labels to semantic labels
+
+    if to_tensor:
+        inp = torch.from_numpy(inp).unsqueeze(0)
+        gt = torch.from_numpy(gt).unsqueeze(0)
+        point_locations = torch.from_numpy(point_locations)
     
     return inp, gt, point_locations
 
 
+def voxelize_input_pcd(xyz, labels, keep_labels, voxelgrid_dims=(64, 64, 64), voxel_dims=None):
+    """
+    Voxelizes the point cloud xyz and applies a histogram function on each voxel as a density function.
+
+    Parameters
+    ----------
+    `xyz` - numpy array:
+        point cloud in (N, 3) format.
+
+    `labels` - 1d numpy array:
+        point labels in (1, N) format.
+
+    `keep_labels` - int or list:
+        labels to be kept in the voxelization process.
+
+    `voxegrid_dims` - tuple int:
+        Dimensions of the voxel grid to be applied to the point cloud
+
+    `voxel_dims` - tuple int:
+        Dimensions of the voxels that compose the voxel_grid that will encase the point cloud
+        if voxel_dims is not None, it overrides voxelgrid_dims;
+    
+    Returns
+    -------
+    `in` - np.ndarray with voxel_dims shape    
+        voxelized data with histogram density functions
+    
+    `gt` - np.ndarray with shape (1, N) and semantic labels
+    
+    `point_locations` - np.ndarray withg shape (N, 3)
+        point locations in the voxel grid
+    """
+    to_tensor = False
+    if isinstance(xyz, torch.Tensor):
+        xyz = xyz.numpy()
+        to_tensor = True
+    if isinstance(labels, torch.Tensor):
+        labels = labels.numpy()
+
+    crop_tower_ply = eda.np_to_ply(xyz)
+    pynt, id = eda.voxelize_ply(crop_tower_ply, voxelgrid_dims=voxelgrid_dims, voxel_dims=voxel_dims, plot=False)
+    grid = pynt.structures[id]
+    grid_shape = grid.x_y_z
+
+    inp = np.zeros((grid_shape[-1], grid_shape[0], grid_shape[1]))
+
+    voxs = pd.DataFrame(data = {
+                            "z": grid.voxel_z, 
+                            "x": grid.voxel_x, 
+                            "y": grid.voxel_y,
+                            "points": np.ones_like(grid.voxel_x), 
+                           }
+                        )
+    
+    groups = voxs.groupby(['z', 'x', 'y'])
+
+    point_locations = np.column_stack((grid.voxel_z, grid.voxel_x, grid.voxel_y))
+
+    aggs = groups.agg({'points': 'count'})
+
+    for zxy, row in aggs.iterrows():
+        inp[zxy] = 1.0 if row['points'] > 0 else 0.0
+
+    
+    def change_label(x):
+        return eda.DICT_NEW_LABELS[x] if x in keep_labels else 0
+    
+    gt = np.vectorize(change_label)(labels) # convert EDP labels to semantic labels, shape = (1, N)
+
+    if to_tensor:
+        inp = torch.from_numpy(inp).unsqueeze(0)
+        gt = torch.from_numpy(gt).to(torch.long)
+        point_locations = torch.from_numpy(point_locations)
+    
+    return inp, gt, point_locations
 
 def hist_on_voxel(xyz, voxelgrid_dims =(64, 64, 64), voxel_dims=None):
     """

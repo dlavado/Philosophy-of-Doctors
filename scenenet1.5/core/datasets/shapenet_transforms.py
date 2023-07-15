@@ -68,36 +68,11 @@ if __name__ == '__main__':
 
     PART_NET_PATH = "/media/didi/TOSHIBA EXT/sem_seg_h5"
 
-    
-    categories = list(os.listdir(PART_NET_PATH))
-    categories = [os.path.join(PART_NET_PATH, cat) for cat in categories]
-
-    for cat_path in categories:
-
-        for h5_file in os.listdir(cat_path):
-            if '.h5' not in h5_file:
-                continue    
-
-            h5_path = os.path.join(cat_path, h5_file)
-
-            with h5py.File(h5_path, 'r') as h5:
-
-                print(h5["data"].shape)
-                print(h5["label_seg"])
-
-                pcd = eda.np_to_ply(h5["data"][0])
-                eda.color_pointcloud(pcd, h5["label_seg"][0])
-                eda.visualize_ply([pcd])
-
-                input("Press Enter to continue...")
-
 
     shape = ShapeNetCore(SHAPE_NET_CORE_PATH, version=2, load_textures=True)
 
     for sample in shape:
         id = sample["model_id"]
-
-                
 
     mesh_dict = shape[6]
 
