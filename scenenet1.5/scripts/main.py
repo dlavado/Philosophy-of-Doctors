@@ -23,13 +23,15 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 # Weights & Biases
 import wandb
 from pytorch_lightning.loggers import WandbLogger
+from lightning.pytorch.callbacks import BatchSizeFinder
+
 
 
 # Our code
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 
-from constants import ROOT_PROJECT, TS40K_PATH, WEIGHT_SCHEME_PATH, get_experiment_config_path, get_experiment_path
+from constants import PARTNET_PATH, ROOT_PROJECT, TS40K_PATH, WEIGHT_SCHEME_PATH, get_experiment_config_path, get_experiment_path
 
 import utils.pcd_processing as eda
 import utils.scripts_utils as su
@@ -37,11 +39,30 @@ import utils.scripts_utils as su
 import core.lit_modules.lit_callbacks as lit_callbacks
 import core.lit_modules.lit_model_wrappers as lit_models
 from core.lit_modules.lit_data_wrappers import LitTS40K
+from core.datasets.partnet import LitPartNetDataset
+
 from core.criterions.geneo_loss import GENEO_Loss
 
 
-from core.datasets.torch_transforms import Farthest_Point_Sampling, Normalize_Labels, ToTensor, Voxelization_withPCD
+from core.datasets.torch_transforms import Dict_to_Tuple, Farthest_Point_Sampling, Normalize_Labels, ToTensor, Voxelization_withPCD
 
+class PrintCallback(pl.Callback):
+    def on_epoch_end(self, trainer, pl_module):
+        metrics = trainer.callback_metrics
+        print(f"Epoch: {trainer.current_epoch}")
+        for metric, value in metrics.items():
+            if 'val' in metric:
+                print(f"\t{metric}: {value}")
+
+class EvalBatchSizeFinder(BatchSizeFinder):
+    def __init__(self, mode, *args, **kwargs):
+        super().__init__(mode, *args, **kwargs)
+
+    def on_fit_start(self, *args, **kwargs):
+        return
+
+    def on_test_start(self, trainer, pl_module):
+        self.scale_batch_size(trainer, pl_module)
 
 
 def init_callbacks(ckpt_dir):
@@ -58,7 +79,7 @@ def init_callbacks(ckpt_dir):
                 filename=f"{metric}",
                 monitor=f"val_{metric}",
                 mode="max",
-                save_top_k=2,
+                save_top_k=1,
                 save_last=False,
                 every_n_epochs=wandb.config.checkpoint_every_n_epochs,
                 every_n_train_steps=wandb.config.checkpoint_every_n_steps,
@@ -80,6 +101,12 @@ def init_callbacks(ckpt_dir):
     )
 
     callbacks.extend(model_ckpts)
+
+    # batch_finder = EvalBatchSizeFinder(mode='binsearch')
+    # callbacks.append(batch_finder)
+
+    print_callback = PrintCallback()
+    callbacks.append(print_callback)
 
     # early_stop_callback = EarlyStopping(monitor=wandb.config.early_stop_metric, 
     #                                     min_delta=0.00, 
@@ -131,17 +158,23 @@ def init_model(criterion, ckpt_path):
 def init_ts40k(data_path):
     vxg_size = ast.literal_eval(wandb.config.voxel_grid_size) # default is 64^3
     vox_size = ast.literal_eval(wandb.config.voxel_size) # only use vox_size after training or with batch_size = 1
+
+    keep_labels = list(eda.DICT_EDP_LABELS.keys())
+    semantic_labels = [eda.DICT_NEW_LABELS[label] for label in keep_labels]
+    assert len(torch.unique(semantic_labels)) == wandb.config.num_classes
     composed = Compose([
                         ToTensor(),
 
                         Farthest_Point_Sampling(wandb.config.fps_points),
         
-                        Voxelization_withPCD([eda.POWER_LINE_SUPPORT_TOWER, eda.MAIN_POWER_LINE, eda.MEDIUM_VEGETAION, eda.LOW_VEGETATION], 
-                                             vxg_size=vxg_size, vox_size=vox_size
+                        Voxelization_withPCD(keep_labels=keep_labels, 
+                                             vxg_size=vxg_size, 
+                                             vox_size=vox_size
                                             ),
-
                         Normalize_Labels()
                     ])
+    
+
 
     data_module = LitTS40K(data_path,
                            wandb.config.batch_size,
@@ -152,6 +185,32 @@ def init_ts40k(data_path):
                         )
     
     return data_module
+
+
+def init_partnet(data_path):
+
+    vxg_size = ast.literal_eval(wandb.config.voxel_grid_size) # default is 64^3
+    vox_size = ast.literal_eval(wandb.config.voxel_size) # only use vox_size after training or with batch_size = 1
+    composed = Compose([
+                        Dict_to_Tuple(omit=['category']),
+
+                        # ToTensor(),
+
+                        # Farthest_Point_Sampling(wandb.config.fps_points), # ParNet data already has FPS
+        
+                        Voxelization_withPCD(keep_labels='all', 
+                                             vxg_size=vxg_size, vox_size=vox_size
+                                            ),
+                        Normalize_Labels()
+                    ])
+
+    return LitPartNetDataset(data_path,
+                            wandb.config.coarse_level,
+                            wandb.config.batch_size,
+                            transform=composed,
+                            keep_objects=ast.literal_eval(wandb.config.keep_objects),
+                            num_workers=wandb.config.num_workers,
+                        )
 
 
 def main():
@@ -202,8 +261,8 @@ def main():
         'focal_gamma': wandb.config.focal_gamma,
     }
 
-    
-    criterion = torch.nn.CrossEntropyLoss(ignore_index=0) # default criterion; idx zero is noise
+
+    criterion = torch.nn.CrossEntropyLoss(ignore_index=wandb.config.ignore_index) # default criterion; idx zero is noise
 
     
     if wandb.config.geneo_criterion:
@@ -227,10 +286,19 @@ def main():
     data_path = wandb.config.data_path
 
     if not os.path.exists(wandb.config.data_path):
-        data_path = TS40K_PATH
+        if dataset_name == 'ts40k':
+            data_path = TS40K_PATH
+        elif dataset_name == 'partnet':
+            data_path = PARTNET_PATH
+        else:
+            raise ValueError(f"Dataset {dataset_name} not supported.")
         wandb.config.update({'data_path': data_path}, allow_val_change=True) # override data path
 
-    data_module = init_ts40k(data_path)
+    if dataset_name == 'ts40k':
+        data_module = init_ts40k(data_path)
+    
+    elif dataset_name == 'partnet':
+        data_module = init_partnet(data_path)   
     
     # ------------------------
     # 5 INIT TRAINER
@@ -246,15 +314,21 @@ def main():
     trainer = pl.Trainer(
         logger=wandb_logger,
         callbacks=callbacks,
+        detect_anomaly=True,
+        #
         max_epochs=wandb.config.max_epochs,
-        gpus=wandb.config.gpus,
+        accelerator=wandb.config.accelerator,
+        devices=wandb.config.devices,
         #fast_dev_run = wandb.config.fast_dev_run,
-        auto_lr_find=wandb.config.auto_lr_find,
-        auto_scale_batch_size=wandb.config.auto_scale_batch_size,
-        profiler=wandb.config.profiler,
+        profiler=wandb.config.profiler if wandb.config.profiler else None,
+        precision=wandb.config.precision,
+        # auto_lr_find=wandb.config.auto_lr_find,
+        # auto_scale_batch_size=wandb.config.auto_scale_batch_size,
         enable_model_summary=True,
-        accumulate_grad_batches = wandb.config.accumulate_grad_batches
-        #resume_from_checkpoint=ckpt_path
+        enable_checkpointing=True,
+        enable_progress_bar=True,
+        accumulate_grad_batches = wandb.config.accumulate_grad_batches,
+        # resume_from_checkpoint=ckpt_path
     )
 
     # if wandb.config.auto_lr_find or wandb.config.auto_scale_batch_size:
@@ -292,12 +366,13 @@ if __name__ == '__main__':
     # --------------------------------
     su.fix_randomness()
     warnings.filterwarnings("ignore")
+    torch.set_float32_matmul_precision('medium')
 
     main_parser = su.main_arg_parser().parse_args()
 
     model_name = 'scenenet'
-    dataset_name = 'ts40k'
-    project_name = f"{model_name}_{dataset_name}"
+    dataset_name = main_parser.dataset
+    project_name = f"SceneNet_Multiclass_{dataset_name}"
 
     config_path = get_experiment_config_path(model_name, dataset_name)
     experiment_path = get_experiment_path(model_name, dataset_name)

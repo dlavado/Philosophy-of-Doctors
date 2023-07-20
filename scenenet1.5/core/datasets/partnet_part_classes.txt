@@ -1,0 +1,242 @@
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Knife-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[1 2 3 4]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Bag-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Bed-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Bottle-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Bowl-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[1 2 3]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Chair-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Clock-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Dishwasher-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Display-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Door-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Earphone-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Faucet-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5 6 7]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5 6 7]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5 6 7]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Hat-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Keyboard-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Lamp-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Laptop-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Microwave-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[1 2]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Mug-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Refrigerator-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[1 2]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Scissors-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/StorageFurniture-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5 6]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5 6]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5 6]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4 5 6]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Table-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[ 0  1  2  3  4  5  6  7  8  9 10]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[ 0  1  2  3  4  5  6  7  8  9 10]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[ 0  1  2  3  4  5  6  7  8  9 10]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[ 0  1  2  3  4  5  6  7  8  9 10]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[ 0  1  2  3  4  5  6  7  8  9 10]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[ 0  1  2  3  4  5  6  7  8  9 10]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[ 0  1  2  3  4  5  6  7  8  9 10]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[ 0  1  2  3  4  5  6  7  8  9 10]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[ 0  1  2  3  4  5  6  7  8  9 10]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/TrashCan-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3 4]
+
+
+/media/didi/TOSHIBA EXT/sem_seg_h5/Vase-1
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3]
+<KeysViewHDF5 ['data', 'data_num', 'label_seg']>
+[0 1 2 3]

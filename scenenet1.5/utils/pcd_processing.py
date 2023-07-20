@@ -32,6 +32,31 @@ parent = os.path.abspath(os.path.join(cwd, os.pardir))
 
 DATA_SAMPLE_DIR = parent + "/Data_sample"
 
+DICT_EDP_LABELS = {
+    0: "Created, unclassified",
+    1: "Unclassified",
+    2: "Ground",
+    3: "Low vegetation",
+    4: "Medium vegetation",
+    5: "Natural obstacle",
+    6: "Human structures",
+    7: "Low point (noise)",
+    8: "Model keypoints (masspoints)",
+    9: "Water",
+    10: "Rail",
+    11: "Road surface",
+    12: "Overlap points",
+    13: "Medium reliability",
+    14: "Low reliability",
+    15: "Power line support tower",
+    16: "Main power line",
+    17: "Other power line",
+    18: "Fiber optic cable",
+    19: "Not rated (object to be classified)",
+    20: "Not rated (object to be classified)",
+    21: "Incidents",
+}
+
 # classes of point clouds:
 CREATED = 0
 UNCLASSIFIED = 1
@@ -65,7 +90,8 @@ DICT_NEW_LABELS = {
     MEDIUM_RELIABILITY : 0,
     LOW_RELIABILITY : 0, 
     NOT_RATED_OBJ_TBC : 0, 
-    NOT_RATED_OBJ_TBIG : 0, 
+    NOT_RATED_OBJ_TBIG : 0,
+    WATER : 0, 
     RAIL : 0, # noise
 
     GROUND: 1,
@@ -78,12 +104,12 @@ DICT_NEW_LABELS = {
     HUMAN_STRUCTURES : 3, 
     INCIDENTS : 3,# obstacles
 
-    WATER : 4,
-    POWER_LINE_SUPPORT_TOWER : 5,
+   
+    POWER_LINE_SUPPORT_TOWER : 4,
 
-    MAIN_POWER_LINE : 6,
-    OTHER_POWER_LINE: 6,
-    FIBER_OPTIC_CABLE : 6, # power lines
+    MAIN_POWER_LINE : 5,
+    OTHER_POWER_LINE: 5,
+    FIBER_OPTIC_CABLE : 5, # power lines
 }
 
 # useful constants

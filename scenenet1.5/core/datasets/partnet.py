@@ -1,14 +1,15 @@
 
 from typing import Dict, List
-from pytorch3d.datasets import ShapeNetCore
 from torchvision.transforms import Compose
 import torch
 from torch.utils.data import Dataset
 from torch import nn as nn
 import numpy as np
+import os
+import h5py
 
 import pytorch_lightning as pl
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 
 import sys
 sys.path.append("..")
@@ -25,6 +26,7 @@ class PartNetDataset(Dataset):
                  data_dir:str,
                  coarse_level:int,
                  keep_objects:List[str] = None,
+                 transform:Compose = None,
                  stage:str = 'train'
                  ) -> None:
 
@@ -32,6 +34,7 @@ class PartNetDataset(Dataset):
 
 
         self.partnet_dir = data_dir
+        self.transform = transform
 
         categories = os.listdir(self.partnet_dir)
         # Filter out categories that are not at the coarse level specified
@@ -70,6 +73,14 @@ class PartNetDataset(Dataset):
         del self.h5_obj_train
         del self.h5_obj_val
         del self.h5_obj_test
+
+    def __len__(self):
+        if self.stage == 'train':
+            return len(self.train_dataset)
+        elif self.stage == 'val':
+            return len(self.val_dataset)
+        elif self.stage == 'test':
+            return len(self.test_dataset)
                 
     def _setup(self, stage:str=None):
 
@@ -142,11 +153,15 @@ class PartNetDataset(Dataset):
         else:
             raise ValueError(f"Invalid stage: {self.stage}")
 
-        return {
+        sample = {
             'category': category,
             'obj': torch.from_numpy(obj),
             'seg_labels': torch.from_numpy(seg_labels)
         }
+
+        if self.transform:
+            sample = self.transform(sample)
+        return sample
 
 
 class LitPartNetDataset(pl.LightningDataModule):
@@ -170,10 +185,10 @@ class LitPartNetDataset(pl.LightningDataModule):
     def setup(self, stage:str=None):
 
         if stage == 'fit' or stage is None:
-            self.train_dataset = PartNetDataset(data_dir=self.data_dir, coarse_level=self.coarse_level, keep_objects=self.keep_objects, stage='train')
-            self.val_dataset = PartNetDataset(data_dir=self.data_dir, coarse_level=self.coarse_level, keep_objects=self.keep_objects, stage='val')
+            self.train_dataset = PartNetDataset(data_dir=self.data_dir, coarse_level=self.coarse_level, keep_objects=self.keep_objects, transform=self.transforms, stage='train')
+            self.val_dataset = PartNetDataset(data_dir=self.data_dir, coarse_level=self.coarse_level, keep_objects=self.keep_objects, transform=self.transforms, stage='val')
         elif stage == 'test' or stage  == 'predict':
-            self.test_dataset = PartNetDataset(data_dir=self.data_dir, coarse_level=self.coarse_level, keep_objects=self.keep_objects, stage='test')
+            self.test_dataset = PartNetDataset(data_dir=self.data_dir, coarse_level=self.coarse_level, keep_objects=self.keep_objects, transform=self.transforms, stage='test')
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers)
@@ -200,15 +215,16 @@ if __name__ == '__main__':
 
     partnet = PartNetDataset(data_dir=PART_NET_PATH, coarse_level=1, keep_objects=['chair'], stage='train')
 
-    sample = partnet[0]
-    pcd = eda.np_to_ply(sample['obj'].numpy())
-    eda.color_pointcloud(pcd, sample['seg_labels'].numpy())
-    eda.visualize_ply([pcd])
+    # sample = partnet[0]
+    # pcd = eda.np_to_ply(sample['obj'].numpy())
+    # eda.color_pointcloud(pcd, sample['seg_labels'].numpy())
+    # eda.visualize_ply([pcd])
 
-    input("Press Enter to continue...")
+    # input("Press Enter to continue...")
     
     
     categories = list(os.listdir(PART_NET_PATH))
+    categories = [cat for cat in categories if f"-1" in cat]
     categories = [os.path.join(PART_NET_PATH, cat) for cat in categories]
 
     for cat_path in categories:
@@ -225,13 +241,15 @@ if __name__ == '__main__':
             with h5py.File(h5_path, 'r') as h5:
                 
                 print(h5.keys())
-                print(h5["data_num"])
-                print(h5["data"].shape)
-                print(h5["label_seg"].shape)
+                # print(h5["data_num"])
+                # print(h5["data"].shape)
+                # print(h5["label_seg"].shape)
+                print(np.unique(h5["label_seg"]))
 
-                input("Press Enter to continue...")
+                # input("Press Enter to continue...")
 
-                pcd = eda.np_to_ply(h5["data"][0])
-                eda.color_pointcloud(pcd, h5["label_seg"][0])
-                eda.visualize_ply([pcd])
+                # pcd = eda.np_to_ply(h5["data"][0])
+                # eda.color_pointcloud(pcd, h5["label_seg"][0])
+                
+                # eda.visualize_ply([pcd])
 

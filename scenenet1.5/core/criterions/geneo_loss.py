@@ -69,7 +69,7 @@ class GENEO_Loss(torch.nn.Module):
         self.cvx_coeffs = cvx_coeffs
         self.geneo_params = gnet_params
         
-        self.relu = torch.nn.ReLU()
+        self.relu = torch.nn.ReLU().to('cuda:0')
 
     def forward(self, y_pred:torch.Tensor, y_gt:torch.Tensor):
 

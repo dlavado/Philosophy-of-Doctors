@@ -248,7 +248,7 @@ def voxelize_sample(xyz, labels, keep_labels, voxelgrid_dims=(64, 64, 64), voxel
     return inp, gt, point_locations
 
 
-def voxelize_input_pcd(xyz, labels, keep_labels, voxelgrid_dims=(64, 64, 64), voxel_dims=None):
+def voxelize_input_pcd(xyz, labels, keep_labels=None, voxelgrid_dims=(64, 64, 64), voxel_dims=None):
     """
     Voxelizes the point cloud xyz and applies a histogram function on each voxel as a density function.
 
@@ -311,7 +311,9 @@ def voxelize_input_pcd(xyz, labels, keep_labels, voxelgrid_dims=(64, 64, 64), vo
     for zxy, row in aggs.iterrows():
         inp[zxy] = 1.0 if row['points'] > 0 else 0.0
 
-    
+    if keep_labels is None or keep_labels == 'all':
+        keep_labels = np.unique(labels)
+
     def change_label(x):
         return eda.DICT_NEW_LABELS[x] if x in keep_labels else 0
     

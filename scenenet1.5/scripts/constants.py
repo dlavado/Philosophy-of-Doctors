@@ -20,10 +20,14 @@ ROOT_PROJECT = get_project_root()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 if "didi" in str(ROOT_PROJECT):
-    EXT_PATH = "/media/didi/TOSHIBA EXT/"
+    if os.path.exists("/media/didi/TOSHIBA EXT/"):
+        EXT_PATH = "/media/didi/TOSHIBA EXT/"
+    else:
+        EXT_PATH = "/home/didi/DATASETS/" # google cluster data dir
 else:
     EXT_PATH = "/home/d.lavado/" #cluster data dir
 
+PARTNET_PATH = os.path.join(EXT_PATH, 'sem_seg_h5')
 
 TS40K_PATH = os.path.join(EXT_PATH, 'TS40K-NEW/')
 

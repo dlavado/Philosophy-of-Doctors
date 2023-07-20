@@ -112,16 +112,14 @@ class cone_kernel(GENEO_kernel_torch):
     def geneo_parameters():
         return cone_kernel.mandatory_parameters() + ['sigma']
 
-    def geneo_random_config(name='GENEO_rand'):
+    def geneo_random_config(name="Random_Cone"):
         rand_config = GENEO_kernel_torch.geneo_random_config()
-
-        # rand_config['kernel_size'] = (9, 9, 9)
 
         k_size = rand_config['kernel_size']
 
         geneo_params = {
             'radius' : torch.randint(1, k_size[1], (1,))[0] / 2 ,
-            'apex': torch.randint(int(k_size[0]/2), k_size[0]-1, (1,))[0],
+            'apex': torch.randint(int(k_size[0]/2), k_size[0]-2, (1,))[0], 
             'cone_radius' : torch.randint(1, k_size[1], (1,))[0] / 2,
             'cone_inc' : torch.rand(1,)[0], #float \in [0, 1]
             'sigma' : torch.randint(5, 10, (1,))[0] / 5 #float \in [1, 2]
@@ -232,7 +230,7 @@ class arrow(cone_kernel):
                                     torch.arange(self.kernel_size[2], dtype=torch.float, device=self.device, requires_grad=True))
                     ).T.reshape(-1, 2)
         
-        hc = self.apex.to(torch.int).item() # Even though the apex is a model parameter, it is used as an index, so it must be converted to an int
+        hc = min([self.apex.to(torch.int).item(), self.kernel_size[0]]) # Even though the apex is a model parameter, it is used as an index, so it must be converted to an int
 
         cylinder_vals = self.gaussian(floor_idxs)
         cylinder_vals = self.sum_zero(cylinder_vals)
@@ -244,6 +242,8 @@ class arrow(cone_kernel):
         self.cone_inc = torch.clamp(self.cone_inc, 0, 0.499) # tan is not defined for 90 degrees
 
         for h in range(cone_height -1, -1, -1): # to -1 since range is non inclusive of the right bound: [start, end)
+            # if kernel.shape[0] == self.kernel_size[0]: # this is stopid
+            #     break
             height_vals = self.gaussian(floor_idxs, rad=self.cone_radius*h*torch.tan(self.cone_inc*torch.pi), sig=None)
             height_vals = self.sum_zero(height_vals)
             height_vals = torch.t(height_vals).view(1, self.kernel_size[1], self.kernel_size[2])  

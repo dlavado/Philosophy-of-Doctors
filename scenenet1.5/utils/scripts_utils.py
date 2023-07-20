@@ -41,6 +41,8 @@ def main_arg_parser():
 
     parser.add_argument('--wandb_sweep', action='store_true', default=None, help='If True, the script is run by wandb sweep')
 
+    parser.add_argument('--dataset', type=str, default='ts40k', help='Dataset to use')
+
     return parser
 
 
@@ -77,12 +79,12 @@ def init_metrics(task='multiclass', tau=0.5, num_classes=2, ignore_index=0):
     params = {'task': task, 'num_classes': num_classes, 'ignore_index': ignore_index, 'threshold': tau}
     # 'multidim_average': 'global'
     return MetricCollection([
-        JaccardIndex(**params, average='macro'),
+        JaccardIndex(**params, average=None),
         # JaccardIndex(**params, average=None),
         F1Score(**params, average=None),
         Precision(**params, average='macro'),
         Recall(**params, average='micro'),
-        Accuracy(**params, average=None),
+        Accuracy(**params, average='macro'),
     ])
 
 

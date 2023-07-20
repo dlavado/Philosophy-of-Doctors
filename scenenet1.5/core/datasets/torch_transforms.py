@@ -7,6 +7,17 @@ from utils import voxelization as Vox
 from pytorch3d.ops import sample_farthest_points
 
 
+class Dict_to_Tuple:
+
+    def __init__(self, omit:Union[str, list]=None) -> None:
+
+        self.omit = omit
+
+    def __call__(self, sample:dict):
+
+        return tuple([sample[key] for key in sample.keys() if key not in self.omit])
+
+
 class ToTensor:
 
     def __call__(self, sample):
@@ -84,7 +95,7 @@ class Voxelization:
 
 class Voxelization_withPCD:
 
-    def __init__(self, keep_labels, vox_size:Tuple[int]=None, vxg_size:Tuple[int]=None) -> None:
+    def __init__(self, keep_labels=None, vox_size:Tuple[int]=None, vxg_size:Tuple[int]=None) -> None:
         """
         Voxelizes raw LiDAR 3D point points in `numpy` (N, 3) format 
         according to the provided discretization

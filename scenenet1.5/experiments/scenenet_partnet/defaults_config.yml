@@ -10,25 +10,25 @@ output_dir:
 # dataset config
 # ------------------ #
 dataset:
-  value: 'ts40k'
+  value: 'partnet'
 data_path:
   value: ''
 num_classes:
   value: 6
+ignore_index:
+  value: -100
+coarse_level:
+  value: 1
+keep_objects:
+  value: "['chair']"
 batch_size:
   value: 4
-ignore_index:
-  value: 0
 voxel_grid_size:
   value: (64, 64, 64)
 voxel_size:
   value: None
 num_workers:
   value: 12
-val_split:
-  value: 0.1
-test_split:
-  value: 0.3
 fps_points:
   value: 10000 
   description: 'Number of points to sample from the point cloud with farthest point sampling'
@@ -38,24 +38,24 @@ fps_points:
 model:
   value: 'scenenet'
 cylinder_geneo:
-  value: 10
+  value: 30
 arrow_geneo:
-  value: 10
+  value: 30
 neg_sphere_geneo:
-  value: 10
+  value: 30
 kernel_size:
   value: (9, 5, 5)
 hidden_dims:
-  value: "[1024, 512, 256, 128, 64, 32]"
+  value: "[512, 256, 128, 64, 32]"
 # ------------------ #
 # training config
 # ------------------ #
 optimizer:
-  value: 'sgd' #'adam' 
+  value: 'adam' #'adam' 
 learning_rate:
   value: 0.001
 max_epochs:
-  value: 100 # -1 for infinite
+  value: 80 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -78,17 +78,17 @@ weight_alpha:
 weight_epsilon:
   value: 0.1
 mse_weight:
-  value: 1
-convex_weight:
   value: 0.1
+convex_weight:
+  value: 5
 tversky_alpha:
-  value: 1
+  value: 2
 tversky_beta:
   value: 1
 tversky_smooth:
   value: 1.0e-6
 focal_gamma:
-  value: 1
+  value: 4
 # ------------------ #
 # Lit Trainer config
 # ------------------ #
