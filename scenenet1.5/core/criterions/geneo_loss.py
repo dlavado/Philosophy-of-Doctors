@@ -1,25 +1,9 @@
 
 import os
-from typing import Iterable, Tuple
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-import cloudpickle
-from core.criterions.dice_loss import BinaryDiceLoss, BinaryDiceLoss_BCE
-from core.criterions.tversky_loss import FocalTverskyLoss, TverskyLoss
-
-from core.criterions.w_mse import WeightedMSE
-
-
-def save_pickle(data, filename):
-    with open(filename, 'wb') as handle:
-        cloudpickle.dump(data, handle)
-
-
-def load_pickle(filename):
-    with open(filename, 'rb') as handle:
-        data = cloudpickle.load(handle)
-    return data
+from core.criterions.tversky_loss import FocalTverskyLoss
 
 
 class GENEO_Loss(torch.nn.Module):
@@ -65,6 +49,8 @@ class GENEO_Loss(torch.nn.Module):
         
         self.base_criterion = base_criterion
         self.cvx_w = convex_weight
+
+        self.l1_weight = 0.001
         
         self.cvx_coeffs = cvx_coeffs
         self.geneo_params = gnet_params
@@ -78,14 +64,26 @@ class GENEO_Loss(torch.nn.Module):
         cvx_penalty = self.cvx_loss(self.cvx_coeffs)
         
         non_positive_penalty = self.positive_regularizer(self.geneo_params)
+
+        if dense_criterion + self.cvx_w * (cvx_penalty + non_positive_penalty) + self.l1_weight * self.l1_norm_cvx(self.cvx_coeffs) < 0:
+            print(f'dense: {dense_criterion}')
+            print(f'cvx: {cvx_penalty}')
+            print(f'non_pos: {non_positive_penalty}')
+            print(f'l1: {self.l1_weight * self.l1_norm_cvx(self.cvx_coeffs)}')
         
-        return dense_criterion + self.cvx_w * (cvx_penalty + non_positive_penalty)
+        return dense_criterion + self.cvx_w * (cvx_penalty + non_positive_penalty) + self.l1_weight * self.l1_norm_cvx(self.cvx_coeffs)
        
 
     def cvx_loss(self, cvx_coeffs:torch.nn.ParameterDict):
         """
         Penalizes non-positive convex parameters;
-        The last cvx coefficient is calculated in function of the previous ones: phi_n = 1 - sum_i^N-1(phi_i)
+
+        `cvx_coeffs`: torch.nn.ParameterDict
+            The convex coefficients of the GENEO network.
+            Is of the form {'lambda': cvx_coeffs} s.t. cvx_coeffs has shape (num_observers, num_geneos)
+
+        Thus, the last cvx_coeffcient is calculated in function of the previous ones for each observer: 
+            phi_n = 1 - sum_i^N-1(phi_i)
 
         This results from the the relaxation of the cvx restriction: sum(cvx_coeffs) == 1
         """
@@ -93,12 +91,25 @@ class GENEO_Loss(torch.nn.Module):
         if len(cvx_coeffs) == 0:
             return 0
 
-        last_phi = [phi_name for phi_name in cvx_coeffs if not cvx_coeffs[phi_name].requires_grad][0]
+        # last cvx_coeffcient is calculated in function of the previous ones for each observer: 
+        # phi_n = 1 - sum_i^N-1(phi_i)
+        cvx_coeffs = cvx_coeffs['lambda']
+        last_cvx_coeff = 1 - torch.sum(cvx_coeffs[:, :-1], dim=1)
+        cvx_coeffs = cvx_coeffs[:, :-1]
 
+        # penalize non-positive coefficients
+        return torch.sum(self.relu(-cvx_coeffs)) + torch.sum(self.relu(-last_cvx_coeff))
+    
+    def l1_norm_cvx(self, cvx_coeffs:torch.nn.ParameterDict):
 
-        return sum([self.relu(-phi) for phi_n, phi in cvx_coeffs.items() if phi_n != last_phi]) \
-                    + self.relu(-(1 - sum(cvx_coeffs.values()) + cvx_coeffs[last_phi]))
-                
+        if len(cvx_coeffs) == 0:
+            return 0
+
+        cvx_coeffs = cvx_coeffs['lambda']
+        last_cvx_coeff = 1 - torch.sum(cvx_coeffs[:, :-1], dim=1)
+        cvx_coeffs = cvx_coeffs[:, :-1]
+
+        return torch.sum(torch.abs(cvx_coeffs)) + torch.sum(torch.abs(last_cvx_coeff))
 
     def positive_regularizer(self, params:torch.nn.ParameterDict):
         """
@@ -108,10 +119,16 @@ class GENEO_Loss(torch.nn.Module):
             return 0
 
         return  sum([self.relu(-g) for g in params.values()])
- 
     
-    def __str__(self):
-        return f"GENEO Loss with mse_weight={self.mse_weight} and alpha={self.weight_alpha} and epsilon={self.weight_epsilon}"
+    def l1_norm(self, params:torch.nn.ParameterDict):
+        """
+        Penalizes the L1 norm of the parameters `params`
+        """
+        if len(params) == 0:
+            return 0
+
+        return  sum([torch.sum(torch.abs(g)) for g in params.values()])
+ 
     
     @staticmethod
     def add_model_specific_args(parent_parser):

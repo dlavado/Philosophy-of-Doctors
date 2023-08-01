@@ -120,117 +120,9 @@ class GENEO_Layer(nn.Module):
 #                         SCENE-Nets                          #
 ###############################################################
 
-class SCENE_Net(nn.Module):
-
-    def __init__(self, geneo_num=None, kernel_size=None, plot=False,
-                device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
-        """
-        Instantiates a SCENE-Net Module with specific GENEOs and their respective cvx coefficients.
-
-
-        Parameters
-        ----------
-        `geneo_num` - dict:
-            Mappings that contain the number of GENEOs of each kind (the key) to initialize
-        
-        `kernel_size` - tuple/list:
-            3 elem array with the kernel_size dimensions to discretize the GENEOs in (z, x, y) format
-
-        `plot` - bool:
-            if True plot information about the Module; It's propagated to submodules
-
-        `device` - str:
-            device where to load the Module.
-        """
-        super(SCENE_Net, self).__init__()
-
-        self.device = device
-
-        if geneo_num is None:
-            self.sizes = {'cy'  : 1, 
-                        'cone': 1, 
-                        'neg' : 1}
-        else:
-            self.sizes = geneo_num
-
-        if kernel_size is not None:
-            self.kernel_size = kernel_size
-        # else is the default on GENEO_kernel_torch class
-
-        self.geneos:Mapping[str, GENEO_Layer] = nn.ModuleDict()
-
-        for key in self.sizes:
-            if key == 'cy':
-                for i in range(self.sizes[key]):
-                    self.geneos[f'{key}_{i}'] = GENEO_Layer(cylinder.cylinder_kernel, kernel_size=kernel_size)
-
-            elif key == 'cone':
-                for i in range(self.sizes[key]):
-                    self.geneos[f'{key}_{i}'] = GENEO_Layer(arrow.cone_kernel, kernel_size=kernel_size)
-
-            elif key == 'neg':
-                for i in range(self.sizes[key]):
-                    self.geneos[f'{key}_{i}'] = GENEO_Layer(neg_sphere.neg_sphere_kernel, kernel_size=kernel_size)
-
-        # --- Initializing Convex Coefficients ---
-        num_lambdas = sum(self.sizes.values())
-        lambda_init_max = 0.6 #2 * 1/num_lambdas
-        lambda_init_min =  0 #-1/num_lambdas # for testing purposes
-        self.lambdas = (lambda_init_max - lambda_init_min)*torch.rand(num_lambdas, device=self.device, dtype=torch.float) + lambda_init_min
-        self.lambdas = [nn.Parameter(lamb) for lamb in self.lambdas]
-    
-        self.lambda_names = [f'lambda_{key}_{i}' for key, val in self.sizes.items() for i in range(val)]
-        self.last_lambda = self.lambda_names[torch.randint(0, num_lambdas, (1,))[0]]
-        if plot:
-            print(f"last cvx_coeff: {self.last_lambda}")
-
-        # Updating last lambda
-        self.lambdas_dict = dict(zip(self.lambda_names, self.lambdas)) # last cvx_coeff is equal to 1 - sum(lambda_i)
-        self.lambdas_dict[self.last_lambda] = nn.Parameter(1 - sum(self.lambdas_dict.values()) + self.lambdas_dict[self.last_lambda], requires_grad=False)
-        
-        self.lambdas_dict = nn.ParameterDict(self.lambdas_dict)
-
-        if plot:
-            print(f"Total Number of train. params = {self.get_num_total_params()}")
-
-    def get_geneo_nums(self):
-        return self.sizes
-
-    def get_cvx_coefficients(self):
-        return self.lambdas_dict
-
-    def get_num_total_params(self):
-        return sum(p.numel() for p in self.parameters() if p.requires_grad)
-
-    def get_geneo_params(self):
-        return nn.ParameterDict(dict([(name.replace('.', '_'), p) for name, p in self.named_parameters() if not 'lambda' in name]))
-
-    def get_dict_parameters(self):
-        return dict([(n, param.data.item()) for n, param in self.named_parameters()])
-    
-    def forward(self, x:torch.Tensor) -> torch.Tensor:
-
-        kernels = torch.stack([self.geneos[geneo].compute_kernel() for geneo in self.geneos])
-        conv = F.conv3d(x, kernels, padding='same')
-
-        conv_pred = torch.zeros_like(x)
-
-        for i, g_name in enumerate(self.geneos):
-            if f'lambda_{g_name}' == self.last_lambda:
-                conv_pred += (1 - sum(self.lambdas_dict.values()) + self.lambdas_dict[self.last_lambda])*conv[:, [i]]
-                #recompute last_lambda's actual value
-                self.lambdas_dict[self.last_lambda] = nn.Parameter(1 - sum(self.lambdas_dict.values()) + self.lambdas_dict[self.last_lambda], requires_grad=False)
-            else:
-                conv_pred += self.lambdas_dict[f'lambda_{g_name}']*conv[:, [i]]
-
-        conv_pred = torch.relu(torch.tanh(conv_pred))
-
-        return conv_pred
-
-
 class SceneNet(nn.Module):
 
-    def __init__(self, geneo_num=None, kernel_size=None, plot=False):
+    def __init__(self, geneo_num:dict, num_observers:int=1, kernel_size=None):
         """
         Instantiates a SCENE-Net Module with specific GENEOs and their respective cvx coefficients.
 
@@ -238,68 +130,51 @@ class SceneNet(nn.Module):
         ----------
         `geneo_num` - dict:
             Mappings that contain the number of GENEOs of each kind (the key) to initialize
+
+        `num_observers` - int:
+            number os GENEO observers to form the output of the Module
         
         `kernel_size` - tuple/list:
             3 elem array with the kernel_size dimensions to discretize the GENEOs in (z, x, y) format
-
-        `plot` - bool:
-            if True plot information about the Module; It's propagated to submodules
-
-        `device` - str:
-            device where to load the Module.
         """
         super(SceneNet, self).__init__()
 
-        if geneo_num is None:
-            self.sizes= {'cy' : 1, 
-                        'cone': 1, 
-                        'neg' : 1}
-        else:
-            self.sizes = geneo_num
+        self.geneo_kernel_arch = geneo_num
+        self.num_observers = num_observers
 
         if kernel_size is not None:
             self.kernel_size = kernel_size
-        # else is the default on GENEO_kernel_torch class
+        # else is the default on @GENEO_kernel_torch class, which is (9, 6, 6)
 
         self.geneos:Mapping[str, GENEO_Layer] = nn.ModuleDict()
 
-        for key in self.sizes:
+        # --- Initializing GENEOs ---
+        for key in self.geneo_kernel_arch:
             if key == 'cy':
-                for i in range(self.sizes[key]):
-                    self.geneos[f'{key}_{i}'] = GENEO_Layer(cylinder.cylinderv2, kernel_size=kernel_size)
-
+                g_class = cylinder.cylinderv2
             elif key == 'cone':
-                for i in range(self.sizes[key]):
-                    self.geneos[f'{key}_{i}'] = GENEO_Layer(arrow.arrow, kernel_size=kernel_size)
-
+                g_class = arrow.arrow
             elif key == 'neg':
-                for i in range(self.sizes[key]):
-                    self.geneos[f'{key}_{i}'] = GENEO_Layer(neg_sphere.negSpherev2, kernel_size=kernel_size)
+                g_class = neg_sphere.negSpherev2
+
+            for i in range(self.geneo_kernel_arch[key]):
+                self.geneos[f'{key}_{i}'] = GENEO_Layer(g_class, kernel_size=kernel_size)
 
         # --- Initializing Convex Coefficients ---
-        num_lambdas = sum(self.sizes.values())
-        lambda_init_max = 1/num_lambdas
-        lambda_init_min =  0 # for testing purposes
-        self.lambdas = (lambda_init_max - lambda_init_min)*torch.rand(num_lambdas, dtype=torch.float) + lambda_init_min
-        self.lambdas = [nn.Parameter(lamb) for lamb in self.lambdas]
-    
-        self.lambda_names = [f'lambda_{key}_{i}' for key, val in self.sizes.items() for i in range(val)]
-        self.last_lambda = self.lambda_names[torch.randint(0, num_lambdas, (1,))[0]]
-        if plot:
-            print(f"last cvx_coeff: {self.last_lambda}")
+        self.lambdas = torch.rand((num_observers, len(self.geneos)))
+        self.lambdas = torch.softmax(self.lambdas, dim=1) # make sure they sum to 1
+        self.lambdas = nn.Parameter(self.lambdas, requires_grad=True)   
 
-        # Updating last lambda
-        self.lambdas_dict = dict(zip(self.lambda_names, self.lambdas)) # last cvx_coeff is equal to 1 - sum(lambda_i)
-        self.lambdas_dict[self.last_lambda] = nn.Parameter(1 - sum(self.lambdas_dict.values()) + self.lambdas_dict[self.last_lambda], requires_grad=False)
-        
-        self.lambdas_dict = nn.ParameterDict(self.lambdas_dict)
 
-        if plot:
-            print(f"Total Number of train params = {self.get_num_total_params()}")
+    def maintain_convexity(self):
+        with torch.no_grad():
+            # torch.clip(self.lambdas, 0, 1, out=self.lambdas)
+            # self.lambdas = nn.Parameter(torch.relu(torch.tanh(self.lambdas)), requires_grad=True).to('cuda')
+            self.lambdas[:, -1] = 1 - torch.sum(self.lambdas[:, :-1], dim=1)
 
 
     def get_cvx_coefficients(self):
-        return self.lambdas_dict
+        return nn.ParameterDict({'lambda': self.lambdas})
 
     def get_num_total_params(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
@@ -327,19 +202,30 @@ class SceneNet(nn.Module):
         return conv
 
     def _observer_cvx_combination(self, conv:torch.Tensor) -> torch.Tensor:
-        conv_pred = []
+        """
+        Performs the convex combination of the GENEOs convolutions to form the output of the SCENE-Net
 
-        for i, g_name in enumerate(self.geneos):
-            if f'lambda_{g_name}' == self.last_lambda:
-                conv_pred.append((1 - sum(self.lambdas_dict.values()) + self.lambdas_dict[self.last_lambda])*conv[:, [i]])
-                #recompute last_lambda's actual value
-                self.lambdas_dict[self.last_lambda] = nn.Parameter(1 - sum(self.lambdas_dict.values()) + self.lambdas_dict[self.last_lambda], requires_grad=False)
-            else:
-                conv_pred.append(self.lambdas_dict[f'lambda_{g_name}']*conv[:, [i]])
-        
-        conv_pred = torch.cat(conv_pred, dim=1)
-        
-        return torch.sum(conv_pred, dim=1, keepdim=True) # (batch, 1, z, x, y)
+        lambdas are the convex coeffcients with shape: (num_observers, num_geneos)
+
+        `conv` - torch.Tensor:
+            convolution output of the GENEO kernels with shape: (batch, num_geneos, z, x, y)
+
+        returns
+        -------
+        cvx_comb - torch.Tensor:
+            convex combination of the GENEOs convolutions with shape: (batch, num_observers, z, x, y)
+        """
+
+        cvx_comb_list = []
+
+        for i in range(self.num_observers):
+            comb = torch.sum(self.lambdas[i, :, None, None, None] * conv, dim=1, keepdim=True)
+            cvx_comb_list.append(comb)
+
+        # Concatenate the computed convex combinations along the second dimension (num_observers)
+        cvx_comb = torch.cat(cvx_comb_list, dim=1) # (batch, num_observers, z, x, y)
+
+        return cvx_comb
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
 
@@ -361,16 +247,17 @@ class SceneNet_multiclass(nn.Module):
 
     def __init__(self, 
                 geneo_num:Mapping[str, int]=None, 
+                num_observers:int=1,
                 kernel_size:tuple=None,
                 hidden_dims:List[int]=None,
-                num_classes:int=2,
-                plot:bool=False) -> None:
+                num_classes:int=2) -> None:
         
         super(SceneNet_multiclass, self).__init__()
         
-        self.scenenet = SceneNet(geneo_num, kernel_size, plot)
+        self.scenenet = SceneNet(geneo_num, num_observers, kernel_size)
 
-        self.feat_dim = sum(geneo_num.values()) + 4 # +1 for the cvx combination and +3 for the point locations
+        #self.feat_dim = sum(geneo_num.values()) + 4 # +1 for the cvx combination and +3 for the point locations
+        self.feat_dim = (sum(geneo_num.values()) + num_observers)*2 + 3 # +1 for the cvx combination and +3 for the point locations
 
         self.convs = []
         self.bns = []
@@ -395,6 +282,9 @@ class SceneNet_multiclass(nn.Module):
 
     def get_cvx_coefficients(self):
         return self.scenenet.get_cvx_coefficients()
+    
+    def maintain_convexity(self):
+        self.scenenet.maintain_convexity()
 
     def forward(self, x:torch.Tensor, pt_loc:torch.Tensor) -> torch.Tensor:
         """
@@ -420,28 +310,57 @@ class SceneNet_multiclass(nn.Module):
 
         conv = self.scenenet._perform_conv(x) # (batch, num_geneos, z, x, y)
 
+        # print(f"conv = shape: {conv.shape}, req_grad: {conv.requires_grad}")
+
         conv_pts = Vox.vox_to_pts(conv, pt_loc) # (batch, P, num_geneos)
+
+        # print(f"conv_pts = shape: {conv_pts.shape}, req_grad: {conv_pts.requires_grad}")
 
 
         observer = self.scenenet._observer_cvx_combination(conv) # (batch, 1, z, x, y)
-        observer = torch.relu(torch.tanh(observer))
+        observer = torch.relu(torch.tanh(observer)) # class probability
 
-        observer_pts = Vox.vox_to_pts(observer, pt_loc) # (batch, P, 1)
+        # print(f"observer = shape: {observer.shape}, req_grad: {observer.requires_grad}")
+
+        observer_pts = Vox.vox_to_pts(observer, pt_loc) # (batch, P, num_observers)
+
+        # print(f"observed_pts = shape: {observer_pts.shape}, req_grad: {observer_pts.requires_grad}")
 
         # normalize pt_locs
-        pt_loc = self.normalize_pt_locs.normalize(pt_loc.to(torch.float32))
+        pt_loc = self.normalize_pt_locs.normalize(pt_loc)
 
-        x = torch.cat([pt_loc, conv_pts, observer_pts], dim=2).to(torch.float32) # (batch, P, 3+num_geneos+1)
+
+        global_feat_descriptor = torch.cat([conv_pts, observer_pts], dim=2) # (batch, P, num_geneos+ num_observers)
+        # print(f"global_feat_descriptor = shape: {global_feat_descriptor.shape}, req_grad: {global_feat_descriptor.requires_grad}")
+
+        global_feat_descriptor = global_feat_descriptor.transpose(2,1).contiguous() # (batch, num_geneos+ num_observers, P)
+
+        global_feat_descriptor = torch.max_pool1d(global_feat_descriptor, kernel_size=num_points, padding=0, stride=1) # (batch, num_geneos+ num_observers, 1)
+
+        # print(f"global_feat_descriptor = shape: {global_feat_descriptor.shape}, req_grad: {global_feat_descriptor.requires_grad}")
+
+        global_feat_descriptor = global_feat_descriptor.squeeze(2).unsqueeze(1) # (batch, 1, num_geneos+ num_observers)
+
+        x = torch.cat([pt_loc, conv_pts, observer_pts], dim=2) # (batch, P, 3 + num_geneos + num_observers)
+
+        # print(f"x cat1 = shape: {x.shape}, req_grad: {x.requires_grad}")
+
+        x = torch.cat([x, global_feat_descriptor.repeat(1, num_points, 1)], dim=2) # (batch, P, 3 + (num_geneos+ num_observers)*2)
 
         x = x.transpose(2,1).contiguous() # (batch, 3+num_geneos+1, P)
 
+        # print(f"x transposed = shape: {x.shape}, req_grad: {x.requires_grad}")
+
+        x = x.to(torch.float32)
+
         for conv, bn in zip(self.convs, self.bns):
+            # print(f"x = shape: {x.shape}, req_grad: {x.requires_grad}, type: {x.dtype}")
+            # print(f"conv = shape: {conv.weight.shape}, req_grad: {conv.weight.requires_grad}, type: {conv.weight.dtype}")
             x = torch.relu(bn(conv(x))) # (batch, hidden_dims[i+1], P)
         
         x = self.out_conv(x) # (batch, num_classes, P)
 
-        # x = x.transpose(2,1).contiguous() # (batch, P, num_classes)
-        # x = F.log_softmax(x, dim=-1) 
+        # print(f"x = shape: {x.shape}, req_grad: {x.requires_grad}")
 
         return x
     
@@ -496,24 +415,10 @@ class SceneNet_multiclass(nn.Module):
 
 
 
-
-class SceneNet_multilabel(nn.Module):
-    
-    def __init__(self, 
-                geneo_num:Mapping[str, int]=None, 
-                kernel_size:tuple=None,
-                num_classes:int=2,
-                plot:bool=False, 
-                device:str='cuda') -> None:
-        
-        self.scenenets = []
-
-        for i in range(num_classes):
-            self.scenenets.append(SceneNet(geneo_num, kernel_size, plot, device))
         
 
 def main():
-    gnet = SCENE_Net()
+    gnet = SceneNet()
     for name, param in gnet.named_parameters():
         print(f"{name}: {type(param)}; {param}")
     return

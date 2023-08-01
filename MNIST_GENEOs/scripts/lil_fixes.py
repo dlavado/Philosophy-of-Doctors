@@ -60,7 +60,7 @@ def delete_all_media(project_name):
 if __name__ == "__main__":
 
     entity = "dlavado"
-    project_name = "ADMM_AUGLAG_CIFAR100"
+    project_name = "ADMM_AUGLAG_CIFAR10"
 
     projects = wandb.Api().projects(entity=entity)
     #projects = ['admm_ts40k', 'auglag_ts40k', 'scenenet_ts40k', 'scenenet']

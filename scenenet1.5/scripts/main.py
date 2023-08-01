@@ -46,20 +46,9 @@ from core.criterions.geneo_loss import GENEO_Loss
 
 from core.datasets.torch_transforms import Dict_to_Tuple, Farthest_Point_Sampling, Normalize_Labels, ToTensor, Voxelization_withPCD
 
-class PrintCallback(pl.Callback):
-    def on_epoch_end(self, trainer, pl_module):
-        metrics = trainer.callback_metrics
-        print(f"Epoch: {trainer.current_epoch}")
-        for metric, value in metrics.items():
-            if 'val' in metric:
-                print(f"\t{metric}: {value}")
-
 class EvalBatchSizeFinder(BatchSizeFinder):
     def __init__(self, mode, *args, **kwargs):
         super().__init__(mode, *args, **kwargs)
-
-    def on_fit_start(self, *args, **kwargs):
-        return
 
     def on_test_start(self, trainer, pl_module):
         self.scale_batch_size(trainer, pl_module)
@@ -102,15 +91,12 @@ def init_callbacks(ckpt_dir):
 
     callbacks.extend(model_ckpts)
 
-    # batch_finder = EvalBatchSizeFinder(mode='binsearch')
+    # batch_finder = EvalBatchSizeFinder(mode='power')
     # callbacks.append(batch_finder)
-
-    print_callback = PrintCallback()
-    callbacks.append(print_callback)
 
     # early_stop_callback = EarlyStopping(monitor=wandb.config.early_stop_metric, 
     #                                     min_delta=0.00, 
-    #                                     patience=25, 
+    #                                     patience=10, 
     #                                     verbose=False, 
     #                                     mode="max")
 
@@ -143,6 +129,7 @@ def init_model(criterion, ckpt_path):
         hidden_dims = ast.literal_eval(wandb.config.hidden_dims)
 
         model = lit_models.LitSceneNet_multiclass(geneo_config,
+                                        wandb.config.num_observers,
                                         ast.literal_eval(wandb.config.kernel_size),
                                         hidden_dims,
                                         wandb.config.num_classes,
@@ -161,7 +148,7 @@ def init_ts40k(data_path):
 
     keep_labels = list(eda.DICT_EDP_LABELS.keys())
     semantic_labels = [eda.DICT_NEW_LABELS[label] for label in keep_labels]
-    assert len(torch.unique(semantic_labels)) == wandb.config.num_classes
+    assert len(torch.unique(torch.tensor(semantic_labels))) == wandb.config.num_classes
     composed = Compose([
                         ToTensor(),
 
@@ -252,9 +239,6 @@ def main():
 
     criterion_params = {
         'weighting_scheme_path' : weighting_scheme_path,
-        'weight_alpha': wandb.config.weight_alpha,
-        'weight_epsilon': wandb.config.weight_epsilon,
-        'mse_weight': wandb.config.mse_weight,
         'tversky_alpha': wandb.config.tversky_alpha,
         'tversky_beta': wandb.config.tversky_beta,
         'tversky_smooth': wandb.config.tversky_smooth,
@@ -403,7 +387,7 @@ if __name__ == '__main__':
                 dir = experiment_path,
                 name = f'{project_name}_{datetime.now().strftime("%Y%m%d-%H%M%S")}',
                 config=sweep_config,
-                # mode='disabled'
+                mode=main_parser.wandb_mode,
         )
 
         #pprint(wandb.config)

@@ -29,6 +29,8 @@ class GENEO_kernel_torch():
         self.plot = plot
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+        self.sign = 1 if torch.any(torch.rand(1) > 0.8) else -1 # random sign for the kernel
+
         self.volume = torch.prod(torch.tensor(self.kernel_size, device=self.device))
 
         self.kernel = self.compute_kernel()

@@ -52,6 +52,8 @@ def build_data_samples(data_dirs:List[str], save_dir=os.getcwd(), tower_radius=T
         elif data_split is int:
             data_split == 0 for no dataset split 
     """
+
+    print(f"\n\nBuilding dataset in {save_dir}...")
     
     for folder in data_split.keys():
         if not os.path.exists(os.path.join(save_dir, folder)):
@@ -73,12 +75,16 @@ def build_data_samples(data_dirs:List[str], save_dir=os.getcwd(), tower_radius=T
         for las_file in os.listdir("."):
             filename = os.getcwd() + "/" + las_file
 
-            if ".las" in filename:
-                las = lp.read(filename)
-            else:
+            if filename in read_files:
                 continue
 
-            if filename in read_files:
+            if ".las" in filename:
+                try:
+                    las = lp.read(filename)
+                except Exception as e:
+                    print(f"Problem occurred while reading {filename}\n\n")
+                    continue
+            else:
                 continue
 
             print(f"\n\n\nReading...{filename}")
@@ -93,8 +99,9 @@ def build_data_samples(data_dirs:List[str], save_dir=os.getcwd(), tower_radius=T
             else:
                 continue
 
-            #f_samples = eda.crop_ground_samples(xyz, classes)
             f_samples = []
+            f_samples = eda.crop_ground_samples(xyz, classes)
+            
             file_samples = f_samples + t_samples
             print(f"file samples: {len(file_samples)} (tower, no_tower): ({len(t_samples)}, {len(f_samples)})")
 
@@ -223,7 +230,7 @@ def main():
 
     #EXT_DIR = "/media/didi/TOSHIBA EXT/LIDAR/"
     EXT_DIR = constants.EXT_PATH
-    TS40K_DIR = os.join(EXT_DIR, "TS40K-Dataset")
+    TS40K_DIR = os.path.join(EXT_DIR, "TS40K-Dataset")
     #EXT_DIR = "/media/didi/TOSHIBA EXT"
     SAVE_PATH = os.path.join(TS40K_DIR, "TS40K-NEW")
 

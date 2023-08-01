@@ -39,6 +39,8 @@ def fix_randomness(seed=0):
 def main_arg_parser():
     parser = argparse.ArgumentParser(description="Process script arguments")
 
+    parser.add_argument('--wandb_mode', type=str, default=None, help='Mode of the wandb.init function') # 'disabled' for no recording
+
     parser.add_argument('--wandb_sweep', action='store_true', default=None, help='If True, the script is run by wandb sweep')
 
     parser.add_argument('--dataset', type=str, default='ts40k', help='Dataset to use')
@@ -82,9 +84,9 @@ def init_metrics(task='multiclass', tau=0.5, num_classes=2, ignore_index=0):
         JaccardIndex(**params, average=None),
         # JaccardIndex(**params, average=None),
         F1Score(**params, average=None),
-        Precision(**params, average='macro'),
+        Precision(**params, average='micro'),
         Recall(**params, average='micro'),
-        Accuracy(**params, average='macro'),
+        Accuracy(**params, average='micro'),
     ])
 
 

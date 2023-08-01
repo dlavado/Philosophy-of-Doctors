@@ -15,8 +15,8 @@ import sys
 sys.path.append("..")
 sys.path.append("../..")
 
+from scripts.constants import PARTNET_PATH
 
-PART_NET_PATH = "/media/didi/TOSHIBA EXT/sem_seg_h5"
 
 
 class PartNetDataset(Dataset):
@@ -24,7 +24,7 @@ class PartNetDataset(Dataset):
 
     def __init__(self, 
                  data_dir:str,
-                 coarse_level:int,
+                 coarse_level:int=1,
                  keep_objects:List[str] = None,
                  transform:Compose = None,
                  stage:str = 'train'
@@ -83,7 +83,6 @@ class PartNetDataset(Dataset):
             return len(self.test_dataset)
                 
     def _setup(self, stage:str=None):
-
         if stage == 'test':
             self._test_setup()
 
@@ -110,6 +109,7 @@ class PartNetDataset(Dataset):
                 self.train_dataset = samples
             else:
                 self.train_dataset += samples
+            
 
     def _val_setup(self):
 
@@ -209,23 +209,41 @@ if __name__ == '__main__':
     import h5py
     import os
     import sys
+    import numpy as np
+    import matplotlib.pyplot as plt
     sys.path.insert(0, '..')
     sys.path.insert(1, '../..')
     from utils import pcd_processing as eda
 
-    partnet = PartNetDataset(data_dir=PART_NET_PATH, coarse_level=1, keep_objects=['chair'], stage='train')
+    coarse = 1
 
-    # sample = partnet[0]
-    # pcd = eda.np_to_ply(sample['obj'].numpy())
-    # eda.color_pointcloud(pcd, sample['seg_labels'].numpy())
-    # eda.visualize_ply([pcd])
+    partnet = PartNetDataset(data_dir=PARTNET_PATH, coarse_level=coarse, keep_objects=['chair'], stage='train')
 
-    # input("Press Enter to continue...")
+    a = np.empty((0,))
+    for i in range(len(partnet)):
+        sample = partnet[i]
+        a = np.concatenate((a, sample['seg_labels'].numpy().flatten()))
+
+    # print class densities
+    print(np.unique(a, return_counts=True))
+
+    # #plot an histogram with class densities
+    # plt.hist(a, bins=50)
+    # plt.title(f"Class distribution in PartNet coarse level {coarse}")
+    # plt.show()
+
+
+    sample = partnet[0]
+    pcd = eda.np_to_ply(sample['obj'].numpy())
+    eda.color_pointcloud(pcd, sample['seg_labels'].numpy())
+    eda.visualize_ply([pcd])
+
+    input("Press Enter to continue...")
     
     
-    categories = list(os.listdir(PART_NET_PATH))
-    categories = [cat for cat in categories if f"-1" in cat]
-    categories = [os.path.join(PART_NET_PATH, cat) for cat in categories]
+    categories = list(os.listdir(PARTNET_PATH))
+    categories = [cat for cat in categories if f"-{coarse}" in cat]
+    categories = [os.path.join(PARTNET_PATH, cat) for cat in categories]
 
     for cat_path in categories:
         

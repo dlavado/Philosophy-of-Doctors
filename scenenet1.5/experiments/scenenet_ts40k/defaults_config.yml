@@ -16,7 +16,7 @@ data_path:
 num_classes:
   value: 6
 batch_size:
-  value: 4
+  value: 8
 ignore_index:
   value: 0
 voxel_grid_size:
@@ -37,25 +37,27 @@ fps_points:
 # ------------------ #
 model:
   value: 'scenenet'
+num_observers:
+  value: 15
 cylinder_geneo:
-  value: 10
+  value: 20
 arrow_geneo:
-  value: 10
+  value: 20
 neg_sphere_geneo:
-  value: 10
+  value: 20
 kernel_size:
   value: (9, 5, 5)
 hidden_dims:
-  value: "[1024, 512, 256, 128, 64, 32]"
+  value: "[512, 256, 128, 64, 32]"
 # ------------------ #
 # training config
 # ------------------ #
 optimizer:
-  value: 'sgd' #'adam' 
+  value: 'adam' #'adam' 
 learning_rate:
-  value: 0.001
+  value: 0.0001
 max_epochs:
-  value: 100 # -1 for infinite
+  value: 200 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -73,12 +75,6 @@ geneo_criterion:
 weighting_scheme_path:
   value: 'core/criterions/hist_estimation.pickle'
 #criterion_params: # possible criterion params and their values
-weight_alpha:
-  value: 1
-weight_epsilon:
-  value: 0.1
-mse_weight:
-  value: 1
 convex_weight:
   value: 0.1
 tversky_alpha:

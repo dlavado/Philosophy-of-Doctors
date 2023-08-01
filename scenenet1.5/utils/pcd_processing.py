@@ -92,18 +92,17 @@ DICT_NEW_LABELS = {
     NOT_RATED_OBJ_TBC : 0, 
     NOT_RATED_OBJ_TBIG : 0,
     WATER : 0, 
+    INCIDENTS : 0,
     RAIL : 0, # noise
 
     GROUND: 1,
     ROAD_SURFACE : 1, # ground
-
-    LOW_VEGETATION : 2,
+    LOW_VEGETATION : 1,
+    
     MEDIUM_VEGETAION : 2, # vegetation
 
     NATURAL_OBSTACLE : 3,
-    HUMAN_STRUCTURES : 3, 
-    INCIDENTS : 3,# obstacles
-
+    HUMAN_STRUCTURES : 3, # obstacles
    
     POWER_LINE_SUPPORT_TOWER : 4,
 

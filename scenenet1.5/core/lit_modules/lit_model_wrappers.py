@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 
 
 import sys
+from torch.optim.optimizer import Optimizer
 
 from torchmetrics import MetricCollection
 sys.path.insert(0, '..')
@@ -76,6 +77,8 @@ class LitWrapperModel(pl.LightningModule):
             if metric:
                 for metric_name, metric_val in metric.items():
                     met = metric_val(preds, y)
+                    if isinstance(met, torch.Tensor):
+                        met = met.mean()
                     self.log(f"{stage}_{metric_name}", met, on_epoch=True, on_step=on_step, prog_bar=True, logger=True)
 
         return loss, preds, y  
@@ -166,7 +169,8 @@ class LitWrapperModel(pl.LightningModule):
 class LitSceneNet_multiclass(LitWrapperModel):
 
     def __init__(self, 
-                geneo_num:dict, 
+                geneo_num:dict,
+                num_observers:int, 
                 kernel_size:Tuple[int],
                 hidden_dims:Tuple[int],
                 num_classes:int, 
@@ -175,7 +179,7 @@ class LitSceneNet_multiclass(LitWrapperModel):
                 learning_rate=1e-2, 
                 metric_initializer=None):
     
-        model = SceneNet_multiclass(geneo_num, kernel_size, hidden_dims, num_classes)
+        model = SceneNet_multiclass(geneo_num, num_observers, kernel_size, hidden_dims, num_classes)
         self.save_hyperparameters('geneo_num', 'kernel_size')
         self.logged_batch = False
         self.gradient_check = False
@@ -198,7 +202,9 @@ class LitSceneNet_multiclass(LitWrapperModel):
             if metric:
                 for metric_name, metric_val in metric.items():
                     met = metric_val(preds, y)
-                    self.log(f"{stage}_{metric_name}", met, on_epoch=True, on_step=False, prog_bar=True, logger=True)
+                    if isinstance(met, torch.Tensor):
+                        met = torch.mean(met[met > 0]) #if a metric is zero for a class, it is not included in the mean
+                    self.log(f"{stage}_{metric_name}", met, on_epoch=True, on_step=on_step, prog_bar=True, logger=True)
 
         return loss, preds, y
     
@@ -207,9 +213,30 @@ class LitSceneNet_multiclass(LitWrapperModel):
         point_clouds = pointcloud_to_wandb(pcd, input, gt)
         self.logger.experiment.log({f'{prefix}_point_cloud': point_clouds})  
 
+    def on_train_batch_end(self, outputs, batch: Any, batch_idx: int) -> None:
+        super().on_train_batch_end(outputs, batch, batch_idx)
+        self.model.maintain_convexity()
+
     def on_validation_epoch_end(self) -> None:
         super().on_validation_epoch_end()
+        cvx_coeffs = self.model.get_cvx_coefficients()
+        print(f'\n\n{"="*10} cvx coefficients {"="*10}')
+        for name, coeff in cvx_coeffs.items():
+            for i in range(coeff.shape[0]):
+                if torch.any(coeff[i] < 0) or torch.any(coeff[i] > 0.5):
+                    print(f'\t{name}_obs{i}:\n\t {coeff[i]}')
+
         self.logged_batch = False
+
+    # def on_before_optimizer_step(self, optimizer: Optimizer) -> None:
+    #     print(f'\n{"="*10} Model Values & Gradients {"="*10}')
+    #     cvx_coeffs = self.model.get_cvx_coefficients()
+    #     geneo_params = self.model.get_geneo_params()
+    #     for name, cvx in cvx_coeffs.items():
+    #         print(f'\t{name} -- cvx: {cvx}  --grad: {cvx.grad}')
+    #     # for name, param in geneo_params.items():
+    #     #     print(f'\t{name} -- value: {param} --grad: {param.grad}')
+    #     return super().on_before_optimizer_step(optimizer)
     
     # def on_validation_batch_end(self, outputs, batch: Any, batch_idx: int) -> None:
     #     # logging batch point clouds to wandb

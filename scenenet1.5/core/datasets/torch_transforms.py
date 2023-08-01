@@ -215,11 +215,13 @@ class Normalize_PCD:
             Point cloud to be normalized; Batch dim is optional
         """
 
+        pointcloud = pointcloud.float()
+
         if pointcloud.dim() == 3: # batched point clouds
 
             centroid = pointcloud.mean(dim=1, keepdim=True)
             pointcloud = pointcloud - centroid
-            max_dist = torch.sqrt((pointcloud ** 2).sum(dim=-1)).max(dim=1) # shape = (batch_size,)
+            max_dist:torch.Tensor = torch.sqrt((pointcloud ** 2).sum(dim=-1)).max(dim=1) # shape = (batch_size,)
             pointcloud = pointcloud / max_dist.values[:, None, None]
 
         else: # single point cloud
