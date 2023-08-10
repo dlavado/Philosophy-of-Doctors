@@ -24,10 +24,10 @@ sys.path.insert(2, '../../..')
 from scripts import constants as const
 from utils import voxelization as Vox
 from utils import pcd_processing as eda
-from core.models.geneos.GENEO_kernel_torch import GENEO_kernel_torch
+from core.models.geneos.GENEO_kernel_torch import GENEO_kernel
 
 
-class cone_kernel(GENEO_kernel_torch):
+class cone_kernel(GENEO_kernel):
 
     def __init__(self, name, kernel_size, plot=False, **kwargs):
         """
@@ -63,6 +63,8 @@ class cone_kernel(GENEO_kernel_torch):
         Detection threshold for GENEO prediction score
         """
 
+        super().__init__(name, kernel_size, plot)
+
         if kwargs.get('radius') is None:
             raise KeyError("Provide a radius for the cylinder in the kernel.")
         
@@ -84,27 +86,21 @@ class cone_kernel(GENEO_kernel_torch):
             self.cone_radius = torch.tensor(kernel_size[1]-1, device=self.device)
         else:
             self.cone_radius = kwargs['cone_radius'].to(self.device)
+
+        self.sigma = kwargs.get('sigma', 1)
+        self.epsilon = kwargs.get('epsilon', 1e-8)
         
         if plot:
-            print("--- Cone Kernel ---")
+            print("--- Arrow Kernel ---")
             print(f"radius = {self.radius:.4f}; {type(self.radius)};")
             print(f"apex = {self.apex:.4f}; {type(self.apex)};")
             print(f"cone_radius = {self.cone_radius:.4f}; {type(self.cone_radius)};")
             print(f"cone_inc = {self.cone_inc:.4f}; {type(self.cone_inc)};")
+            print(f"sigma = {self.sigma:.4f}; {type(self.sigma)};")  
+            print(f"epsilon = {self.epsilon:.4f}; {type(self.epsilon)};")
 
-        self.sigma = 1
-        if kwargs.get('sigma') is not None:
-            self.sigma = kwargs['sigma']
-            if plot:
-                print(f"sigma = {self.sigma:.4f}; {type(self.sigma)};")           
 
-        self.epsilon = 0.2
-        if kwargs.get('epsilon') is not None:
-            self.epsilon = kwargs['epsilon']
-            if plot: 
-                print(f"epsilon = {self.epsilon:.4f}; {type(self.epsilon)};")
         
-        super().__init__(name, kernel_size, plot)
     
     def mandatory_parameters():
         return ['radius', 'apex', 'cone_radius','cone_inc']
@@ -112,8 +108,8 @@ class cone_kernel(GENEO_kernel_torch):
     def geneo_parameters():
         return cone_kernel.mandatory_parameters() + ['sigma']
 
-    def geneo_random_config(name="Random_Cone"):
-        rand_config = GENEO_kernel_torch.geneo_random_config()
+    def geneo_random_config(name="arrow", kernel_size=None):
+        rand_config = GENEO_kernel.geneo_random_config(name, kernel_size)
 
         k_size = rand_config['kernel_size']
 
@@ -127,29 +123,9 @@ class cone_kernel(GENEO_kernel_torch):
 
         rand_config['geneo_params'] = geneo_params
 
-        rand_config['name'] = 'cone'
 
         rand_config['non_trainable'] = ['apex']
         return rand_config
-
-    def geneo_smart_config(name="Smart_Cylinder"):
-
-        config = {
-            'name' : name,
-            'kernel_size': (9, 6, 6),
-            'plot': False,
-            'non_trainable' : [],
-            
-            'geneo_params' : {
-                                'radius' :  torch.tensor(1.0) ,
-                                'apex':  torch.tensor(3.0),
-                                'cone_radius' :  torch.tensor(2.0),
-                                'cone_inc' :  torch.tensor(0.1),
-                                'sigma' :  torch.tensor(2.0)
-                             }
-        }
-
-        return config
 
 
     def gaussian(self, x:torch.Tensor, rad=None, sig=None, epsilon=0) -> torch.Tensor:

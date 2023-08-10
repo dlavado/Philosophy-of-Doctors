@@ -10,8 +10,8 @@ import os
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 
-from core.models.geneos.GENEO_kernel_torch import GENEO_kernel_torch
-from core.models.geneos import cylinder, neg_sphere, arrow
+from core.models.geneos.GENEO_kernel_torch import GENEO_kernel
+from core.models.geneos import cylinder, neg_sphere, arrow, disk, cone, ellipsoid
 import utils.voxelization as Vox
 from core.datasets.torch_transforms import Normalize_PCD
 
@@ -57,29 +57,22 @@ def load_state_dict(model_path, gnet_class, model_tag='loss', kernel_size=None):
 
 class GENEO_Layer(nn.Module):
 
-    def __init__(self, geneo_class:GENEO_kernel_torch, kernel_size:tuple=None, smart=False):
+    def __init__(self, geneo_class:GENEO_kernel, kernel_size:tuple=None):
         super(GENEO_Layer, self).__init__()  
 
         self.geneo_class = geneo_class
-        self.init_from_config(smart)
-
+    
         if kernel_size is not None:
             self.kernel_size = kernel_size
 
-    
-    def init_from_config(self, smart=False):
+        self.init_from_config()
 
-        if smart:
-            config = self.geneo_class.geneo_smart_config()
-            if config['plot']:
-                print("JSON file GENEO Initialization...")
-        else:
-            config = self.geneo_class.geneo_random_config()
-            if config['plot']:
-                print("Random GENEO Initialization...")
+    
+    def init_from_config(self):
+
+        config = self.geneo_class.geneo_random_config(kernel_size=self.kernel_size)
 
         self.name = config['name']
-        self.kernel_size = config['kernel_size']
         self.plot = config['plot']
 
         self.geneo_params = {}
@@ -91,27 +84,23 @@ class GENEO_Layer(nn.Module):
         self.geneo_params = nn.ParameterDict(self.geneo_params)
 
 
-    def init_from_kwargs(self, kernel_size, kwargs):
+    def init_from_kwargs(self, kernel_size, **kwargs):
         self.kernel_size = kernel_size
         self.geneo_params = {}
         self.name = 'GENEO'
         self.plot = False
         for param in self.geneo_class.mandatory_parameters():
-            
             self.geneo_params[param] = nn.Parameter(torch.tensor(kwargs[param], dtype=torch.float))
 
         self.geneo_params = nn.ParameterDict(self.geneo_params)
 
     def compute_kernel(self) -> torch.Tensor:
-        geneo = self.geneo_class(self.name, self.kernel_size, plot=self.plot, **self.geneo_params)
-        kernel = geneo.kernel.to(dtype=torch.double)
-        return kernel.view(1, *kernel.shape)
+        geneo:GENEO_kernel = self.geneo_class(self.name, self.kernel_size, plot=self.plot, **self.geneo_params)
+        kernel:torch.Tensor = geneo.compute_kernel().to(dtype=torch.double)*geneo.sign
+        return kernel.unsqueeze(0)
 
     def forward(self, x:torch.Tensor) -> torch.Tensor:
-        geneo = self.geneo_class(self.name, self.kernel_size, plot=self.plot, **self.geneo_params)
-
-        kernel = geneo.kernel.to(self.device, dtype=torch.double)
-        
+        kernel = self.compute_kernel()  
         return F.conv3d(x, kernel.view(1, 1, *kernel.shape), padding='same')
 
 
@@ -152,10 +141,16 @@ class SceneNet(nn.Module):
         for key in self.geneo_kernel_arch:
             if key == 'cy':
                 g_class = cylinder.cylinderv2
-            elif key == 'cone':
+            elif key == 'arrow':
                 g_class = arrow.arrow
             elif key == 'neg':
                 g_class = neg_sphere.negSpherev2
+            elif key == 'disk':
+                g_class = disk.Disk
+            elif key == 'cone':
+                g_class = cone.Cone
+            elif g_class == 'ellip':
+                g_class = ellipsoid.Ellipsoid
 
             for i in range(self.geneo_kernel_arch[key]):
                 self.geneos[f'{key}_{i}'] = GENEO_Layer(g_class, kernel_size=kernel_size)

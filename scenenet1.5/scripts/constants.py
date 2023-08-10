@@ -29,7 +29,7 @@ else:
 
 PARTNET_PATH = os.path.join(EXT_PATH, 'sem_seg_h5')
 
-TS40K_PATH = os.path.join(EXT_PATH, 'TS40K-NEW/')
+TS40K_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-NEW/')
 
 EXPERIMENTS_PATH = os.path.join(ROOT_PROJECT, 'experiments')
 

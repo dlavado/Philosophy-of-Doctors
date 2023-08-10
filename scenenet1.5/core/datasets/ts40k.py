@@ -206,6 +206,10 @@ class TS40K(Dataset):
 
         try:
             npy = np.load(npy_path)
+
+            if npy.shape[0] <= 100:
+                print(f"Sample {idx} has less than 100 points...\nLoadind another sample...")
+                return self.__getitem__(idx + 1)
         except:
             print(f"Unreadable file: {npy_path}")
         
@@ -241,11 +245,21 @@ def main():
     #composed = Compose([ToTensor(), AddPad((3, 3, 3, 3, 3, 3))]) 
     vxg_size  = (64, 64, 64)
     vox_size = (0.5, 0.5, 0.5) #only use vox_size after training or with batch_size = 1
-    composed = Compose([Voxelization([eda.POWER_LINE_SUPPORT_TOWER], vxg_size=vxg_size), 
-                        ToTensor(), 
-                        ToFullDense(apply=(True, False))])
+    composed =  None
     
     ts40k = TS40K(dataset_path=EXT_DIR, split='fit', transform=composed)
+    
+    small_samples = []
+
+    for i in range(len(ts40k)):
+        pts, gts = ts40k[i]
+        if pts.shape[1] < 500:
+            small_samples.append(i)
+
+    # del small samples
+    for i in reversed(small_samples):
+        npy_path = os.path.join(ts40k.dataset_path, ts40k.npy_files[i])
+        os.remove(npy_path)
 
     print(len(ts40k))
 

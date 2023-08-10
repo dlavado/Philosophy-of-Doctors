@@ -194,7 +194,8 @@ class LitSceneNet_multiclass(LitWrapperModel):
         out = self.model(x, pts_locs)
         loss = self.criterion(out, y)
         preds = self.prediction(out)
-        
+
+    
         if stage:
             on_step = stage == "train" 
             self.log(f"{stage}_loss", loss, on_epoch=True, on_step=on_step, prog_bar=prog_bar, logger=logger)

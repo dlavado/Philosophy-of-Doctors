@@ -24,7 +24,7 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 import wandb
 from pytorch_lightning.loggers import WandbLogger
 from lightning.pytorch.callbacks import BatchSizeFinder
-
+from pytorch_lightning.tuner import Tuner
 
 
 # Our code
@@ -41,10 +41,11 @@ import core.lit_modules.lit_model_wrappers as lit_models
 from core.lit_modules.lit_data_wrappers import LitTS40K
 from core.datasets.partnet import LitPartNetDataset
 
+
 from core.criterions.geneo_loss import GENEO_Loss
 
 
-from core.datasets.torch_transforms import Dict_to_Tuple, Farthest_Point_Sampling, Normalize_Labels, ToTensor, Voxelization_withPCD
+from core.datasets.torch_transforms import Dict_to_Tuple, EDP_Labels, Farthest_Point_Sampling, Normalize_Labels, ToTensor, Voxelization_withPCD
 
 class EvalBatchSizeFinder(BatchSizeFinder):
     def __init__(self, mode, *args, **kwargs):
@@ -122,8 +123,11 @@ def init_model(criterion, ckpt_path):
         # Model definition
         geneo_config = {
             'cy'   : wandb.config.cylinder_geneo,
-            'cone' : wandb.config.arrow_geneo,
-            'neg'  : wandb.config.neg_sphere_geneo, 
+            'arrow': wandb.config.arrow_geneo,
+            'neg'  : wandb.config.neg_sphere_geneo,
+            'disk' : wandb.config.disk_geneo,
+            'cone' : wandb.config.cone_geneo,
+            'ellip': wandb.config.ellipsoid_geneo, 
         }
 
         hidden_dims = ast.literal_eval(wandb.config.hidden_dims)
@@ -146,19 +150,21 @@ def init_ts40k(data_path):
     vxg_size = ast.literal_eval(wandb.config.voxel_grid_size) # default is 64^3
     vox_size = ast.literal_eval(wandb.config.voxel_size) # only use vox_size after training or with batch_size = 1
 
-    keep_labels = list(eda.DICT_EDP_LABELS.keys())
-    semantic_labels = [eda.DICT_NEW_LABELS[label] for label in keep_labels]
-    assert len(torch.unique(torch.tensor(semantic_labels))) == wandb.config.num_classes
+    # keep_labels = list(eda.DICT_EDP_LABELS.keys())
+    # semantic_labels = [eda.DICT_NEW_LABELS[label] for label in keep_labels]
+    # assert len(torch.unique(torch.tensor(semantic_labels))) == wandb.config.num_classes
     composed = Compose([
                         ToTensor(),
 
                         Farthest_Point_Sampling(wandb.config.fps_points),
         
-                        Voxelization_withPCD(keep_labels=keep_labels, 
+                        Voxelization_withPCD(keep_labels='all', 
                                              vxg_size=vxg_size, 
                                              vox_size=vox_size
                                             ),
-                        Normalize_Labels()
+
+                        EDP_Labels(),
+                        # Normalize_Labels()
                     ])
     
 
@@ -188,7 +194,7 @@ def init_partnet(data_path):
                         Voxelization_withPCD(keep_labels='all', 
                                              vxg_size=vxg_size, vox_size=vox_size
                                             ),
-                        Normalize_Labels()
+                        # Normalize_Labels()
                     ])
 
     return LitPartNetDataset(data_path,
@@ -306,8 +312,6 @@ def main():
         #fast_dev_run = wandb.config.fast_dev_run,
         profiler=wandb.config.profiler if wandb.config.profiler else None,
         precision=wandb.config.precision,
-        # auto_lr_find=wandb.config.auto_lr_find,
-        # auto_scale_batch_size=wandb.config.auto_scale_batch_size,
         enable_model_summary=True,
         enable_checkpointing=True,
         enable_progress_bar=True,
@@ -316,7 +320,9 @@ def main():
     )
 
     # if wandb.config.auto_lr_find or wandb.config.auto_scale_batch_size:
-    #     trainer.tune(model, data_module) # auto_lr_find and auto_scale_batch_size
+    # #   trainer.tune(model, data_module) # auto_lr_find and auto_scale_batch_size
+    #     tuner = Tuner(trainer)
+    #     tuner.scale_batch_size(model, datamodule=data_module, mode="power")
 
     trainer.fit(model, data_module)
 
@@ -341,9 +347,13 @@ def main():
         model.to_onnx(onnx_file_path, input_sample, export_params=True)
         wandb_logger.log({"onnx_model": wandb.File(onnx_file_path)})
 
-    trainer.test(model, 
-                 datamodule=data_module,
-                 ckpt_path=ckpt_path) # use the last checkpoint
+    test_results = trainer.test(model, 
+                            datamodule=data_module,
+                            ckpt_path=ckpt_path)
+    
+    test_results = trainer.test(model,
+                                datamodule=data_module,
+                                ckpt_path='best')
 
 if __name__ == '__main__':
 

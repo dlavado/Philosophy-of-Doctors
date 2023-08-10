@@ -14,7 +14,7 @@ sys.path.insert(1, '../..')
 from utils import voxelization as Vox
 
 
-class GENEO_kernel_torch():
+class GENEO_kernel:
     """
     Initialization class for GENEO kernels.
 
@@ -29,14 +29,9 @@ class GENEO_kernel_torch():
         self.plot = plot
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        self.sign = 1 if torch.any(torch.rand(1) > 0.8) else -1 # random sign for the kernel
+        self.sign = 1 if torch.any(torch.rand(1) > 0.9) else -1 # random sign for the kernel
 
         self.volume = torch.prod(torch.tensor(self.kernel_size, device=self.device))
-
-        self.kernel = self.compute_kernel()
-        if plot:
-            self.plot_kernel()
-            print("\n")
 
 
     @abstractmethod
@@ -66,11 +61,11 @@ class GENEO_kernel_torch():
         return conv
 
 
-    def plot_kernel(self):
+    def plot_kernel(self, kernel):
         print(f"\n{'*'*50}")
-        print(f"kernel shape = {self.kernel.shape}")
-        print(f"kernel sum = {torch.sum(self.kernel)}")
-        Vox.plot_voxelgrid(self.kernel.cpu().detach().numpy())
+        print(f"kernel shape = {kernel.shape}")
+        print(f"kernel sum = {torch.sum(kernel)}")
+        Vox.plot_voxelgrid(kernel.cpu().detach().numpy())
 
     @staticmethod
     def mandatory_parameters():
@@ -96,19 +91,19 @@ class GENEO_kernel_torch():
         return
 
     @staticmethod
-    def geneo_random_config(name='GENEO_rand'):
+    def geneo_random_config(name='GENEO_rand', kernel_size=(9, 9, 9)):
         """
         Returns a random GENEO configuration
         """
         config = {
             'name' : name,
-            'kernel_size': (9, 9, 9),
+            'kernel_size': kernel_size,
             'plot': False,
         }
 
         geneo_params = {}
 
-        for param in GENEO_kernel_torch.geneo_parameters():
+        for param in GENEO_kernel.geneo_parameters():
             geneo_params[param] = torch.randint(0, 10, (1,))[0]/5 # float \in [0, 2]
 
         config['geneo_params'] = geneo_params

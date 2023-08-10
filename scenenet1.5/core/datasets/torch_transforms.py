@@ -6,6 +6,11 @@ import torch.nn.functional as F
 from utils import voxelization as Vox
 from pytorch3d.ops import sample_farthest_points
 
+import sys
+sys.path.insert(0, '..')
+sys.path.insert(1, '../..')
+import utils.pcd_processing as eda
+
 
 class Dict_to_Tuple:
 
@@ -138,6 +143,21 @@ class Voxelization_withPCD:
 
         return vox, gt, pt_locs
     
+class EDP_Labels:
+    def __call__(self, sample) -> Any:
+        pcd, labels, pt_locs = sample
+
+        labels = self.edp_labels(labels)
+
+        return pcd, labels, pt_locs
+    
+    def edp_labels(self, labels:torch.Tensor) -> torch.Tensor:
+
+        #cast each label to its corresponding EDP label
+        labels = torch.tensor([eda.DICT_NEW_LABELS[label.item()] if label.item() >= 0 else label.item() for label in labels]).reshape(labels.shape)
+
+        return labels
+    
 
 class Normalize_Labels:
 
@@ -182,6 +202,15 @@ class Farthest_Point_Sampling:
         # print(f"Sample: {sample[0].shape}, {sample[1].shape}")
 
         pointcloud, labels = sample
+
+        if pointcloud.shape[1] < self.num_points: # if the number of points in the point cloud is less than the number of points to sample
+            # print(f"sample shape {pointcloud.shape} < num_points {self.num_points}")
+            # duplicate the points until the number of points is equal to the number of points to sample
+            random_indices = torch.randint(0, pointcloud.shape[1] - 1, size=(self.num_points - pointcloud.shape[1],))
+
+            pointcloud = torch.cat([pointcloud, pointcloud[:, random_indices]], dim=1)
+            labels = torch.cat([labels, labels[:, random_indices]], dim=1)
+
 
         data = torch.cat([pointcloud, labels[:, :, None]], dim=-1) # add labels to the point cloud, shape = (B, P, 4)
 

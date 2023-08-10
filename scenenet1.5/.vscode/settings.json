@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "home/VSCode/lidar_thesis",
+        "./utils"
+    ]
+}

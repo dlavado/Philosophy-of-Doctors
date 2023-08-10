@@ -1,19 +1,9 @@
-# %%
-import itertools
-import time
+
 from matplotlib import cm
 import numpy as np
-import sympy as smp
-import sympy.vector as smpv
-import sympy.physics.vector as spv
-import sympytorch as spt
-from scipy import integrate as intg
-from sklearn.metrics import precision_score, recall_score, f1_score
 
-import IPython.display as disp
+
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import torch.nn.functional as F
 import torch
 
 
@@ -24,10 +14,10 @@ sys.path.insert(2, '../../..')
 from scripts import constants as const
 from utils import voxelization as Vox
 from utils import pcd_processing as eda
-from core.models.geneos.GENEO_kernel_torch import GENEO_kernel_torch
+from core.models.geneos.GENEO_kernel_torch import GENEO_kernel
 
 
-class cylinder_kernel(GENEO_kernel_torch):
+class cylinder_kernel(GENEO_kernel):
 
     def __init__(self, name, kernel_size, plot=False, **kwargs):
         """
@@ -46,7 +36,7 @@ class cylinder_kernel(GENEO_kernel_torch):
             3D torch tensor with the cylinder kernel 
         """
 
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        super().__init__(name, kernel_size)  
 
 
         if kwargs.get('radius') is None:
@@ -58,16 +48,8 @@ class cylinder_kernel(GENEO_kernel_torch):
             print("--- Cylinder Kernel ---")
             print(f"radius = {self.radius:.4f}; {type(self.radius)};")
 
-        self.sigma = 1
-        if kwargs.get('sigma') is not None:
-            self.sigma = kwargs['sigma']
-            if plot:
-                print(f"sigma = {self.sigma:.4f}; {type(self.sigma)};")           
-
-        self.plot = plot
+        self.sigma = kwargs.get('sigma', 1)
         
-        super().__init__(name, kernel_size)  
-
 
     def gaussian(self, x:torch.Tensor, epsilon=0) -> torch.Tensor:
         center = torch.tensor([(self.kernel_size[1]-1)/2, (self.kernel_size[2]-1)/2], dtype=torch.float, device=self.device, requires_grad=True)
@@ -76,12 +58,12 @@ class cylinder_kernel(GENEO_kernel_torch):
         x_c_norm = torch.linalg.norm(x_c, dim=1, keepdim=True) # Nx1
         circle_x = x_c_norm**2 - (self.radius + epsilon)**2 
 
-        return torch.exp((circle_x**2) * (-1 / (2*self.sigma**2)))
+        return torch.exp((circle_x**2) * (-1 / (2*self.sigma**2))) # shape = (N, 1)
 
     def sum_zero(self, tensor:torch.Tensor) -> torch.Tensor:
         return tensor - torch.sum(tensor) / torch.prod(torch.tensor(self.kernel_size[1:])) 
  
-    def compute_kernel(self, plot=False):
+    def compute_kernel(self):
 
         floor_idxs = torch.stack(
                 torch.meshgrid(torch.arange(self.kernel_size[1], dtype=torch.float, device=self.device, requires_grad=True), 
@@ -100,7 +82,7 @@ class cylinder_kernel(GENEO_kernel_torch):
         # assert torch.equal(kernel[0], floor_vals)
         # assert torch.sum(kernel) <= 1e-10 or torch.sum(kernel) <= -1e-10 # weight sum == 0
 
-        return kernel
+        return kernel 
 
        
     def mandatory_parameters():
@@ -109,8 +91,8 @@ class cylinder_kernel(GENEO_kernel_torch):
     def geneo_parameters():
         return cylinder_kernel.mandatory_parameters() + ['sigma']
 
-    def geneo_random_config(name='GENEO_rand'):
-        rand_config = GENEO_kernel_torch.geneo_random_config()
+    def geneo_random_config(name="cylinder", kernel_size=None):
+        rand_config = GENEO_kernel.geneo_random_config(name, kernel_size)
 
         geneo_params = {
             'radius' : torch.randint(1, rand_config['kernel_size'][1], (1,))[0] / 2 ,
@@ -118,26 +100,9 @@ class cylinder_kernel(GENEO_kernel_torch):
         }   
 
         rand_config['geneo_params'] = geneo_params
-        rand_config['name'] = 'cylinder'
 
         return rand_config
 
-    def geneo_smart_config(name="Smart_Cylinder"):
-
-        config = {
-            'name' : name,
-            'kernel_size': (9, 6, 6),
-            'plot': False,
-            'non_trainable' : [],
-
-            'geneo_params' : {
-                                'radius' :  torch.tensor(1.0) ,
-                                'sigma' :  torch.tensor(2.0)
-                             }
-        }
-
-
-        return config
 
 
 

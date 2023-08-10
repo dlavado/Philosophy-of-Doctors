@@ -14,13 +14,13 @@ dataset:
 data_path:
   value: ''
 num_classes:
-  value: 7
+  value: 3
 ignore_index:
   value: -1
 coarse_level:
-  value: 2
+  value: 1
 keep_objects:
-  value: "['StorageFurniture']"
+  value: "['Laptop']"
 batch_size:
   value: 16
 voxel_grid_size:
@@ -38,15 +38,21 @@ fps_points:
 model:
   value: 'scenenet'
 cylinder_geneo:
-  value: 20
+  value: 10
 arrow_geneo:
-  value: 20
+  value: 10
 neg_sphere_geneo:
-  value: 20
+  value: 10
+disk_geneo:
+  value: 10
+cone_geneo:
+  value: 10
+ellipsoid_geneo:
+  value: 10
 num_observers:
-  value: 30
+  value: 10
 kernel_size:
-  value: (9, 5, 5)
+  value: (6, 6, 6)
 hidden_dims:
   value: "[512, 256, 128, 64, 32]"
 # ------------------ #

@@ -215,30 +215,30 @@ if __name__ == '__main__':
     sys.path.insert(1, '../..')
     from utils import pcd_processing as eda
 
-    coarse = 1
+    coarse = 2
 
-    partnet = PartNetDataset(data_dir=PARTNET_PATH, coarse_level=coarse, keep_objects=['chair'], stage='train')
+    # partnet = PartNetDataset(data_dir=PARTNET_PATH, coarse_level=coarse, keep_objects=['chair'], stage='train')
 
-    a = np.empty((0,))
-    for i in range(len(partnet)):
-        sample = partnet[i]
-        a = np.concatenate((a, sample['seg_labels'].numpy().flatten()))
+    # a = np.empty((0,))
+    # for i in range(len(partnet)):
+    #     sample = partnet[i]
+    #     a = np.concatenate((a, sample['seg_labels'].numpy().flatten()))
 
-    # print class densities
-    print(np.unique(a, return_counts=True))
+    # # print class densities
+    # print(np.unique(a, return_counts=True))
 
-    # #plot an histogram with class densities
-    # plt.hist(a, bins=50)
-    # plt.title(f"Class distribution in PartNet coarse level {coarse}")
-    # plt.show()
+    # # #plot an histogram with class densities
+    # # plt.hist(a, bins=50)
+    # # plt.title(f"Class distribution in PartNet coarse level {coarse}")
+    # # plt.show()
 
 
-    sample = partnet[0]
-    pcd = eda.np_to_ply(sample['obj'].numpy())
-    eda.color_pointcloud(pcd, sample['seg_labels'].numpy())
-    eda.visualize_ply([pcd])
+    # sample = partnet[0]
+    # pcd = eda.np_to_ply(sample['obj'].numpy())
+    # eda.color_pointcloud(pcd, sample['seg_labels'].numpy())
+    # eda.visualize_ply([pcd])
 
-    input("Press Enter to continue...")
+    # input("Press Enter to continue...")
     
     
     categories = list(os.listdir(PARTNET_PATH))
@@ -255,6 +255,8 @@ if __name__ == '__main__':
                 continue    
 
             h5_path = os.path.join(cat_path, h5_file)
+
+            print(h5_path)
 
             with h5py.File(h5_path, 'r') as h5:
                 

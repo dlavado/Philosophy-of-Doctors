@@ -16,7 +16,7 @@ data_path:
 num_classes:
   value: 6
 batch_size:
-  value: 8
+  value: 32
 ignore_index:
   value: 0
 voxel_grid_size:
@@ -37,18 +37,24 @@ fps_points:
 # ------------------ #
 model:
   value: 'scenenet'
-num_observers:
-  value: 15
 cylinder_geneo:
-  value: 20
+  value: 10
 arrow_geneo:
-  value: 20
+  value: 10
 neg_sphere_geneo:
-  value: 20
+  value: 10
+disk_geneo:
+  value: 10
+cone_geneo:
+  value: 10
+ellipsoid_geneo:
+  value: 10
+num_observers:
+  value: 5
 kernel_size:
-  value: (9, 5, 5)
+  value: (4, 4, 4)
 hidden_dims:
-  value: "[512, 256, 128, 64, 32]"
+  value: "[256, 128, 64, 32]"
 # ------------------ #
 # training config
 # ------------------ #

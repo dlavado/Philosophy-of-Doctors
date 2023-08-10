@@ -248,7 +248,7 @@ def voxelize_sample(xyz, labels, keep_labels, voxelgrid_dims=(64, 64, 64), voxel
     return inp, gt, point_locations
 
 
-def voxelize_input_pcd(xyz, labels, keep_labels=None, voxelgrid_dims=(64, 64, 64), voxel_dims=None):
+def voxelize_input_pcd(xyz, labels, keep_labels='all', voxelgrid_dims=(64, 64, 64), voxel_dims=None):
     """
     Voxelizes the point cloud xyz and applies a histogram function on each voxel as a density function.
 
@@ -260,7 +260,7 @@ def voxelize_input_pcd(xyz, labels, keep_labels=None, voxelgrid_dims=(64, 64, 64
     `labels` - 1d numpy array:
         point labels in (1, N) format.
 
-    `keep_labels` - int or list:
+    `keep_labels` - str or list:
         labels to be kept in the voxelization process.
 
     `voxegrid_dims` - tuple int:
@@ -311,20 +311,17 @@ def voxelize_input_pcd(xyz, labels, keep_labels=None, voxelgrid_dims=(64, 64, 64
     for zxy, row in aggs.iterrows():
         inp[zxy] = 1.0 if row['points'] > 0 else 0.0
 
-    if keep_labels is None or keep_labels == 'all':
-        keep_labels = np.unique(labels)
-
-    def change_label(x):
-        return eda.DICT_NEW_LABELS[x] if x in keep_labels else 0
-    
-    gt = np.vectorize(change_label)(labels) # convert EDP labels to semantic labels, shape = (1, N)
+    if keep_labels != 'all':
+        def change_label(x):
+            return x if x in keep_labels else 0
+        labels = np.vectorize(change_label)(labels)
 
     if to_tensor:
         inp = torch.from_numpy(inp).unsqueeze(0)
-        gt = torch.from_numpy(gt).to(torch.long)
+        labels = torch.from_numpy(labels).to(torch.long)
         point_locations = torch.from_numpy(point_locations)
     
-    return inp, gt, point_locations
+    return inp, labels, point_locations
 
 def hist_on_voxel(xyz, voxelgrid_dims =(64, 64, 64), voxel_dims=None):
     """
