@@ -4,7 +4,6 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 from utils import voxelization as Vox
-from pytorch3d.ops import sample_farthest_points
 
 import sys
 sys.path.insert(0, '..')
@@ -214,11 +213,52 @@ class Farthest_Point_Sampling:
 
         data = torch.cat([pointcloud, labels[:, :, None]], dim=-1) # add labels to the point cloud, shape = (B, P, 4)
 
-        pointcloud = sample_farthest_points(data, K=self.num_points, random_start_point=True)[0] # return the sampled points, not the indices
+        pointcloud = self.farthest_point_sampling_with_features(data, self.num_points) # shape = (B, N, 3 + F)
         
-        pointcloud, labels = pointcloud[:, :, :3], pointcloud[:, :, 3] # remove the labels from the point cloud, shape = (B, P, 3)
-
+        pointcloud, labels = pointcloud[:, :, :3], pointcloud[:, :, 3]
         return pointcloud, labels
+    
+
+    def farthest_point_sampling_with_features(self, points:torch.Tensor, num_samples):
+        """
+        Farthest point sampling for a 3D point cloud with additional features.
+
+        Args:
+            points (torch.Tensor): Input point cloud with features of shape (1, P, 3 + F).
+            num_samples (int): Number of points to sample.
+
+        Returns:
+            torch.Tensor: Sampled point cloud with features of shape (1, N, 3 + F).
+        """
+        _, P, _ = points.size()
+
+        # Extract spatial coordinates (first 3 columns) and features (remaining columns)
+        spatial_coords = points[:, :, :3]
+        features = points[:, :, 3:]
+
+        # Initialize the list of sampled indices with the index of the first point.
+        sampled_indices = [torch.randint(0, P, (1,), device=points.device)]
+
+        # Compute the pairwise Euclidean distance between points and the sampled points.
+        dist_matrix = torch.cdist(spatial_coords, spatial_coords[:, sampled_indices[0]])
+
+        # Perform farthest point sampling iteratively.
+        for _ in range(num_samples - 1):
+            # Find the point with the maximum minimum distance to the sampled points.
+            min_distances, _ = torch.min(dist_matrix, dim=1)  # Minimum distances to current samples
+            max_min_distance, max_min_idx = torch.max(min_distances, dim=1)  # Maximum of minimum distances
+            sampled_indices.append(max_min_idx)
+            new_sampled_coords = spatial_coords[0, max_min_idx]
+
+            # Update the distance matrix by taking the minimum of the current distance and the new distance.
+            dist_matrix = torch.min(dist_matrix, new_sampled_coords[None, :])
+
+        # Gather the sampled points using the indices
+        sampled_indices = torch.stack(sampled_indices, dim=1)
+        sampled_points = torch.gather(points, 1, sampled_indices[:, :, None].expand(-1, -1, points.size(2)))
+
+        # Return the sampled point cloud with features
+        return sampled_points
 
 
 class Normalize_PCD:

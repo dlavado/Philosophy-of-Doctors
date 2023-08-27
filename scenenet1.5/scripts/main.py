@@ -288,7 +288,9 @@ def main():
         data_module = init_ts40k(data_path)
     
     elif dataset_name == 'partnet':
-        data_module = init_partnet(data_path)   
+        data_module = init_partnet(data_path)
+    
+    print(f"\n=== Data Module {dataset_name.upper()} initialized. ===\n")   
     
     # ------------------------
     # 5 INIT TRAINER
@@ -309,6 +311,8 @@ def main():
         max_epochs=wandb.config.max_epochs,
         accelerator=wandb.config.accelerator,
         devices=wandb.config.devices,
+        num_nodes=wandb.config.num_nodes,
+        strategy=wandb.config.strategy,
         #fast_dev_run = wandb.config.fast_dev_run,
         profiler=wandb.config.profiler if wandb.config.profiler else None,
         precision=wandb.config.precision,

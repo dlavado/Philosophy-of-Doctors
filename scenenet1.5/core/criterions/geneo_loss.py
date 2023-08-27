@@ -65,11 +65,10 @@ class GENEO_Loss(torch.nn.Module):
         
         non_positive_penalty = self.positive_regularizer(self.geneo_params)
 
-        if dense_criterion + self.cvx_w * (cvx_penalty + non_positive_penalty) + self.l1_weight * self.l1_norm_cvx(self.cvx_coeffs) < 0:
-            print(f'dense: {dense_criterion}')
-            print(f'cvx: {cvx_penalty}')
-            print(f'non_pos: {non_positive_penalty}')
-            print(f'l1: {self.l1_weight * self.l1_norm_cvx(self.cvx_coeffs)}')
+        # print(f'dense: {dense_criterion}')
+        # print(f'cvx: {cvx_penalty}')
+        # print(f'non_pos: {non_positive_penalty}')
+        # print(f'l1: {self.l1_weight * self.l1_norm_cvx(self.cvx_coeffs)}')
         
         return dense_criterion + self.cvx_w * (cvx_penalty + non_positive_penalty) + self.l1_weight * self.l1_norm_cvx(self.cvx_coeffs)
        

@@ -14,11 +14,11 @@ dataset:
 data_path:
   value: ''
 num_classes:
-  value: 6
+  value: 5
 batch_size:
-  value: 32
+  value: 16
 ignore_index:
-  value: 0
+  value: -1
 voxel_grid_size:
   value: (64, 64, 64)
 voxel_size:
@@ -52,7 +52,7 @@ ellipsoid_geneo:
 num_observers:
   value: 5
 kernel_size:
-  value: (4, 4, 4)
+  value: (6, 6, 6)
 hidden_dims:
   value: "[256, 128, 64, 32]"
 # ------------------ #
@@ -68,6 +68,10 @@ accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
   value: -1 # -1 for all available gpus
+num_nodes:
+  value: 1
+strategy:
+  value: 'auto' # 'ddp'
 early_stop_metric:
   value: 'val_MulticlassJaccardIndex'
 # ------------------ #

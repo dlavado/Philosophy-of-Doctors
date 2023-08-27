@@ -99,16 +99,16 @@ DICT_NEW_LABELS = {
     ROAD_SURFACE : 1, # ground
     LOW_VEGETATION : 1,
     
-    MEDIUM_VEGETAION : 2, # vegetation
+    MEDIUM_VEGETAION : 0, # vegetation
 
-    NATURAL_OBSTACLE : 3,
-    HUMAN_STRUCTURES : 3, # obstacles
+    NATURAL_OBSTACLE : 2,
+    HUMAN_STRUCTURES : 2, # obstacles
    
-    POWER_LINE_SUPPORT_TOWER : 4,
+    POWER_LINE_SUPPORT_TOWER : 3,
 
-    MAIN_POWER_LINE : 5,
-    OTHER_POWER_LINE: 5,
-    FIBER_OPTIC_CABLE : 5, # power lines
+    MAIN_POWER_LINE : 4,
+    OTHER_POWER_LINE: 4,
+    FIBER_OPTIC_CABLE : 4, # power lines
 }
 
 # useful constants

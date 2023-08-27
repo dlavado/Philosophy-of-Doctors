@@ -1,6 +1,6 @@
 
 
-/media/didi/TOSHIBA EXT/sem_seg_h5/Knife-1
+/media/didi/TOSHIBA EXT/sem_seg_h5/Knife-1 (Done)
 <KeysViewHDF5 ['data', 'data_num', 'label_seg']>
 [0 1 2 3 4]
 <KeysViewHDF5 ['data', 'data_num', 'label_seg']>
@@ -9,7 +9,7 @@
 [1 2 3 4]
 
 
-/media/didi/TOSHIBA EXT/sem_seg_h5/Bag-1
+/media/didi/TOSHIBA EXT/sem_seg_h5/Bag-1 (Done)
 <KeysViewHDF5 ['data', 'data_num', 'label_seg']>
 [0 1 2 3]
 <KeysViewHDF5 ['data', 'data_num', 'label_seg']>
@@ -27,7 +27,7 @@
 [0 1 2 3]
 
 
-/media/didi/TOSHIBA EXT/sem_seg_h5/Bottle-1
+/media/didi/TOSHIBA EXT/sem_seg_h5/Bottle-1 (Done)
 <KeysViewHDF5 ['data', 'data_num', 'label_seg']>
 [0 1 2 3 4 5]
 <KeysViewHDF5 ['data', 'data_num', 'label_seg']>
@@ -36,7 +36,7 @@
 [0 1 2 3 4]
 
 
-/media/didi/TOSHIBA EXT/sem_seg_h5/Bowl-1
+/media/didi/TOSHIBA EXT/sem_seg_h5/Bowl-1 (Done)
 <KeysViewHDF5 ['data', 'data_num', 'label_seg']>
 [0 1 2 3]
 <KeysViewHDF5 ['data', 'data_num', 'label_seg']>

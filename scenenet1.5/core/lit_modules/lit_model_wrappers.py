@@ -69,6 +69,7 @@ class LitWrapperModel(pl.LightningModule):
         out = self(x)
         loss = self.criterion(out, y)
         preds = self.prediction(out)
+
         
         if stage:
             on_step = stage == "train" 
