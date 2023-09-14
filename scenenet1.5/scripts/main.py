@@ -24,21 +24,20 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 import wandb
 from pytorch_lightning.loggers import WandbLogger
 from lightning.pytorch.callbacks import BatchSizeFinder
-from pytorch_lightning.tuner import Tuner
-
+from lightning.pytorch.tuner import Tuner
 
 # Our code
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 
-from constants import PARTNET_PATH, ROOT_PROJECT, TS40K_PATH, WEIGHT_SCHEME_PATH, get_experiment_config_path, get_experiment_path
+from constants import *
 
-import utils.pcd_processing as eda
 import utils.scripts_utils as su
+import utils.pcd_processing as eda
 
 import core.lit_modules.lit_callbacks as lit_callbacks
 import core.lit_modules.lit_model_wrappers as lit_models
-from core.lit_modules.lit_data_wrappers import LitTS40K
+from core.lit_modules.lit_data_wrappers import LitTS40K, LitTS40K_Preprocessed
 from core.datasets.partnet import LitPartNetDataset
 
 
@@ -146,7 +145,16 @@ def init_model(criterion, ckpt_path):
     return model
 
 
-def init_ts40k(data_path):
+def init_ts40k(data_path, preprocessed=False):
+
+    if preprocessed:
+        return LitTS40K_Preprocessed(data_path,
+                                    wandb.config.batch_size,
+                                    wandb.config.num_workers,
+                                    wandb.config.val_split,
+                                    wandb.config.test_split,
+                                )
+
     vxg_size = ast.literal_eval(wandb.config.voxel_grid_size) # default is 64^3
     vox_size = ast.literal_eval(wandb.config.voxel_size) # only use vox_size after training or with batch_size = 1
 
@@ -155,6 +163,8 @@ def init_ts40k(data_path):
     # assert len(torch.unique(torch.tensor(semantic_labels))) == wandb.config.num_classes
     composed = Compose([
                         ToTensor(),
+
+                        # EDP_Labels(),
 
                         Farthest_Point_Sampling(wandb.config.fps_points),
         
@@ -168,13 +178,13 @@ def init_ts40k(data_path):
                     ])
     
 
-
     data_module = LitTS40K(data_path,
                            wandb.config.batch_size,
                            composed,
                            wandb.config.num_workers,
                            wandb.config.val_split,
-                           wandb.config.test_split
+                           wandb.config.test_split,
+                           min_points= wandb.config.min_points
                         )
     
     return data_module
@@ -278,6 +288,8 @@ def main():
     if not os.path.exists(wandb.config.data_path):
         if dataset_name == 'ts40k':
             data_path = TS40K_PATH
+            if wandb.config.preprocessed:
+                data_path = TS40K_PREPROCESSED_PATH
         elif dataset_name == 'partnet':
             data_path = PARTNET_PATH
         else:
@@ -285,12 +297,14 @@ def main():
         wandb.config.update({'data_path': data_path}, allow_val_change=True) # override data path
 
     if dataset_name == 'ts40k':
-        data_module = init_ts40k(data_path)
+        data_module = init_ts40k(data_path, wandb.config.preprocessed)
     
     elif dataset_name == 'partnet':
         data_module = init_partnet(data_path)
     
-    print(f"\n=== Data Module {dataset_name.upper()} initialized. ===\n")   
+    print(f"\n=== Data Module {dataset_name.upper()} initialized. ===\n")
+    print(f"{data_module}")
+    print(data_path)   
     
     # ------------------------
     # 5 INIT TRAINER
@@ -365,9 +379,14 @@ if __name__ == '__main__':
     su.fix_randomness()
     warnings.filterwarnings("ignore")
     torch.set_float32_matmul_precision('medium')
+    
+    # is cuda available
+    print(f"{'='*50} CUDA available: {torch.cuda.is_available()} {'='*50}")
+    # get device specs
+    print(f"{'='*3}> Device specs: {torch.cuda.get_device_properties(0)}")
 
     main_parser = su.main_arg_parser().parse_args()
-
+    
     model_name = 'scenenet'
     dataset_name = main_parser.dataset
     project_name = f"SceneNet_Multiclass_{dataset_name}"
@@ -410,6 +429,7 @@ if __name__ == '__main__':
     
 
     
+
 
 
 

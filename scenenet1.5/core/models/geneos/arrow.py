@@ -1,20 +1,5 @@
 
 # %%
-import itertools
-import time
-from matplotlib import cm
-import numpy as np
-import sympy as smp
-import sympy.vector as smpv
-import sympy.physics.vector as spv
-import sympytorch as spt
-from scipy import integrate as intg
-from sklearn.metrics import precision_score, recall_score, f1_score
-
-import IPython.display as disp
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import torch.nn.functional as F
 import torch
 
 import sys

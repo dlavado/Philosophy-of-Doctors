@@ -21,12 +21,17 @@ from tqdm import tqdm
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 from utils import pcd_processing as eda
-from core.datasets.torch_transforms import ToFullDense, Voxelization, ToTensor
+from core.datasets.torch_transforms import EDP_Labels, Farthest_Point_Sampling, ToFullDense, Voxelization, ToTensor, Voxelization_withPCD
 
 from utils import voxelization as Vox
 import os
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+def edp_labels(labels:np.ndarray) -> np.ndarray:
+        #cast each label to its corresponding EDP label
+        labels = np.array([eda.DICT_NEW_LABELS[label] if label >= 0 else label for label in labels]).reshape(labels.shape)
+        return labels
 
 def build_data_samples(data_dirs:List[str], save_dir=os.getcwd(), tower_radius=True, data_split:dict={"fit": 0.6, "test": 0.4}):
     """
@@ -93,7 +98,7 @@ def build_data_samples(data_dirs:List[str], save_dir=os.getcwd(), tower_radius=T
 
             if np.any(classes == eda.POWER_LINE_SUPPORT_TOWER):
                 if tower_radius:
-                    t_samples = eda.crop_tower_samples(xyz, classes)
+                    t_samples = eda.crop_tower_samples(xyz, classes, radius=20)
                 else:
                     t_samples = eda.crop_two_towers_samples(xyz, classes)
             else:
@@ -106,6 +111,17 @@ def build_data_samples(data_dirs:List[str], save_dir=os.getcwd(), tower_radius=T
             print(f"file samples: {len(file_samples)} (tower, no_tower): ({len(t_samples)}, {len(f_samples)})")
 
             for sample in file_samples:
+                uq_classes = np.unique(edp_labels(sample[:, -1])) 
+                # quality check of the point cloud
+                if sample.shape[0] < 500:
+                    print(f"Sample has less than 500 points...\nSkipping...")
+                    continue
+                elif np.sum(uq_classes > 0) <= 2:
+                    print(f"Sample has less than 2 semantic classes...\nSkipping...")
+                    continue
+                else:
+                    print(f"Sample has {sample.shape[0]} points and {uq_classes} classes")
+
                 try:             
                     npy_name = f'{fit_path}/sample_{counter}.npy'
                     print(npy_name)
@@ -157,10 +173,47 @@ def build_data_samples(data_dirs:List[str], save_dir=os.getcwd(), tower_radius=T
 
 
 
+def save_preprocessed_data(data_dir, save_dir, fps_points, vxg_size, vox_size):
+    """
+    
+    """
+
+    data_split = ['fit', 'test']
+
+    ts40k_transform = Compose([
+                        ToTensor(),
+
+                        Farthest_Point_Sampling(fps_points),
+        
+                        Voxelization_withPCD(keep_labels='all', 
+                                             vxg_size=vxg_size, 
+                                             vox_size=vox_size
+                                            ),
+                        EDP_Labels(),
+                    ])
+
+    for folder in data_split:
+
+        folder_path = os.path.join(save_dir, folder)
+
+        dm = TS40K(data_dir, split=folder, transform=ts40k_transform, min_points=None)
+
+        os.makedirs(folder_path, exist_ok=True)
+
+        # get folder count
+        folder_count = len(os.listdir(folder_path))
+
+        for i in tqdm(range(folder_count, len(dm)), desc=f"Saving Preprocessed {folder} samples..."):
+            x, y, pt_locs = dm[i]
+            sample = [x, y, pt_locs] 
+            # torch save
+            sample_path = os.path.join(folder_path, f"sample_{i}.pt")
+            torch.save(sample, sample_path)
+
 
 class TS40K(Dataset):
 
-    def __init__(self, dataset_path, split='fit', transform=None) -> None:
+    def __init__(self, dataset_path, split='fit', transform=None, min_points=None, load_into_memory=False) -> None:
         """
         Initializes the TS40K dataset
 
@@ -175,6 +228,12 @@ class TS40K(Dataset):
             
         `transform` - (None, torch.Transform) :
             transformation to apply to the point clouds
+
+        `min_points` - int:
+            minimum number of points in the point cloud
+
+        `load_into_memory` - bool:
+            if True, loads the entire dataset into memory
         """
         super().__init__()
 
@@ -183,15 +242,28 @@ class TS40K(Dataset):
 
         self.dataset_path = os.path.join(dataset_path, split)
 
-        self.npy_files:np.ndarray = np.array([file for file in os.listdir(self.dataset_path)
-                        if os.path.isfile(os.path.join(self.dataset_path, file)) and '.npy' in file])
+        self.data_files:np.ndarray = np.array([file for file in os.listdir(self.dataset_path)
+                        if os.path.isfile(os.path.join(self.dataset_path, file)) and ('.npy' in file or '.pt' in file)])
         
+        if min_points:
+            self.data_files = np.array([file for file in self.data_files if np.load(os.path.join(self.dataset_path, file)).shape[0] >= min_points])
+    
+        self.load_into_memory = False
+        if load_into_memory:
+            self._load_data_into_memory()
+            self.load_into_memory = True
 
     def __len__(self):
-        return len(self.npy_files)
+        return len(self.data_files)
 
     def __str__(self) -> str:
         return f"TS40K {self.split} Dataset with {len(self)} samples"
+    
+    def _load_data_into_memory(self):
+        
+        self.data = []
+        for i in tqdm(range(len(self)), desc="Loading data into memory..."):
+            self.data.append(self.__getitem__(i))
 
     def set_transform(self, new_transform):
         self.transform = new_transform
@@ -199,17 +271,16 @@ class TS40K(Dataset):
     def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
         # data[i]
 
+        if self.load_into_memory:
+            return self.data[idx]
+
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        npy_path = os.path.join(self.dataset_path, self.npy_files[idx])
+        npy_path = os.path.join(self.dataset_path, self.data_files[idx])
 
         try:
             npy = np.load(npy_path)
-
-            if npy.shape[0] <= 100:
-                print(f"Sample {idx} has less than 100 points...\nLoadind another sample...")
-                return self.__getitem__(idx + 1)
         except:
             print(f"Unreadable file: {npy_path}")
         
@@ -222,6 +293,33 @@ class TS40K(Dataset):
             return sample
         
         return sample
+    
+
+class TS40K_Preprocessed(TS40K):
+
+    def __init__(self, dataset_path, split='fit', load_into_memory=False) -> None:
+        super().__init__(dataset_path, split, None, None, load_into_memory)
+
+    def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
+        # data[i]
+
+        if self.load_into_memory:
+            return self.data[idx]
+
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        pt_path = os.path.join(self.dataset_path, self.data_files[idx])
+        try:
+            pt = torch.load(pt_path)
+        except:
+            print(f"Unreadable file: {pt_path}")
+        
+        sample = (pt[0], pt[1], pt[2])
+        return sample
+
+
+
                 
 
 
@@ -230,7 +328,7 @@ class TS40K(Dataset):
 
 def main():
     
-    ROOT_PROJECT = Path(os.path.abspath(__file__)).parents[3].resolve()
+    ROOT_PROJECT = constants.ROOT_PROJECT
 
     #EXT_DIR = "/media/didi/TOSHIBA EXT/LIDAR/"
     EXT_DIR = constants.EXT_PATH
@@ -238,7 +336,10 @@ def main():
     #EXT_DIR = "/media/didi/TOSHIBA EXT"
     SAVE_PATH = os.path.join(TS40K_DIR, "TS40K-NEW")
 
-    build_data_samples([os.path.join(TS40K_DIR, 'LIDAR'), os.path.join(TS40K_DIR, 'Labelec_LAS')], SAVE_PATH, data_split={'fit': 0.8, 'test': 0.2})
+
+    save_preprocessed_data(constants.TS40K_PATH, constants.TS40K_PREPROCESSED_PATH, fps_points=10000, vxg_size=(64, 64, 64), vox_size=None)
+
+    # build_data_samples([os.path.join(TS40K_DIR, 'LIDAR'), os.path.join(TS40K_DIR, 'Labelec_LAS')], SAVE_PATH, data_split={'fit': 0.8, 'test': 0.2})
 
     input("Press Enter to continue...")
 
@@ -258,7 +359,7 @@ def main():
 
     # del small samples
     for i in reversed(small_samples):
-        npy_path = os.path.join(ts40k.dataset_path, ts40k.npy_files[i])
+        npy_path = os.path.join(ts40k.dataset_path, ts40k.data_files[i])
         os.remove(npy_path)
 
     print(len(ts40k))
@@ -300,6 +401,7 @@ def main():
 if __name__ == "__main__":
 
     from scripts import constants
+    
     main()
 
 # %%

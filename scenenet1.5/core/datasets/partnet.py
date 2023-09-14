@@ -14,8 +14,37 @@ from torch.utils.data import DataLoader
 import sys
 sys.path.append("..")
 sys.path.append("../..")
+from core.datasets.torch_transforms import Dict_to_Tuple, ToTensor, Voxelization_withPCD
 
-from scripts.constants import PARTNET_PATH
+def save_preprocessed_data(data_dir, save_dir, vxg_size, vox_size):
+
+    data_split = ['train', 'val', 'test']
+
+    transform = Compose([
+                        Dict_to_Tuple(omit=['category']),
+        
+                        Voxelization_withPCD(keep_labels='all', 
+                                             vxg_size=vxg_size, vox_size=vox_size
+                                            ),
+                        # Normalize_Labels()
+                    ])
+
+    for folder in data_split:
+
+        folder_path = os.path.join(save_dir, folder)
+
+        dm = PartNetDataset(data_dir, coarse_level=1, keep_objects=None, transform=transform, stage=folder)
+
+        os.makedirs(folder_path, exist_ok=True)
+
+
+        for i in tqdm(range(0, len(dm)), desc=f"Saving Preprocessed {folder} samples..."):
+            sample, category = dm[i]
+            if not os.path.exists(os.path.join(folder_path, category)):
+                os.makedirs(os.path.join(folder_path, category), exist_ok=True)
+            # torch save
+            sample_path = os.path.join(folder_path, f"{category}/sample_{i}.pt")
+            torch.save(sample, sample_path)
 
 
 
@@ -70,9 +99,8 @@ class PartNetDataset(Dataset):
         self.test_dataset = None
         self.stage = stage
         self._setup(stage)
-        del self.h5_obj_train
-        del self.h5_obj_val
-        del self.h5_obj_test
+
+
 
     def __len__(self):
         if self.stage == 'train':
@@ -161,7 +189,53 @@ class PartNetDataset(Dataset):
 
         if self.transform:
             sample = self.transform(sample)
+
+        return sample, category
+    
+
+class PartNetDataset_Preprocessed(Dataset):
+
+
+    def __init__(self, data_dir:str, stage='train', keep_objects=None) -> None:
+        super().__init__()
+
+        self.stage = stage
+
+        self.partnet_dir = os.path.join(data_dir, stage)
+        categories = os.listdir(self.partnet_dir)
+        # Filter out categories that are not at the coarse level specified
+
+        if keep_objects and keep_objects != 'all':
+            keep_objects = [obj.lower() for obj in keep_objects]
+            categories = [cat_folder for cat_folder in categories if cat_folder.split("-")[0].lower() in keep_objects]
+
+        self.data_files = []
+        for cat_folder in categories:
+            cat_dir = os.path.join(self.partnet_dir, cat_folder)
+            self.data_files += [os.path.join(cat_dir, file) for file in os.listdir(cat_dir)
+                        if os.path.isfile(os.path.join(cat_dir, file)) and ('.npy' in file or '.pt' in file)]
+            
+        self.data_files = np.array(self.data_files)
+        self.data_files = np.random.permutation(self.data_files) # sort randomly
+
+
+    def __len__(self):
+        return len(self.data_files)
+    
+    def __getitem__(self, idx:int):
+
+        sample_path = self.data_files[idx]
+        # category = sample_path.split("/")[-2]
+        # stage = sample_path.split("/")[-3]
+        sample = torch.load(sample_path)
+
         return sample
+
+
+
+
+
+
 
 
 class LitPartNetDataset(pl.LightningDataModule):
@@ -210,12 +284,16 @@ if __name__ == '__main__':
     import os
     import sys
     import numpy as np
+    from tqdm import tqdm
     import matplotlib.pyplot as plt
     sys.path.insert(0, '..')
     sys.path.insert(1, '../..')
+    import scripts.constants as constants
     from utils import pcd_processing as eda
 
-    coarse = 2
+    coarse = 1
+
+    save_preprocessed_data(data_dir=constants.PARTNET_PATH, save_dir=constants.PARTNET_PREPROCESSED_PATH, vxg_size=(64, 64, 64), vox_size=None)
 
     # partnet = PartNetDataset(data_dir=PARTNET_PATH, coarse_level=coarse, keep_objects=['chair'], stage='train')
 
@@ -238,12 +316,12 @@ if __name__ == '__main__':
     # eda.color_pointcloud(pcd, sample['seg_labels'].numpy())
     # eda.visualize_ply([pcd])
 
-    # input("Press Enter to continue...")
+    input("Press Enter to continue...")
     
     
-    categories = list(os.listdir(PARTNET_PATH))
+    categories = list(os.listdir(constants.PARTNET_PATH))
     categories = [cat for cat in categories if f"-{coarse}" in cat]
-    categories = [os.path.join(PARTNET_PATH, cat) for cat in categories]
+    categories = [os.path.join(constants.PARTNET_PATH, cat) for cat in categories]
 
     for cat_path in categories:
         

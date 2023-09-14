@@ -5,7 +5,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader, random_split
 
 
-from core.datasets.ts40k import build_data_samples, TS40K
+from core.datasets.ts40k import build_data_samples, TS40K, TS40K_Preprocessed
 
 
 class LitTS40K(pl.LightningDataModule):
@@ -35,10 +35,12 @@ class LitTS40K(pl.LightningDataModule):
 
     """
 
-    def __init__(self, data_dir, batch_size, transform=None, num_workers=8, val_split=0.1, test_split=0.4):
+    def __init__(self, data_dir, batch_size, transform=None, num_workers=8, val_split=0.1, test_split=0.4, min_points=None):
         super().__init__()
         self.data_dir = data_dir
         self.transform = transform
+        self.min_points = min_points
+        self.load_into_memory = True
         self.save_hyperparameters()
 
     def _build_dataset(self, raw_data_dir): #Somewhat equivalent to `prepare_data` hook of LitDataModule
@@ -48,15 +50,15 @@ class LitTS40K(pl.LightningDataModule):
     def setup(self, stage:str=None):
         # build dataset
         if stage == 'fit':
-            fit_ds = TS40K(self.data_dir, split="fit", transform=self.transform)
+            fit_ds = TS40K(self.data_dir, split="fit", transform=self.transform, min_points=self.min_points, load_into_memory=self.load_into_memory)
             self.train_ds, self.val_ds = random_split(fit_ds, 
                                                       [len(fit_ds) - int(len(fit_ds) * self.hparams.val_split), int(len(fit_ds) * self.hparams.val_split)])
             del fit_ds
         if stage == 'test':
-            self.test_ds = TS40K(self.data_dir, split="test", transform=self.transform)
+            self.test_ds = TS40K(self.data_dir, split="test", transform=self.transform, min_points=self.min_points, load_into_memory=self.load_into_memory)
 
         if stage == 'predict':
-            self.predict_ds = TS40K(self.data_dir, split="test", transform=self.transform)
+            self.predict_ds = TS40K(self.data_dir, split="test", transform=self.transform, min_points=self.min_points, load_into_memory=self.load_into_memory)
         
     def train_dataloader(self):
         return DataLoader(self.train_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, pin_memory=True)
@@ -86,6 +88,27 @@ class LitTS40K(pl.LightningDataModule):
         parser.add_argument("--val_split", type=float, default=0.1)
         parser.add_argument("--test_split", type=float, default=0.4)
         return parent_parser
+    
+
+class LitTS40K_Preprocessed(LitTS40K):
+
+    def __init__(self, data_dir, batch_size, num_workers=8, val_split=0.1, test_split=0.4):
+        super().__init__(data_dir, batch_size, None, num_workers, val_split, test_split, None)
+
+
+    def setup(self, stage:str=None):
+        # build dataset
+        if stage == 'fit':
+            fit_ds = TS40K_Preprocessed(self.data_dir, split="fit", load_into_memory=self.load_into_memory)
+            self.train_ds, self.val_ds = random_split(fit_ds, 
+                                                      [len(fit_ds) - int(len(fit_ds) * self.hparams.val_split), int(len(fit_ds) * self.hparams.val_split)])
+            del fit_ds
+        if stage == 'test':
+            self.test_ds = TS40K_Preprocessed(self.data_dir, split="test", load_into_memory=self.load_into_memory)
+
+        if stage == 'predict':
+            self.predict_ds = TS40K_Preprocessed(self.data_dir, split="test", load_into_memory=self.load_into_memory)
+        
     
 
 
