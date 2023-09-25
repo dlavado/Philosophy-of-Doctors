@@ -4,5 +4,7 @@ Pickles/*
 .vscode/*
 *pycache*
 dummy_res/*
+##### environments #####
 scenenet1.5/scenet/*
+MNIST_GENEOs/venv_auglag
 
