@@ -4,5 +4,14 @@ Pickles/*
 .vscode/*
 *pycache*
 dummy_res/*
+*wandb/*
+*.pt
+*.pth
+*.npy
+*.tar
+*.tar.gz
+*.ckpt
+##### environments #####
 scenenet1.5/scenet/*
+MNIST_GENEOs/venv_auglag
 
