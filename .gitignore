@@ -10,6 +10,8 @@ dummy_res/*
 *.npy
 *.tar
 *.tar.gz
+*.gz
+*.ckpt
 ##### environments #####
 scenenet1.5/scenet/*
 MNIST_GENEOs/venv_auglag
