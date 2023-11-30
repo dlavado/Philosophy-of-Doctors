@@ -214,7 +214,7 @@ class SceneNet(nn.Module):
         cvx_comb_list = []
 
         for i in range(self.num_observers):
-            comb = torch.sum(self.lambdas[i, :, None, None, None] * conv, dim=1, keepdim=True)
+            comb = torch.sum(torch.relu(self.lambdas[i, :, None, None, None]) * conv, dim=1, keepdim=True)
             cvx_comb_list.append(comb)
 
         # Concatenate the computed convex combinations along the second dimension (num_observers)
@@ -270,7 +270,7 @@ class SceneNet_multiclass(nn.Module):
         self.convs = nn.ModuleList(self.convs)
         self.bns = nn.ModuleList(self.bns)
         
-        self.out_conv = nn.Conv1d(hidden_dims[-1], num_classes, kernel_size=1).to('cuda:0')
+        self.out_conv = nn.Conv1d(hidden_dims[-1], num_classes, kernel_size=1)
 
     def get_geneo_params(self):
         return self.scenenet.get_geneo_params()
@@ -306,11 +306,10 @@ class SceneNet_multiclass(nn.Module):
         conv = self.scenenet._perform_conv(x) # (batch, num_geneos, z, x, y)
 
         # print(f"conv = shape: {conv.shape}, req_grad: {conv.requires_grad}")
-
+    
         conv_pts = Vox.vox_to_pts(conv, pt_loc) # (batch, P, num_geneos)
 
         # print(f"conv_pts = shape: {conv_pts.shape}, req_grad: {conv_pts.requires_grad}")
-
 
         observer = self.scenenet._observer_cvx_combination(conv) # (batch, 1, z, x, y)
         observer = torch.relu(torch.tanh(observer)) # class probability
@@ -323,7 +322,6 @@ class SceneNet_multiclass(nn.Module):
 
         # normalize pt_locs
         pt_loc = self.normalize_pt_locs.normalize(pt_loc)
-
 
         global_feat_descriptor = torch.cat([conv_pts, observer_pts], dim=2) # (batch, P, num_geneos+ num_observers)
         # print(f"global_feat_descriptor = shape: {global_feat_descriptor.shape}, req_grad: {global_feat_descriptor.requires_grad}")

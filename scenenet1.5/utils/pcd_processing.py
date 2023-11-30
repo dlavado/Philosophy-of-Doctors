@@ -98,8 +98,7 @@ DICT_NEW_LABELS = {
     GROUND: 1,
     ROAD_SURFACE : 1, # ground
     LOW_VEGETATION : 1,
-    
-    MEDIUM_VEGETAION : 0, # vegetation
+    MEDIUM_VEGETAION : 1, # vegetation
 
     NATURAL_OBSTACLE : 2,
     HUMAN_STRUCTURES : 2, # obstacles
@@ -668,7 +667,7 @@ def extract_towers(pcd_towers, eps=10, min_points=300, visual=False) -> List[np.
     group_rgb = df_tower.groupby(['r', 'g', 'b'])
 
     # towers will contain numpys with the coords of each individual tower in the .las file
-    towers = [np.array(group_rgb['x', 'y', 'z'].get_group(tuple(color)))
+    towers = [np.array(group_rgb[['x', 'y', 'z']].get_group(tuple(color)))
               for color in tower_colors]
     # there are as many towers at the end as clusters in the DBSCAN
     # assert len(towers) == len(tower_colors)
@@ -827,7 +826,7 @@ def crop_two_towers_samples(xyz:np.ndarray, classes:np.ndarray) -> List[np.ndarr
 
 
 
-def crop_tower_samples(xyz:np.ndarray, classes:np.ndarray, obj_class=[POWER_LINE_SUPPORT_TOWER]) -> List[np.ndarray]:
+def crop_tower_samples(xyz:np.ndarray, classes:np.ndarray, obj_class=[POWER_LINE_SUPPORT_TOWER], radius=15) -> List[np.ndarray]:
 
     pcd_tower, _ = select_object(xyz, classes, obj_class)
     towers = extract_towers(pcd_tower, visual=False)
@@ -835,7 +834,7 @@ def crop_tower_samples(xyz:np.ndarray, classes:np.ndarray, obj_class=[POWER_LINE
     samples = []
 
     for tower in towers:
-        crop, crop_classes = crop_tower_radius(xyz, classes, tower, radius=15)
+        crop, crop_classes = crop_tower_radius(xyz, classes, tower, radius=radius)
         tower_section = np.append(crop, crop_classes.reshape(-1, 1), axis=1)
         samples.append(tower_section)
 

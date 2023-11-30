@@ -1,0 +1,20 @@
+=== Data Module TS40K initialized. ===
+Sanity Checking: 0it [00:00, ?it/s]
+Using 16bit None Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+  | Name          | Type                 | Params
+-------------------------------------------------------
+0 | model         | SceneNet_multiclass  | 245 K
+1 | train_metrics | MetricCollection     | 0
+2 | val_metrics   | MetricCollection     | 0
+3 | test_metrics  | MetricCollection     | 0
+4 | criterion     | Tversky_Wrapper_Loss | 500
+-------------------------------------------------------
+245 K     Trainable params
+40        Non-trainable params
+245 K     Total params
+

@@ -13,10 +13,10 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 import utils.voxelization as Vox
-from core.models.SCENE_Net import SceneNet, SceneNet_multiclass
+from core.models.SCENE_Net import SceneNet_multiclass
 from utils.scripts_utils import ParseKwargs, pointcloud_to_wandb
 
-
+from core.criterions.elastic_net_reg import ElasticNetRegularization
 
 class LitWrapperModel(pl.LightningModule):
     """
@@ -67,6 +67,7 @@ class LitWrapperModel(pl.LightningModule):
     def evaluate(self, batch, stage=None, metric=None, prog_bar=True, logger=True):
         x, y = batch
         out = self(x)
+        
         loss = self.criterion(out, y)
         preds = self.prediction(out)
 
@@ -141,7 +142,12 @@ class LitWrapperModel(pl.LightningModule):
             print(f'{"="*10} {prefix} metrics {"="*10}')
         for metric_name, metric_val in metric_res.items():
             if print_metrics:
-                print(f'\t{prefix}_{metric_name}: {metric_val}')
+                # if metric is per class
+                if isinstance(metric_val, torch.Tensor) and metric_val.ndim > 0: 
+                    print(f'\t{prefix}_{metric_name}: {metric_val}; mean: {metric_val[1:].mean():.4f}') # class 0 is noise
+                else:
+                    print(f'\t{prefix}_{metric_name}: {metric_val}')
+
         metrics.reset()
 
     def configure_optimizers(self):
@@ -181,10 +187,11 @@ class LitSceneNet_multiclass(LitWrapperModel):
                 metric_initializer=None):
     
         model = SceneNet_multiclass(geneo_num, num_observers, kernel_size, hidden_dims, num_classes)
+        super().__init__(model, criterion, optimizer, learning_rate, metric_initializer, num_classes=num_classes)
         self.save_hyperparameters('geneo_num', 'kernel_size')
         self.logged_batch = False
         self.gradient_check = False
-        super().__init__(model, criterion, optimizer, learning_rate, metric_initializer, num_classes=num_classes)
+        self.elastic_reg = ElasticNetRegularization(alpha=0.01, l1_ratio=0.5)
 
     def prediction(self, model_output: torch.Tensor) -> torch.Tensor:
         return self.model.prediction(model_output)
@@ -193,12 +200,25 @@ class LitSceneNet_multiclass(LitWrapperModel):
     def evaluate(self, batch, stage=None, metric=None, prog_bar=True, logger=True):
         x, y, pts_locs = batch
         out = self.model(x, pts_locs)
-        loss = self.criterion(out, y)
+        loss = self.criterion(out, y) + self.elastic_reg(self.model.get_cvx_coefficients().parameters())
         preds = self.prediction(out)
+
+        # print shapes
+        # print(f'x: {x.shape}, y: {y.shape}, pts_locs: {pts_locs.shape}, preds: {preds.shape}')
+
+        # pts_locs = pts_locs[0].detach().cpu().numpy()
+
+        # preds = torch.squeeze(preds[0]).detach().cpu().numpy() # 1st batch sample
+        # preds = preds / np.max(preds) # to plot the different classes in different colors
+        # preds = np.column_stack((pts_locs, preds))
+        # Vox.plot_voxelgrid(preds, color_mode='ranges', plot=True)
+
+        # x = torch.squeeze(x[0]).detach().cpu().numpy()
+        # x = Vox.plot_voxelgrid(x, color_mode='ranges', plot=True)
 
     
         if stage:
-            on_step = stage == "train" 
+            on_step = True
             self.log(f"{stage}_loss", loss, on_epoch=True, on_step=on_step, prog_bar=prog_bar, logger=logger)
 
             if metric:

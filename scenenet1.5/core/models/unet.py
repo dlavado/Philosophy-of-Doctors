@@ -2,7 +2,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchsummary import summary
 
 
 
@@ -136,6 +135,7 @@ class UNet(nn.Module):
 
 
 if __name__ == "__main__":
+    from torchsummary import summary
 
     input = torch.ones((1, 64, 64, 64)).to('cuda')
 

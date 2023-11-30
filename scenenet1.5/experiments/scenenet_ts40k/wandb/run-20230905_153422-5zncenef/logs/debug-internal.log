@@ -1,0 +1,7 @@
+2023-09-05 15:34:22,257 INFO    StreamThr :23687 [internal.py:wandb_internal():86] W&B internal server running at pid: 23687, started at: 2023-09-05 15:34:22.256978
+2023-09-05 15:34:22,261 DEBUG   HandlerThread:23687 [handler.py:handle_request():144] handle_request: status
+2023-09-05 15:34:22,263 INFO    WriterThread:23687 [datastore.py:open_for_write():85] open: /home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/experiments/scenenet_ts40k/wandb/run-20230905_153422-5zncenef/run-5zncenef.wandb
+2023-09-05 15:34:22,264 DEBUG   SenderThread:23687 [sender.py:send():379] send: header
+2023-09-05 15:34:22,265 DEBUG   SenderThread:23687 [sender.py:send():379] send: run
+2023-09-05 15:34:23,300 DEBUG   HandlerThread:23687 [handler.py:handle_request():144] handle_request: shutdown
+2023-09-05 15:34:23,300 INFO    HandlerThread:23687 [handler.py:finish():861] shutting down handler
