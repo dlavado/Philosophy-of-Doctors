@@ -1,0 +1,166 @@
+Using 16bit Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+  | Name          | Type                     | Params
+-----------------------------------------------------------
+0 | model         | SceneNet_multiclass      | 570 K
+1 | train_metrics | MetricCollection         | 0
+2 | val_metrics   | MetricCollection         | 0
+3 | test_metrics  | MetricCollection         | 0
+4 | elastic_reg   | ElasticNetRegularization | 0
+5 | criterion     | Tversky_Wrapper_Loss     | 1.6 K
+-----------------------------------------------------------
+570 K     Trainable params
+60        Non-trainable params
+570 K     Total params
+2.283     Total estimated model params size (MB)
+=== Data Module KITTI initialized. ===
+<core.lit_modules.preprocessed_wrapper.Lit_Dataset_Preprocessed object at 0x7fb48a94fc10>
+Dataset: kitti
+/home/didi/Downloads/data/kitti/preprocessed
+Sanity Checking DataLoader 0: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:00<00:00,  2.74it/s]========== val metrics ==========
+	val_MulticlassJaccardIndex: tensor([0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+        0.0000, 0.0227, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+        0.0000, 0.0000], device='cuda:0'); mean: 0.0227
+	val_MulticlassF1Score: tensor([0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+        0.0000, 0.0444, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+        0.0000, 0.0000], device='cuda:0'); mean: 0.0444
+	val_MulticlassPrecision: 0.022709999233484268
+	val_MulticlassRecall: 0.022709999233484268
+	val_MulticlassAccuracy: 0.022709999233484268
+
+
+
+
+
+
+
+Epoch 0:   0%| | 27/5961 [00:16<1:00:08,  1.64it/s, v_num=wyk6, train_loss_step=5.500, train_MulticlassJaccardIndex_step=0.00631, train_MulticlassF1Score_step=0.0124, train_MulticlassPrecis
+Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 570, in <module>
+    main()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 488, in main
+    trainer.fit(model, data_module)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 545, in fit
+    call._call_and_handle_interrupt(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 44, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 581, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 990, in _run
+    results = self._run_stage()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 1036, in _run_stage
+    self.fit_loop.run()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/fit_loop.py", line 202, in run
+    self.advance()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/fit_loop.py", line 359, in advance
+    self.epoch_loop.run(self._data_fetcher)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 136, in run
+    self.advance(data_fetcher)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 240, in advance
+    batch_output = self.automatic_optimization.run(trainer.optimizers[0], batch_idx, kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 187, in run
+    self._optimizer_step(batch_idx, closure)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 265, in _optimizer_step
+    call._call_lightning_module_hook(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 157, in _call_lightning_module_hook
+    output = fn(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/core/module.py", line 1282, in optimizer_step
+    optimizer.step(closure=optimizer_closure)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/core/optimizer.py", line 151, in step
+    step_output = self._strategy.optimizer_step(self._optimizer, closure, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/strategies/strategy.py", line 230, in optimizer_step
+    return self.precision_plugin.optimizer_step(optimizer, model=model, closure=closure, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/plugins/precision/amp.py", line 77, in optimizer_step
+    closure_result = closure()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 140, in __call__
+    self._result = self.closure(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 126, in closure
+    step_output = self._step_fn()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 315, in _training_step
+    training_step_output = call._call_strategy_hook(trainer, "training_step", *kwargs.values())
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 309, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/strategies/strategy.py", line 382, in training_step
+    return self.lightning_module.training_step(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/../core/lit_modules/lit_model_wrappers.py", line 89, in training_step
+    loss, preds, y = self.evaluate(batch, "train", self.train_metrics)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/../core/lit_modules/lit_model_wrappers.py", line 213, in evaluate
+    out = self.model(x, pts_locs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/../core/models/SCENE_Net.py", line 333, in forward
+    observer = self.scenenet._observer_cvx_combination(conv) # (batch, 1, z, x, y)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/../core/models/SCENE_Net.py", line 217, in _observer_cvx_combination
+    comb = torch.sum(torch.relu(self.lambdas[i, :, None, None, None]) * conv, dim=1, keepdim=True)
+torch.cuda.OutOfMemoryError: CUDA out of memory. Tried to allocate 4.97 GiB. GPU 0 has a total capacty of 7.75 GiB of which 2.14 GiB is free. Process 10038 has 136.41 MiB memory in use. Including non-PyTorch memory, this process has 5.44 GiB memory in use. Of the allocated memory 5.07 GiB is allocated by PyTorch, and 204.17 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting max_split_size_mb to avoid fragmentation.  See documentation for Memory Management and PYTORCH_CUDA_ALLOC_CONF
+Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 570, in <module>
+    main()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 488, in main
+    trainer.fit(model, data_module)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 545, in fit
+    call._call_and_handle_interrupt(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 44, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 581, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 990, in _run
+    results = self._run_stage()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 1036, in _run_stage
+    self.fit_loop.run()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/fit_loop.py", line 202, in run
+    self.advance()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/fit_loop.py", line 359, in advance
+    self.epoch_loop.run(self._data_fetcher)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 136, in run
+    self.advance(data_fetcher)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 240, in advance
+    batch_output = self.automatic_optimization.run(trainer.optimizers[0], batch_idx, kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 187, in run
+    self._optimizer_step(batch_idx, closure)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 265, in _optimizer_step
+    call._call_lightning_module_hook(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 157, in _call_lightning_module_hook
+    output = fn(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/core/module.py", line 1282, in optimizer_step
+    optimizer.step(closure=optimizer_closure)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/core/optimizer.py", line 151, in step
+    step_output = self._strategy.optimizer_step(self._optimizer, closure, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/strategies/strategy.py", line 230, in optimizer_step
+    return self.precision_plugin.optimizer_step(optimizer, model=model, closure=closure, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/plugins/precision/amp.py", line 77, in optimizer_step
+    closure_result = closure()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 140, in __call__
+    self._result = self.closure(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 126, in closure
+    step_output = self._step_fn()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 315, in _training_step
+    training_step_output = call._call_strategy_hook(trainer, "training_step", *kwargs.values())
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 309, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/strategies/strategy.py", line 382, in training_step
+    return self.lightning_module.training_step(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/../core/lit_modules/lit_model_wrappers.py", line 89, in training_step
+    loss, preds, y = self.evaluate(batch, "train", self.train_metrics)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/../core/lit_modules/lit_model_wrappers.py", line 213, in evaluate
+    out = self.model(x, pts_locs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/../core/models/SCENE_Net.py", line 333, in forward
+    observer = self.scenenet._observer_cvx_combination(conv) # (batch, 1, z, x, y)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/../core/models/SCENE_Net.py", line 217, in _observer_cvx_combination
+    comb = torch.sum(torch.relu(self.lambdas[i, :, None, None, None]) * conv, dim=1, keepdim=True)
+
+Epoch 0:   0%| | 28/5961 [00:16<59:50,  1.65it/s, v_num=wyk6, train_loss_step=5.340, train_MulticlassJaccardIndex_step=0.0334, train_MulticlassF1Score_step=0.0599, train_MulticlassPrecision

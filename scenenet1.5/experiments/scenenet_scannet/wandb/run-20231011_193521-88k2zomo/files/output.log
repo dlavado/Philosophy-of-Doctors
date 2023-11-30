@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 494, in <module>
+    main()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 300, in main
+    model = init_model(None, ckpt_path)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 142, in init_model
+    num_classes,
+UnboundLocalError: local variable 'num_classes' referenced before assignment
+Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 494, in <module>
+    main()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 300, in main
+    model = init_model(None, ckpt_path)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 142, in init_model
+    num_classes,
+UnboundLocalError: local variable 'num_classes' referenced before assignment

@@ -1,0 +1,75 @@
+Using 16bit Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+  | Name          | Type                     | Params
+-----------------------------------------------------------
+0 | model         | SceneNet_multiclass      | 570 K
+1 | train_metrics | MetricCollection         | 0
+2 | val_metrics   | MetricCollection         | 0
+3 | test_metrics  | MetricCollection         | 0
+4 | elastic_reg   | ElasticNetRegularization | 0
+5 | criterion     | Tversky_Wrapper_Loss     | 1.6 K
+-----------------------------------------------------------
+570 K     Trainable params
+60        Non-trainable params
+570 K     Total params
+2.283     Total estimated model params size (MB)
+=== Data Module KITTI initialized. ===
+<core.lit_modules.preprocessed_wrapper.Lit_Dataset_Preprocessed object at 0x7f9bfa537c40>
+Dataset: kitti
+/home/didi/Downloads/data/kitti/preprocessed
+Sanity Checking DataLoader 0: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:00<00:00,  2.98it/s]========== val metrics ==========
+	val_MulticlassJaccardIndex: tensor([0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0011, 0.0000, 0.0000,
+        0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+        0.0000, 0.0000], device='cuda:0'); mean: 0.0011
+	val_MulticlassF1Score: tensor([0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0022, 0.0000, 0.0000,
+        0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000,
+        0.0000, 0.0000], device='cuda:0'); mean: 0.0022
+	val_MulticlassPrecision: 0.0010999999940395355
+	val_MulticlassRecall: 0.0010999999940395355
+	val_MulticlassAccuracy: 0.0010999999940395355
+Epoch 0:   0%| | 1/5961 [00:00<41:29,  2.39it/s, v_num=j2py, train_loss_step=5.310, train_MulticlassJaccardIndex_step=0.0196, train_MulticlassF1Score_step=0.0372, train_MulticlassPrecision_
+Epoch 0:   0%| | 6/5961 [00:02<42:07,  2.36it/s, v_num=j2py, train_loss_step=5.210, train_MulticlassJaccardIndex_step=0.0358, train_MulticlassF1Score_step=0.0667, train_MulticlassPrecision_==================== Model ckpt scores ====================
+val_MulticlassJaccardIndex checkpoint : score None
+val_MulticlassF1Score checkpoint : score None
+val_MulticlassPrecision checkpoint : score None
+val_MulticlassRecall checkpoint : score None
+val_MulticlassAccuracy checkpoint : score None
+val_loss checkpoint : score None
+Checkpoint /home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/experiments/scenenet_kitti/wandb/run-20231029_184623-gyppj2py/files/checkpoints/MulticlassJaccardIndex.ckpt does not exist. Using last checkpoint.
+Testing DataLoader 0:   0%|                                                                                                                                         | 0/1100 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 570, in <module>
+    main()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 515, in main
+    test_results = trainer.test(model,
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 755, in test
+    return call._call_and_handle_interrupt(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 44, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 792, in _test_impl
+    ckpt_path = self._checkpoint_connector._select_ckpt_path(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/checkpoint_connector.py", line 104, in _select_ckpt_path
+    ckpt_path = self._parse_ckpt_path(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/checkpoint_connector.py", line 171, in _parse_ckpt_path
+    raise ValueError(
+ValueError: `.test(ckpt_path="best")` is set but `ModelCheckpoint` is not configured to save the best model.
+Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 570, in <module>
+    main()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 515, in main
+    test_results = trainer.test(model,
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 755, in test
+    return call._call_and_handle_interrupt(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 44, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 792, in _test_impl
+    ckpt_path = self._checkpoint_connector._select_ckpt_path(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/checkpoint_connector.py", line 104, in _select_ckpt_path
+    ckpt_path = self._parse_ckpt_path(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/checkpoint_connector.py", line 171, in _parse_ckpt_path
+    raise ValueError(
+ValueError: `.test(ckpt_path="best")` is set but `ModelCheckpoint` is not configured to save the best model.

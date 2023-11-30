@@ -1,0 +1,73 @@
+Learning rate in use is: 0.001
+Files already downloaded and verified
+Files already downloaded and verified
+Sanity Checking: 0it [00:00, ?it/s]
+Using 16bit None Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+You are using a CUDA device ('NVIDIA GeForce RTX 4070 Laptop GPU') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+  | Name          | Type                     | Params
+-----------------------------------------------------------
+0 | model         | LitResnet                | 11.2 M
+1 | train_metrics | MetricCollection         | 0
+2 | val_metrics   | MetricCollection         | 0
+3 | test_metrics  | MetricCollection         | 0
+4 | elastic_reg   | ElasticNetRegularization | 0
+5 | criterion     | Constrained_Loss         | 0
+-----------------------------------------------------------
+11.2 M    Trainable params
+0         Non-trainable params
+11.2 M    Total params
+Sanity Checking DataLoader 0: 100%|████████████████████████████████████████████████████████████████| 2/2 [00:00<00:00,  4.12it/s]========== val metrics ==========
+	val_Accuracy: 0.01171875
+Epoch 0:   0%|                                                                                           | 0/196 [00:00<?, ?it/s]=====> CV: 5142.711
+=====> CV/CV_0: 0.997
+=====> Objective_function loss: 4.307
+=====> Constraint Norm loss: 51.427
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 0:  97%|▉| 190/196 [00:31<00:00,  6.09it/s, loss=75.5, v_num=jr3h, train_loss_step=74.10, train_data_fidelity_step=4.450, t
+	val_Accuracy: 0.018799999728798866██████████████████████████████████████████████████████████████| 20/20 [00:00<00:00, 29.73it/s]
+Epoch 1:   0%| | 0/196 [00:00<?, ?it/s, loss=74.8, v_num=jr3h, train_loss_step=72.80, train_data_fidelity_step=4.460, train_const=====> CV: 3557.022
+=====> CV/CV_0: 0.689
+=====> Objective_function loss: 4.384
+=====> Constraint Norm loss: 35.570
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 1:  87%|▊| 170/196 [00:31<00:04,  5.34it/s, loss=57.4, v_num=jr3h, train_loss_step=56.10, train_data_fidelity_step=4.540, t
+	val_Accuracy: 0.008799999952316284██████████████████████████████████████████████████████████████| 20/20 [00:00<00:00, 33.47it/s]
+Epoch 2:   0%| | 0/196 [00:00<?, ?it/s, loss=56.8, v_num=jr3h, train_loss_step=56.50, train_data_fidelity_step=4.530, train_const=====> CV: 2424.473
+=====> CV/CV_0: 0.470
+=====> Objective_function loss: 4.450
+=====> Constraint Norm loss: 24.245
+
+
+
+Epoch 2:  26%|▎| 50/196 [00:09<00:28,  5.14it/s, loss=52.6, v_num=jr3h, train_loss_step=52.60, train_data_fidelity_step=4.490, tr==================== Model ckpt scores ====================
+val_Accuracy checkpoint : score 0.018799999728798866

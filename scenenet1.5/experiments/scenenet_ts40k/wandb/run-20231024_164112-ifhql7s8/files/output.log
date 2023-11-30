@@ -1,0 +1,35 @@
+=== Data Module TS40K initialized. ===
+<core.lit_modules.lit_data_wrappers.LitTS40K_Preprocessed object at 0x7f067b09c4f0>
+/home/didi/Downloads/data/TS40K-NEW/TS40K-Preprocessed/
+Using 16bit None Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+
+
+
+Loading data into memory...: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 3396/3396 [00:06<00:00, 543.75it/s]
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+  | Name          | Type                     | Params
+-----------------------------------------------------------
+0 | model         | SceneNet_multiclass      | 155 K
+1 | train_metrics | MetricCollection         | 0
+2 | val_metrics   | MetricCollection         | 0
+3 | test_metrics  | MetricCollection         | 0
+4 | elastic_reg   | ElasticNetRegularization | 0
+5 | criterion     | Tversky_Wrapper_Loss     | 875
+-----------------------------------------------------------
+155 K     Trainable params
+40        Non-trainable params
+155 K     Total params
+0.310     Total estimated model params size (MB)
+
+
+
+Sanity Checking DataLoader 0: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [02:39<00:00, 79.69s/it]========== val metrics ==========
+	val_MulticlassJaccardIndex: tensor([0.0000, 0.0531, 0.0581, 0.0017, 0.0000], device='cuda:0'); mean: 0.0377
+	val_MulticlassF1Score: tensor([0.0000, 0.1009, 0.1099, 0.0034, 0.0000], device='cuda:0'); mean: 0.0714
+	val_MulticlassPrecision: 0.07362187653779984
+	val_MulticlassRecall: 0.07362187653779984
+	val_MulticlassAccuracy: 0.07362187653779984

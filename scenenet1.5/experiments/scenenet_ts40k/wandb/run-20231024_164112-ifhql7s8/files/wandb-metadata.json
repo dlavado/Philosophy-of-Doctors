@@ -1,0 +1,165 @@
+{
+    "os": "Linux-6.2.0-35-generic-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "heartbeatAt": "2023-10-24T15:41:19.295869",
+    "startedAt": "2023-10-24T15:41:12.350937",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py",
+    "codePath": "scenenet1.5/scripts/main.py",
+    "git": {
+        "remote": "https://github.com/dlavado/Philosophy-of-Doctors.git",
+        "commit": "11a57a7c4c6a2cde1e9220a11d5ef52714904e7c"
+    },
+    "email": "d.lavado@campus.fct.unl.pt",
+    "root": "/home/didi/VSCode/Philosophy-of-Doctors",
+    "host": "tsuky",
+    "username": "didi",
+    "executable": "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/bin/python",
+    "cpu_count": 16,
+    "cpu_count_logical": 24,
+    "cpu_freq": {
+        "current": 2039.4579166666665,
+        "min": 800.0,
+        "max": 4466.666666666667
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 800.358,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.586,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2359.379,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2337.637,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2248.814,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2096.969,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 1967.317,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2621.359,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 800.347,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 2526.721,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 2023.096,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 1879.436,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.296,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2470.426,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2025.289,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 1688.249,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 1647.031,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 1704.76,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 1701.071,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 1251.635,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 1081.904,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 1765.637,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 1099.019,
+            "min": 800.0,
+            "max": 3700.0
+        }
+    ],
+    "disk": {
+        "total": 937.3305015563965,
+        "used": 584.9797248840332
+    },
+    "gpu": "NVIDIA GeForce RTX 4070 Laptop GPU",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 4070 Laptop GPU",
+            "memory_total": 8585740288
+        }
+    ],
+    "memory": {
+        "total": 31.078514099121094
+    }
+}

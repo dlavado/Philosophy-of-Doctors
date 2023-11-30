@@ -1,0 +1,168 @@
+{
+    "os": "Linux-6.2.0-34-generic-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "heartbeatAt": "2023-10-11T18:35:22.369493",
+    "startedAt": "2023-10-11T18:35:21.364894",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "--dataset",
+        "scannet"
+    ],
+    "state": "running",
+    "program": "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py",
+    "codePath": "scenenet1.5/scripts/main.py",
+    "git": {
+        "remote": "https://github.com/dlavado/Philosophy-of-Doctors.git",
+        "commit": "c5cd8f404c48d6b085137d7bf6fa51e3e9cb8c53"
+    },
+    "email": "d.lavado@campus.fct.unl.pt",
+    "root": "/home/didi/VSCode/Philosophy-of-Doctors",
+    "host": "tsuky",
+    "username": "didi",
+    "executable": "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/bin/python3",
+    "cpu_count": 16,
+    "cpu_count_logical": 24,
+    "cpu_freq": {
+        "current": 1778.4635833333334,
+        "min": 800.0,
+        "max": 4466.666666666667
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3563.371,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 4561.783,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2480.891,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2300.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2099.859,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 1098.708,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 3846.872,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2300.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2606.971,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 2300.0,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 801.95,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 2300.0,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 2482.219,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2300.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 4023.366,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 1760.708,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 967.128,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 799.958,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 2300.0,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 2300.0,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 2300.0,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 1535.7,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 2300.0,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 2300.0,
+            "min": 800.0,
+            "max": 3700.0
+        }
+    ],
+    "disk": {
+        "total": 937.3305015563965,
+        "used": 440.81606674194336
+    },
+    "gpu": "NVIDIA GeForce RTX 4070 Laptop GPU",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 4070 Laptop GPU",
+            "memory_total": 8585740288
+        }
+    ],
+    "memory": {
+        "total": 31.078514099121094
+    }
+}

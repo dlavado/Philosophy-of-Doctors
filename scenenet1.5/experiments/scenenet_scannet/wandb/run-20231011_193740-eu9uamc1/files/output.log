@@ -1,0 +1,20 @@
+Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 495, in <module>
+    main()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 363, in main
+    data_module = init_scannet(data_path, wandb.config.preprocessed)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 248, in init_scannet
+    from core.lit_modules.lit_scannet import Lit_ScanNetDataset
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/../core/lit_modules/lit_scannet.py", line 9, in <module>
+    sys.path.insert("../")
+TypeError: insert expected 2 arguments, got 1
+Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 495, in <module>
+    main()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 363, in main
+    data_module = init_scannet(data_path, wandb.config.preprocessed)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 248, in init_scannet
+    from core.lit_modules.lit_scannet import Lit_ScanNetDataset
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/../core/lit_modules/lit_scannet.py", line 9, in <module>
+    sys.path.insert("../")
+TypeError: insert expected 2 arguments, got 1
