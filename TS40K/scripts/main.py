@@ -608,7 +608,7 @@ if __name__ == '__main__':
     # --------------------------------
     su.fix_randomness()
     warnings.filterwarnings("ignore")
-    # torch.set_float32_matmul_precision('high')
+    torch.set_float32_matmul_precision('medium')
     torch.autograd.set_detect_anomaly(True)
     os.environ['TORCH_CUDA_ARCH_LIST'] = '8.9'
     # --------------------------------
