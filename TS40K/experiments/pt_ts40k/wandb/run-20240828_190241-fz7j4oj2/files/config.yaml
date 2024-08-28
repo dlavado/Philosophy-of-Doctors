@@ -1,0 +1,211 @@
+wandb_version: 1
+
+project:
+  desc: null
+  value: TS40K
+output_dir:
+  desc: null
+  value: ${experiment_path}/outputs
+dataset:
+  desc: null
+  value: ts40k
+preprocessed:
+  desc: null
+  value: true
+load_into_memory:
+  desc: null
+  value: true
+data_path:
+  desc: null
+  value: /media/didi/PortableSSD/TS40K-Dataset/TS40K-FULL-Preprocessed/
+num_classes:
+  desc: null
+  value: 6
+num_data_channels:
+  desc: null
+  value: 3
+voxel_grid_size:
+  desc: null
+  value: (64, 64, 64)
+voxel_size:
+  desc: null
+  value: None
+batch_size:
+  desc: null
+  value: 16
+ignore_index:
+  desc: null
+  value: 0
+num_workers:
+  desc: null
+  value: 0
+val_split:
+  desc: null
+  value: 0.1
+test_split:
+  desc: null
+  value: 0.3
+fps_points:
+  desc: null
+  value: 10000
+min_points:
+  desc: null
+  value: null
+model:
+  desc: null
+  value: null
+in_channels:
+  desc: null
+  value: 3
+model_version:
+  desc: null
+  value: v2
+cylinder_geneo:
+  desc: null
+  value: 10
+arrow_geneo:
+  desc: null
+  value: 10
+neg_sphere_geneo:
+  desc: null
+  value: 10
+disk_geneo:
+  desc: null
+  value: 10
+cone_geneo:
+  desc: null
+  value: 10
+ellipsoid_geneo:
+  desc: null
+  value: 10
+num_observers:
+  desc: null
+  value: '[8]'
+optimizer:
+  desc: null
+  value: adam
+learning_rate:
+  desc: null
+  value: 0.0001
+max_epochs:
+  desc: null
+  value: 40
+accelerator:
+  desc: null
+  value: gpu
+devices:
+  desc: null
+  value: -1
+num_nodes:
+  desc: null
+  value: 1
+strategy:
+  desc: null
+  value: auto
+early_stop_metric:
+  desc: null
+  value: val_MulticlassJaccardIndex
+criterion:
+  desc: null
+  value: null
+class_weights:
+  desc: null
+  value: true
+fast_dev_run:
+  desc: null
+  value: true
+precision:
+  desc: null
+  value: 16
+auto_lr_find:
+  desc: null
+  value: false
+auto_scale_batch_size:
+  desc: null
+  value: false
+profiler:
+  desc: null
+  value: false
+accumulate_grad_batches:
+  desc: null
+  value: 1
+save_onnx:
+  desc: null
+  value: false
+resume_from_checkpoint:
+  desc: null
+  value: true
+checkpoint_dir:
+  desc: null
+  value: ${experiment_path}/wandb/ptv2_resume
+resume_checkpoint_name:
+  desc: null
+  value: MulticlassJaccardIndex-v1
+checkpoint_every_n_epochs:
+  desc: null
+  value: 1
+checkpoint_every_n_steps:
+  desc: null
+  value: 0
+_wandb:
+  desc: null
+  value:
+    python_version: 3.10.14
+    cli_version: 0.17.7
+    framework: lightning
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1724868161
+    t:
+      1:
+      - 1
+      - 5
+      - 9
+      - 41
+      - 53
+      - 55
+      - 103
+      2:
+      - 1
+      - 5
+      - 9
+      - 41
+      - 49
+      - 53
+      - 55
+      - 63
+      - 77
+      - 103
+      3:
+      - 13
+      - 16
+      - 23
+      4: 3.10.14
+      5: 0.17.7
+      8:
+      - 5
+      13: linux-x86_64
+optimizer_name:
+  desc: null
+  value: adam
+metric_initializer:
+  desc: null
+  value: init_metrics
+version:
+  desc: null
+  value: v2
+data_dir:
+  desc: null
+  value: /media/didi/PortableSSD/TS40K-Dataset/TS40K-FULL-Preprocessed/
+sample_types:
+  desc: null
+  value: all
+task:
+  desc: null
+  value: null
+transform:
+  desc: null
+  value: null
+transform_test:
+  desc: null
+  value: null
