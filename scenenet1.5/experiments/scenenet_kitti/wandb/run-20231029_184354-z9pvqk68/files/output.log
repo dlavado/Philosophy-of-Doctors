@@ -1,0 +1,120 @@
+=== Data Module KITTI initialized. ===
+<core.lit_modules.preprocessed_wrapper.Lit_Dataset_Preprocessed object at 0x7f86cef39c60>
+Dataset: kitti
+/home/didi/Downloads/data/kitti/preprocessed
+Sanity Checking: |                                                                                                                                                     | 0/? [00:00<?, ?it/s]
+Using 16bit Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+  | Name          | Type                     | Params
+-----------------------------------------------------------
+0 | model         | SceneNet_multiclass      | 570 K
+1 | train_metrics | MetricCollection         | 0
+2 | val_metrics   | MetricCollection         | 0
+3 | test_metrics  | MetricCollection         | 0
+4 | elastic_reg   | ElasticNetRegularization | 0
+5 | criterion     | Tversky_Wrapper_Loss     | 1.6 K
+-----------------------------------------------------------
+570 K     Trainable params
+60        Non-trainable params
+570 K     Total params
+2.281     Total estimated model params size (MB)
+Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 570, in <module>
+    main()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 488, in main
+    trainer.fit(model, data_module)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 545, in fit
+    call._call_and_handle_interrupt(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 44, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 581, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 990, in _run
+    results = self._run_stage()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 1034, in _run_stage
+    self._run_sanity_check()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 1063, in _run_sanity_check
+    val_loop.run()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/utilities.py", line 181, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 127, in run
+    batch, batch_idx, dataloader_idx = next(data_fetcher)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/fetchers.py", line 127, in __next__
+    batch = super().__next__()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/fetchers.py", line 56, in __next__
+    batch = next(self.iterator)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/utilities/combined_loader.py", line 326, in __next__
+    out = next(self._iterator)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/utilities/combined_loader.py", line 132, in __next__
+    out = next(self.iterators[0])
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 630, in __next__
+    data = self._next_data()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1345, in _next_data
+    return self._process_data(data)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1371, in _process_data
+    data.reraise()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/_utils.py", line 694, in reraise
+    raise exception
+UnboundLocalError: Caught UnboundLocalError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 308, in _worker_loop
+    data = fetcher.fetch(index)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 51, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 51, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/../core/lit_modules/preprocessed_wrapper.py", line 52, in __getitem__
+    sample = [pt[0].to(torch.float64).cpu(),
+UnboundLocalError: local variable 'pt' referenced before assignment
+Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 570, in <module>
+    main()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 488, in main
+    trainer.fit(model, data_module)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 545, in fit
+    call._call_and_handle_interrupt(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 44, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 581, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 990, in _run
+    results = self._run_stage()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 1034, in _run_stage
+    self._run_sanity_check()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 1063, in _run_sanity_check
+    val_loop.run()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/utilities.py", line 181, in _decorator
+    return loop_run(self, *args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/evaluation_loop.py", line 127, in run
+    batch, batch_idx, dataloader_idx = next(data_fetcher)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/fetchers.py", line 127, in __next__
+    batch = super().__next__()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/fetchers.py", line 56, in __next__
+    batch = next(self.iterator)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/utilities/combined_loader.py", line 326, in __next__
+    out = next(self._iterator)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/utilities/combined_loader.py", line 132, in __next__
+    out = next(self.iterators[0])
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 630, in __next__
+    data = self._next_data()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1345, in _next_data
+    return self._process_data(data)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/utils/data/dataloader.py", line 1371, in _process_data
+    data.reraise()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/_utils.py", line 694, in reraise
+    raise exception
+UnboundLocalError: Caught UnboundLocalError in DataLoader worker process 0.
+Original Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/utils/data/_utils/worker.py", line 308, in _worker_loop
+    data = fetcher.fetch(index)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 51, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/torch/utils/data/_utils/fetch.py", line 51, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/../core/lit_modules/preprocessed_wrapper.py", line 52, in __getitem__
+    sample = [pt[0].to(torch.float64).cpu(),
+UnboundLocalError: local variable 'pt' referenced before assignment

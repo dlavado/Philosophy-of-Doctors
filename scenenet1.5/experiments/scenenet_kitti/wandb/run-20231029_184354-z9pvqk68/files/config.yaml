@@ -1,0 +1,234 @@
+wandb_version: 1
+
+project:
+  desc: null
+  value: SceneNet1.5
+output_dir:
+  desc: null
+  value: experiments/scenenet_kitti/outputs
+dataset:
+  desc: null
+  value: kitti
+preprocessed:
+  desc: null
+  value: true
+load_into_memory:
+  desc: null
+  value: false
+data_path:
+  desc: null
+  value: /home/didi/Downloads/data/kitti/preprocessed
+num_classes:
+  desc: null
+  value: 12
+num_data_channels:
+  desc: null
+  value: 4
+batch_size:
+  desc: null
+  value: 1
+ignore_index:
+  desc: null
+  value: -1
+voxel_grid_size:
+  desc: null
+  value: (64, 64, 64)
+voxel_size:
+  desc: null
+  value: None
+num_workers:
+  desc: null
+  value: 1
+fps_points:
+  desc: null
+  value: 50000
+min_points:
+  desc: null
+  value: 50000
+model:
+  desc: null
+  value: null
+cylinder_geneo:
+  desc: null
+  value: 15
+arrow_geneo:
+  desc: null
+  value: 15
+neg_sphere_geneo:
+  desc: null
+  value: 10
+disk_geneo:
+  desc: null
+  value: 15
+cone_geneo:
+  desc: null
+  value: 10
+ellipsoid_geneo:
+  desc: null
+  value: 20
+num_observers:
+  desc: null
+  value: 15
+kernel_size:
+  desc: null
+  value:
+  - 3
+  - 3
+  - 3
+hidden_dims:
+  desc: null
+  value:
+  - 512
+  - 256
+  - 128
+  - 64
+  - 64
+  - 32
+optimizer:
+  desc: null
+  value: adam
+learning_rate:
+  desc: null
+  value: 0.0001
+max_epochs:
+  desc: null
+  value: 100
+accelerator:
+  desc: null
+  value: gpu
+devices:
+  desc: null
+  value: -1
+num_nodes:
+  desc: null
+  value: 1
+strategy:
+  desc: null
+  value: auto
+early_stop_metric:
+  desc: null
+  value: val_MulticlassJaccardIndex
+criterion:
+  desc: null
+  value: null
+geneo_criterion:
+  desc: null
+  value: true
+weighting_scheme_path:
+  desc: null
+  value: /home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/core/criterions/hist_estimation.pickle
+convex_weight:
+  desc: null
+  value: 0.1
+tversky_alpha:
+  desc: null
+  value: 1
+tversky_beta:
+  desc: null
+  value: 1
+tversky_smooth:
+  desc: null
+  value: 1.0e-06
+focal_gamma:
+  desc: null
+  value: 1
+fast_dev_run:
+  desc: null
+  value: true
+precision:
+  desc: null
+  value: 16
+auto_lr_find:
+  desc: null
+  value: false
+auto_scale_batch_size:
+  desc: null
+  value: true
+profiler:
+  desc: null
+  value: false
+accumulate_grad_batches:
+  desc: null
+  value: 1
+save_onnx:
+  desc: null
+  value: false
+resume_from_checkpoint:
+  desc: null
+  value: false
+checkpoint_dir:
+  desc: null
+  value: experiments/scenenet_kitti/checkpoints
+resume_checkpoint_name:
+  desc: null
+  value: MulticlassJaccardIndex
+checkpoint_every_n_epochs:
+  desc: null
+  value: 0
+checkpoint_every_n_steps:
+  desc: null
+  value: 1
+_wandb:
+  desc: null
+  value:
+    python_version: 3.10.12
+    cli_version: 0.15.9
+    framework: lightning
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1698605034.10553
+    t:
+      1:
+      - 1
+      - 5
+      - 9
+      - 41
+      - 53
+      - 55
+      - 103
+      2:
+      - 1
+      - 5
+      - 9
+      - 41
+      - 53
+      - 55
+      - 103
+      3:
+      - 13
+      - 16
+      - 23
+      4: 3.10.12
+      5: 0.15.9
+      8:
+      - 5
+optimizer_name:
+  desc: null
+  value: adam
+metric_initializer:
+  desc: null
+  value: init_metrics
+geneo_num:
+  desc: null
+  value:
+    cy: 15
+    arrow: 15
+    neg: 10
+    disk: 15
+    cone: 10
+    ellip: 20
+extra_feature_dim:
+  desc: null
+  value: 4
+classifier:
+  desc: null
+  value: conv
+num_points:
+  desc: null
+  value: 50000
+dataset_path:
+  desc: null
+  value: /home/didi/Downloads/data/kitti/preprocessed
+dataset_name:
+  desc: null
+  value: kitti

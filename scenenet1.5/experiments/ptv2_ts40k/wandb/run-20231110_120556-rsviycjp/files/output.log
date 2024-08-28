@@ -1,0 +1,83 @@
+Using 16bit Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+=== Data Module TS40K initialized. ===
+<core.lit_modules.lit_data_wrappers.LitTS40K object at 0x7f22993c62f0>
+/home/didi/Downloads/data/TS40K-NEW/
+Sanity Checking: |                                                                                                                                                     | 0/? [00:00<?, ?it/s]
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+  | Name          | Type                  | Params
+--------------------------------------------------------
+0 | model         | PointTransformerSeg50 | 7.8 M
+1 | criterion     | CrossEntropyLoss      | 0
+2 | train_metrics | MetricCollection      | 0
+3 | val_metrics   | MetricCollection      | 0
+4 | test_metrics  | MetricCollection      | 0
+--------------------------------------------------------
+7.8 M     Trainable params
+0         Non-trainable params
+7.8 M     Total params
+Sanity Checking DataLoader 0:   0%|                                                                                                                                    | 0/2 [00:00<?, ?it/s]out shape = torch.Size([40000, 6])
+tensor([[nan, nan, nan, nan, nan, nan],
+        [nan, nan, nan, nan, nan, nan],
+        [nan, nan, nan, nan, nan, nan],
+        ...,
+        [nan, nan, nan, nan, nan, nan],
+        [nan, nan, nan, nan, nan, nan],
+        [nan, nan, nan, nan, nan, nan]], device='cuda:0', dtype=torch.float16)
+preds shape = torch.Size([40000])
+tensor([0, 0, 0,  ..., 0, 0, 0], device='cuda:0')
+Sanity Checking DataLoader 0:  50%|██████████████████████████████████████████████████████████████                                                              | 1/2 [00:00<00:00,  2.17it/s]==================== Model ckpt scores ====================
+val_MulticlassJaccardIndex checkpoint : score None
+val_MulticlassF1Score checkpoint : score None
+val_MulticlassPrecision checkpoint : score None
+val_MulticlassRecall checkpoint : score None
+val_MulticlassAccuracy checkpoint : score None
+val_loss checkpoint : score None
+Checkpoint /home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/experiments/ptv2_ts40k/wandb/run-20231110_120556-rsviycjp/files/checkpoints/MulticlassJaccardIndex.ckpt does not exist. Using last checkpoint.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+Testing: |                                                                                                                                                             | 0/? [00:00<?, ?it/s]out shape = torch.Size([40000, 6])
+tensor([[nan, nan, nan, nan, nan, nan],
+        [nan, nan, nan, nan, nan, nan],
+        [nan, nan, nan, nan, nan, nan],
+        ...,
+        [nan, nan, nan, nan, nan, nan],
+        [nan, nan, nan, nan, nan, nan],
+        [nan, nan, nan, nan, nan, nan]], device='cuda:0', dtype=torch.float16)
+preds shape = torch.Size([40000])
+tensor([0, 0, 0,  ..., 0, 0, 0], device='cuda:0')
+Testing: |                                                                                                                                                     | 1/? [00:30<00:00,  0.03it/s]
+Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 680, in <module>
+    main()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 625, in main
+    test_results = trainer.test(model,
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 755, in test
+    return call._call_and_handle_interrupt(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 44, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 792, in _test_impl
+    ckpt_path = self._checkpoint_connector._select_ckpt_path(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/checkpoint_connector.py", line 104, in _select_ckpt_path
+    ckpt_path = self._parse_ckpt_path(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/checkpoint_connector.py", line 171, in _parse_ckpt_path
+    raise ValueError(
+ValueError: `.test(ckpt_path="best")` is set but `ModelCheckpoint` is not configured to save the best model.
+Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 680, in <module>
+    main()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 625, in main
+    test_results = trainer.test(model,
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 755, in test
+    return call._call_and_handle_interrupt(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 44, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 792, in _test_impl
+    ckpt_path = self._checkpoint_connector._select_ckpt_path(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/checkpoint_connector.py", line 104, in _select_ckpt_path
+    ckpt_path = self._parse_ckpt_path(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/connectors/checkpoint_connector.py", line 171, in _parse_ckpt_path
+    raise ValueError(
+ValueError: `.test(ckpt_path="best")` is set but `ModelCheckpoint` is not configured to save the best model.

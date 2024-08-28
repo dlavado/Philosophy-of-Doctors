@@ -1,0 +1,156 @@
+# Description: config file for scenenet_ts40k experiment
+# Author: Diogo Mateus
+program: main.py
+method: random
+metric:
+  goal: maximize
+  name: val_MulticlassJaccardIndex 
+project: 'scenenet_ts40k'
+command:
+  #- ${env}
+  - python3
+  - ${program}
+  - "--wandb_sweep"
+  - "--dataset"
+  - "partnet"
+  #- ${args}
+parameters:
+  output_dir: 
+    value: 'experiments/scenenet_partnet/outputs'
+  # ------------------ #
+  # dataset config
+  # ------------------ #
+  dataset:
+    value: 'partnet'
+  preprocessed:
+    value: True
+    # description: 'If True, uses the preprocessed the dataset'
+  data_path:
+    value: ''
+  num_classes:
+    value: "None"
+  coarse_level:
+    value: 1
+  keep_objects:
+    values: ["all", "['Knife']", "['Bag']", "['Bed']", "['Bottle']", "['Bowl']", "['Chair']", "['Clock']", "['Dishwasher']", "['Display']", "['Door']", "['Earphone']", "['Faucet']", "['Hat']", "['Keyboard']", "['Lamp']", "['Laptop']", "['Microwave']", "['Mug']", "['Refrigerator']", "['StorageFurniture']", "['Table']", "['TrashCan']", "['Vase']"]
+  batch_size:
+    value: 16
+  ignore_index:
+    value: -1
+  voxel_grid_size:
+    value: (64, 64, 64)
+  voxel_size:
+    value: None
+  num_workers:
+    value: 12
+  val_split:
+    value: 0.1
+  test_split:
+    value: 0.3
+  fps_points:
+    value: 50000 
+    # description: 'Number of points to sample from the point cloud with farthest point sampling'
+  min_points:
+    value: 50000
+    # description: 'Number of points to sample from the point cloud with farthest point sampling'
+  # ------------------ #
+  # model config
+  # ------------------ #
+  model:
+    value: 'scenenet'
+  cylinder_geneo:
+    values: [5, 10, 20]
+  arrow_geneo:
+    values: [5, 10, 20]
+  neg_sphere_geneo:
+    values: [5, 10, 20]
+  disk_geneo:
+    values: [5, 10]
+  cone_geneo:
+    values: [5, 10]
+  ellipsoid_geneo:
+    values: [5, 10, 20]
+  num_observers:
+    values: [5, 10, 20]
+  kernel_size:
+    values: ["(3, 3, 3)", "(5, 5, 5)", "(7, 7, 7)"]
+  hidden_dims:
+    values: ["[256, 256, 128, 64, 64, 32]", "[256, 128, 64, 64, 32, 32]", "[512, 256, 128, 64, 32, 32]"]
+  # ------------------ #
+  # training config
+  # ------------------ #
+  optimizer:
+    value: 'adam' #'adam' 
+  learning_rate:
+    min: 0.0001
+    max: 0.01
+  max_epochs:
+    value: 50 # -1 for infinite
+  accelerator:
+    value: 'gpu' # 'ddp' or 'dp'
+  devices:
+    value: -1 # -1 for all available gpus
+  num_nodes:
+    value: 1
+  strategy:
+    value: 'auto' # 'ddp'
+  early_stop_metric:
+    value: 'val_MulticlassJaccardIndex'
+  # ------------------ #
+  #criterion config
+  # ------------------ #
+  criterion:
+    value: 'geneo_tversky'
+  geneo_criterion:
+    value: True
+    # description: 'If True, uses the geneo wrapper criterion, otherwise uses the standard criterion'
+  weighting_scheme_path:
+    value: 'core/criterions/hist_estimation.pickle'
+  #criterion_params: # possible criterion params and their values
+  convex_weight:
+    min: 0.001
+    max: 0.1
+  tversky_alpha:
+    values: [1, 2]
+  tversky_beta:
+    values: [1, 2]
+  tversky_smooth:
+    value: 1.0e-6
+  focal_gamma:
+    value: 1
+  # ------------------ #
+  # Lit Trainer config
+  # ------------------ #
+  fast_dev_run:
+    value: True
+  precision: # 16 or 32 FPU precision
+    value: 16
+    # description: 'FPU precision'
+  auto_lr_find:
+    value: False
+  auto_scale_batch_size:
+    value: True
+  profiler:
+    value: False
+    # description: 'PyTorch Lightning profiler'
+  accumulate_grad_batches:
+    value: 1
+    # description: 'Accumulate gradients on k batches before performing a backward pass'
+  save_onnx:
+    value: False
+    # description: 'Save model in onnx format'
+  # ------------------ #
+  # Checkpoint config
+  # ------------------ #
+  resume_from_checkpoint:
+    value: False
+  checkpoint_dir:
+    value: 'experiments/scenenet_ts40k/checkpoints'
+  resume_checkpoint_name:
+    value: MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+  checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
+    value: 1 # every n epochs
+  checkpoint_every_n_steps:
+    value: 0 # every n steps
+   
+   

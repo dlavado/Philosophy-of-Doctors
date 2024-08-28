@@ -1,0 +1,82 @@
+Using 16bit Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+=== Data Module TS40K initialized. ===
+<core.lit_modules.lit_data_wrappers.LitTS40K object at 0x7fd5ecdd6110>
+/home/didi/Downloads/data/TS40K-NEW/
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+  | Name          | Type                  | Params
+--------------------------------------------------------
+0 | model         | PointTransformerSeg50 | 7.8 M
+1 | criterion     | CrossEntropyLoss      | 0
+2 | train_metrics | MetricCollection      | 0
+3 | val_metrics   | MetricCollection      | 0
+4 | test_metrics  | MetricCollection      | 0
+--------------------------------------------------------
+7.8 M     Trainable params
+0         Non-trainable params
+7.8 M     Total params
+31.069    Total estimated model params size (MB)
+
+Sanity Checking DataLoader 0: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 2/2 [00:19<00:00,  0.10it/s]========== val metrics ==========
+	val_MulticlassJaccardIndex: tensor([0.1006, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000], device='cuda:0'); mean: 0.1006
+	val_MulticlassF1Score: tensor([0.1829, 0.0000, 0.0000, 0.0000, 0.0000, 0.0000], device='cuda:0'); mean: 0.1829
+	val_MulticlassPrecision: 0.10064999759197235
+	val_MulticlassRecall: 0.10064999759197235
+	val_MulticlassAccuracy: 0.10064999759197235
+Epoch 0:   0%|                                                                                                                                                                       | 0/342 [00:00<?, ?it/s]
+Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 680, in <module>
+    main()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 598, in main
+    trainer.fit(model, data_module)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 545, in fit
+    call._call_and_handle_interrupt(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 44, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 581, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 990, in _run
+    results = self._run_stage()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 1036, in _run_stage
+    self.fit_loop.run()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/fit_loop.py", line 202, in run
+    self.advance()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/fit_loop.py", line 359, in advance
+    self.epoch_loop.run(self._data_fetcher)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 136, in run
+    self.advance(data_fetcher)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 260, in advance
+    call._call_lightning_module_hook(trainer, "on_train_batch_end", batch_output, batch, batch_idx)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 157, in _call_lightning_module_hook
+    output = fn(*args, **kwargs)
+TypeError: Lit_PointTransformerV2.on_train_batch_end() takes 3 positional arguments but 4 were given
+Traceback (most recent call last):
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 680, in <module>
+    main()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py", line 598, in main
+    trainer.fit(model, data_module)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 545, in fit
+    call._call_and_handle_interrupt(
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 44, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 581, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 990, in _run
+    results = self._run_stage()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 1036, in _run_stage
+    self.fit_loop.run()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/fit_loop.py", line 202, in run
+    self.advance()
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/fit_loop.py", line 359, in advance
+    self.epoch_loop.run(self._data_fetcher)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 136, in run
+    self.advance(data_fetcher)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 260, in advance
+    call._call_lightning_module_hook(trainer, "on_train_batch_end", batch_output, batch, batch_idx)
+  File "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 157, in _call_lightning_module_hook
+    output = fn(*args, **kwargs)
+
+Epoch 0:   0%| | 1/342 [02:08<12:12:44,  0.01it/s, v_num=9nf5, train_loss_step=nan.0, train_MulticlassJaccardIndex_step=0.0215, train_MulticlassF1Score_step=0.0381, train_MulticlassPrecision_step=0.129, tr

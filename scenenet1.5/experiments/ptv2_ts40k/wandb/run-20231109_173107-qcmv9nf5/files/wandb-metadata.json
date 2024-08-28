@@ -1,0 +1,170 @@
+{
+    "os": "Linux-6.2.0-36-generic-x86_64-with-glibc2.35",
+    "python": "3.10.12",
+    "heartbeatAt": "2023-11-09T17:31:08.833649",
+    "startedAt": "2023-11-09T17:31:07.968585",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "--dataset",
+        "ts40k",
+        "--model",
+        "ptv2"
+    ],
+    "state": "running",
+    "program": "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scripts/main.py",
+    "codePath": "scenenet1.5/scripts/main.py",
+    "git": {
+        "remote": "https://github.com/dlavado/Philosophy-of-Doctors.git",
+        "commit": "11a57a7c4c6a2cde1e9220a11d5ef52714904e7c"
+    },
+    "email": "d.lavado@campus.fct.unl.pt",
+    "root": "/home/didi/VSCode/Philosophy-of-Doctors",
+    "host": "tsuky",
+    "username": "didi",
+    "executable": "/home/didi/VSCode/Philosophy-of-Doctors/scenenet1.5/scenet/bin/python3",
+    "cpu_count": 16,
+    "cpu_count_logical": 24,
+    "cpu_freq": {
+        "current": 2618.3494999999994,
+        "min": 800.0,
+        "max": 4466.666666666667
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3634.956,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 4497.141,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 3374.336,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 4602.503,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2608.449,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 875.525,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 831.106,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 3330.614,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 4588.481,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 801.21,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4293.817,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4613.781,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4621.982,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 1805.431,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 834.63,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 4188.367,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 2866.376,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 2133.838,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 1548.884,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 2402.307,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 1310.032,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 930.926,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 1391.937,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 753.759,
+            "min": 800.0,
+            "max": 3700.0
+        }
+    ],
+    "disk": {
+        "total": 937.3305015563965,
+        "used": 593.114860534668
+    },
+    "gpu": "NVIDIA GeForce RTX 4070 Laptop GPU",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 4070 Laptop GPU",
+            "memory_total": 8585740288
+        }
+    ],
+    "memory": {
+        "total": 31.078510284423828
+    }
+}

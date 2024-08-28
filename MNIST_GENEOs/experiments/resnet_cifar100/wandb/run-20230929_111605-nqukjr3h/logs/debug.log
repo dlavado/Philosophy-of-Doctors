@@ -1,0 +1,32 @@
+2023-09-29 11:16:05,253 INFO    MainThread:147072 [wandb_setup.py:_flush():76] Current SDK version is 0.15.11
+2023-09-29 11:16:05,253 INFO    MainThread:147072 [wandb_setup.py:_flush():76] Configure stats pid to 147072
+2023-09-29 11:16:05,253 INFO    MainThread:147072 [wandb_setup.py:_flush():76] Loading settings from /home/didi/.config/wandb/settings
+2023-09-29 11:16:05,253 INFO    MainThread:147072 [wandb_setup.py:_flush():76] Loading settings from /home/didi/VSCode/Philosophy-of-Doctors/MNIST_GENEOs/scripts/wandb/settings
+2023-09-29 11:16:05,253 INFO    MainThread:147072 [wandb_setup.py:_flush():76] Loading settings from environment variables: {'root_dir': '/home/didi/VSCode/Philosophy-of-Doctors/MNIST_GENEOs/experiments/resnet_cifar100'}
+2023-09-29 11:16:05,253 INFO    MainThread:147072 [wandb_setup.py:_flush():76] Applying setup settings: {'_disable_service': False}
+2023-09-29 11:16:05,253 INFO    MainThread:147072 [wandb_setup.py:_flush():76] Inferring run settings from compute environment: {'program_relpath': 'MNIST_GENEOs/scripts/opt_main.py', 'program_abspath': '/home/didi/VSCode/Philosophy-of-Doctors/MNIST_GENEOs/scripts/opt_main.py', 'program': '/home/didi/VSCode/Philosophy-of-Doctors/MNIST_GENEOs/scripts/opt_main.py'}
+2023-09-29 11:16:05,253 INFO    MainThread:147072 [wandb_init.py:_log_setup():528] Logging user logs to /home/didi/VSCode/Philosophy-of-Doctors/MNIST_GENEOs/experiments/resnet_cifar100/wandb/run-20230929_111605-nqukjr3h/logs/debug.log
+2023-09-29 11:16:05,254 INFO    MainThread:147072 [wandb_init.py:_log_setup():529] Logging internal logs to /home/didi/VSCode/Philosophy-of-Doctors/MNIST_GENEOs/experiments/resnet_cifar100/wandb/run-20230929_111605-nqukjr3h/logs/debug-internal.log
+2023-09-29 11:16:05,254 INFO    MainThread:147072 [wandb_init.py:init():568] calling init triggers
+2023-09-29 11:16:05,254 INFO    MainThread:147072 [wandb_init.py:init():575] wandb.init called with sweep_config: {}
+config: {'group': 'CIFAR100', 'output_dir': 'experiments/$model_$dataset/outputs', 'dataset': 'cifar100', 'data_path': '../datasets/cifar100/', 'batch_size': 256, 'num_workers': 12, 'num_classes': 100, 'model': 'resnet', 'kernel_size': 2, 'hidden_dim': 128, 'in_channels': 3, 'pretrained': False, 'optimizer': 'adam', 'learning_rate': 0.001, 'max_epochs': 10, 'accelerator': 'gpu', 'devices': -1, 'early_stop_metric': 'val_loss', 'resume_from_checkpoint': False, 'checkpoint_dir': None, 'resume_checkpoint_name': 'val_loss', 'checkpoint_every_n_epochs': 1, 'checkpoint_every_n_steps': 0, 'fast_dev_run': True, 'precision': 16, 'auto_lr_find': False, 'auto_scale_batch_size': True, 'profiler': False, 'accumulate_grad_batches': 'None', 'save_onnx': False, 'convergence_mode': 'admm', 'admm_rho': 1.0, 'admm_rho_update_factor': 1.0, 'admm_stepsize': 10.0, 'admm_stepsize_update_factor': 1.0, 'admm_rho_max': 10, 'convergence_iterations': 5, 'ortho_weight': 0.01, 'sparse_weight': 0.0, 'magnitude_weight': 0.0}
+2023-09-29 11:16:05,254 INFO    MainThread:147072 [wandb_init.py:init():618] starting backend
+2023-09-29 11:16:05,254 INFO    MainThread:147072 [wandb_init.py:init():622] setting up manager
+2023-09-29 11:16:05,255 INFO    MainThread:147072 [backend.py:_multiprocessing_setup():105] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2023-09-29 11:16:05,255 INFO    MainThread:147072 [wandb_init.py:init():628] backend started and connected
+2023-09-29 11:16:05,258 INFO    MainThread:147072 [wandb_init.py:init():720] updated telemetry
+2023-09-29 11:16:05,260 INFO    MainThread:147072 [wandb_init.py:init():753] communicating run to backend with 90.0 second timeout
+2023-09-29 11:16:05,791 INFO    MainThread:147072 [wandb_run.py:_on_init():2220] communicating current version
+2023-09-29 11:16:05,909 INFO    MainThread:147072 [wandb_run.py:_on_init():2229] got version response 
+2023-09-29 11:16:05,909 INFO    MainThread:147072 [wandb_init.py:init():804] starting run threads in backend
+2023-09-29 11:16:05,947 INFO    MainThread:147072 [wandb_run.py:_console_start():2199] atexit reg
+2023-09-29 11:16:05,947 INFO    MainThread:147072 [wandb_run.py:_redirect():2054] redirect: wrap_raw
+2023-09-29 11:16:05,948 INFO    MainThread:147072 [wandb_run.py:_redirect():2119] Wrapping output streams.
+2023-09-29 11:16:05,948 INFO    MainThread:147072 [wandb_run.py:_redirect():2144] Redirects installed.
+2023-09-29 11:16:05,948 INFO    MainThread:147072 [wandb_init.py:init():845] run started, returning control to user process
+2023-09-29 11:16:05,948 INFO    MainThread:147072 [wandb_run.py:_config_callback():1324] config_cb None None {'convergence_mode': 'penalty'}
+2023-09-29 11:16:07,838 INFO    MainThread:147072 [wandb_run.py:_config_callback():1324] config_cb None None {'optimizer_name': 'adam', 'learning_rate': 0.001}
+2023-09-29 11:17:26,241 INFO    MainThread:147072 [wandb_run.py:_finish():1934] finishing run dlavado/ADMM_AUGLAG_CIFAR100/nqukjr3h
+2023-09-29 11:17:26,241 INFO    MainThread:147072 [wandb_run.py:_atexit_cleanup():2168] got exitcode: 0
+2023-09-29 11:17:26,241 INFO    MainThread:147072 [wandb_run.py:_restore():2151] restore
+2023-09-29 11:17:26,242 INFO    MainThread:147072 [wandb_run.py:_restore():2157] restore done

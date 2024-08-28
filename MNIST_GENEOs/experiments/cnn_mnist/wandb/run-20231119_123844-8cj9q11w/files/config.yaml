@@ -1,0 +1,150 @@
+wandb_version: 1
+
+group:
+  desc: null
+  value: MNIST
+output_dir:
+  desc: null
+  value: experiments/$model_$dataset/outputs
+dataset:
+  desc: null
+  value: mnist
+data_path:
+  desc: null
+  value: ../datasets/mnist/
+batch_size:
+  desc: null
+  value: 512
+num_workers:
+  desc: null
+  value: 12
+num_classes:
+  desc: null
+  value: 10
+model:
+  desc: null
+  value: cnn
+kernel_size:
+  desc: null
+  value: 3
+hidden_dim:
+  desc: null
+  value: 128
+in_channels:
+  desc: null
+  value: 1
+optimizer:
+  desc: null
+  value: sgd
+learning_rate:
+  desc: null
+  value: 0.001
+max_epochs:
+  desc: null
+  value: 50
+accelerator:
+  desc: null
+  value: gpu
+devices:
+  desc: null
+  value: -1
+early_stop_metric:
+  desc: null
+  value: val_loss
+resume_from_checkpoint:
+  desc: null
+  value: false
+checkpoint_dir:
+  desc: null
+  value: null
+resume_checkpoint_name:
+  desc: null
+  value: val_MulticlassAccuracy
+checkpoint_every_n_epochs:
+  desc: null
+  value: 1
+checkpoint_every_n_steps:
+  desc: null
+  value: 0
+fast_dev_run:
+  desc: null
+  value: true
+precision:
+  desc: null
+  value: 16
+auto_lr_find:
+  desc: null
+  value: false
+auto_scale_batch_size:
+  desc: null
+  value: false
+profiler:
+  desc: null
+  value: false
+accumulate_grad_batches:
+  desc: null
+  value: None
+save_onnx:
+  desc: null
+  value: false
+convergence_mode:
+  desc: null
+  value: admm
+admm_rho:
+  desc: null
+  value: 1.0
+admm_rho_update_factor:
+  desc: null
+  value: 1.0
+admm_stepsize:
+  desc: null
+  value: 10.0
+admm_stepsize_update_factor:
+  desc: null
+  value: 1.0
+admm_rho_max:
+  desc: null
+  value: 10
+convergence_iterations:
+  desc: null
+  value: 5
+ortho_weight:
+  desc: null
+  value: 0.01
+sparse_weight:
+  desc: null
+  value: 0.5
+magnitude_weight:
+  desc: null
+  value: 0.5
+_wandb:
+  desc: null
+  value:
+    python_version: 3.10.12
+    cli_version: 0.15.11
+    framework: lightning
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1700397524.888019
+    t:
+      1:
+      - 1
+      - 9
+      - 41
+      - 55
+      - 103
+      2:
+      - 1
+      - 9
+      - 41
+      - 55
+      - 103
+      3:
+      - 13
+      - 16
+      - 23
+      4: 3.10.12
+      5: 0.15.11
+      8:
+      - 5
+      13: linux-x86_64

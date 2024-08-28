@@ -1,0 +1,67 @@
+Using 16bit None Automatic Mixed Precision (AMP)
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+You are using a CUDA device ('NVIDIA GeForce RTX 4070 Laptop GPU') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+Learning rate in use is: 0.001
+Files already downloaded and verified
+Files already downloaded and verified
+Sanity Checking DataLoader 0: 100%|████████████████████████████████████████████████████████████████| 2/2 [00:00<00:00,  3.80it/s]========== val metrics ==========
+	val_Accuracy: 0.01171875
+Epoch 0:   0%|                                                                                           | 0/196 [00:00<?, ?it/s]=====> CV: 2517.569
+=====> CV/CV_0: 0.995
+=====> Objective_function loss: 3.986
+=====> Constraint Norm loss: 25.176
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+  | Name          | Type                     | Params
+-----------------------------------------------------------
+0 | model         | LitResnet                | 11.2 M
+1 | train_metrics | MetricCollection         | 0
+2 | val_metrics   | MetricCollection         | 0
+3 | test_metrics  | MetricCollection         | 0
+4 | elastic_reg   | ElasticNetRegularization | 0
+5 | criterion     | Constrained_Loss         | 0
+-----------------------------------------------------------
+11.2 M    Trainable params
+0         Non-trainable params
+11.2 M    Total params
+22.440    Total estimated model params size (MB)
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 0: 100%|█| 196/196 [00:30<00:00,  6.34it/s, loss=46.2, v_num=todm, train_loss_step=45.20, train_data_fidelity_step=4.200, t========== val metrics ==========
+	val_Accuracy: 0.04659999907016754███████████████████████████████████████████████████████████████| 20/20 [00:00<00:00, 33.31it/s]
+Epoch 1:   0%| | 0/196 [00:00<?, ?it/s, loss=45.5, v_num=todm, train_loss_step=44.30, train_data_fidelity_step=4.140, train_const=====> CV: 1868.498
+=====> CV/CV_0: 0.738
+=====> Objective_function loss: 3.899
+=====> Constraint Norm loss: 18.685
+
+
+
+
+
+
+
+
+
+
+
+
+
+Epoch 1: 100%|█| 196/196 [00:31<00:00,  6.30it/s, loss=33.1, v_num=todm, train_loss_step=32.70, train_data_fidelity_step=4.100, t========== val metrics ==========
+	val_Accuracy: 0.06019999831914902███████████████████████████████████████████████████████████████| 20/20 [00:00<00:00, 33.72it/s]
+Epoch 2:   0%| | 0/196 [00:00<?, ?it/s, loss=32.8, v_num=todm, train_loss_step=32.40, train_data_fidelity_step=4.060, train_const=====> CV: 1486.274
+=====> CV/CV_0: 0.587
+=====> Objective_function loss: 3.907
+=====> Constraint Norm loss: 14.863
