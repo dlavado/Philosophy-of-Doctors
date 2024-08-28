@@ -97,13 +97,13 @@ def query_ball_point(radius, nsample, xyz, new_xyz):
     device = xyz.device
     B, N, C = xyz.shape
     _, S, _ = new_xyz.shape
-    group_idx = torch.arange(N, dtype=torch.long).to(device).view(1, 1, N).repeat([B, S, 1])
+    group_idx = torch.arange(N, dtype=torch.long).to(device).view(1, 1, N).repeat([B, S, 1]) # [B, S, N]
     sqrdists = square_distance(new_xyz, xyz)
-    group_idx[sqrdists > radius ** 2] = N
-    group_idx = group_idx.sort(dim=-1)[0][:, :, :nsample]
-    group_first = group_idx[:, :, 0].view(B, S, 1).repeat([1, 1, nsample])
-    mask = group_idx == N
-    group_idx[mask] = group_first[mask]
+    group_idx[sqrdists > radius ** 2] = N  # points outside the ball are assigned to N
+    group_idx = group_idx.sort(dim=-1)[0][:, :, :nsample] # sort points in the ball based on distance
+    group_first = group_idx[:, :, 0].view(B, S, 1).repeat([1, 1, nsample]) # [B, S, nsample]; first points in each ball
+    mask = group_idx == N # [B, S, N]
+    group_idx[mask] = group_first[mask] 
     return group_idx
 
 
@@ -291,16 +291,31 @@ class PointNetFeaturePropagation(nn.Module):
         _, S, _ = xyz2.shape
 
         if S == 1:
+            print("S == 1")
             interpolated_points = points2.repeat(1, N, 1)
         else:
             dists = square_distance(xyz1, xyz2)
+            # normalize the distance
+            # dists = (dists - torch.min(dists, dim=-1, keepdim=True)[0]) / (torch.max(dists, dim=-1, keepdim=True)[0] - torch.min(dists, dim=-1, keepdim=True)[0])
+            dists = (dists - torch.mean(dists, dim=-1, keepdim=True)) / torch.std(dists, dim=-1, keepdim=True)
             dists, idx = dists.sort(dim=-1)
             dists, idx = dists[:, :, :3], idx[:, :, :3]  # [B, N, 3]
 
             dist_recip = 1.0 / (dists + 1e-8)
-            norm = torch.sum(dist_recip, dim=2, keepdim=True)
-            weight = dist_recip / norm
+
+            # eps = 1e-8 # prevent inf
+            # # dist_recip[dist_recip.abs() < eps] = eps
+            # norm = torch.norm(dist_recip + eps, dim=2, keepdim=True, p=2)
+
+            weight = dist_recip
+            
+           
             interpolated_points = torch.sum(index_points(points2, idx) * weight.view(B, N, 3, 1), dim=2)
+
+        if torch.isnan(interpolated_points).any():
+            print(torch.unique(interpolated_points))
+            print("interpolated_points is nan")
+            exit()
 
         if points1 is not None:
             points1 = points1.permute(0, 2, 1)
@@ -312,5 +327,6 @@ class PointNetFeaturePropagation(nn.Module):
         for i, conv in enumerate(self.mlp_convs):
             bn = self.mlp_bns[i]
             new_points = F.relu(bn(conv(new_points)))
+
         return new_points
 

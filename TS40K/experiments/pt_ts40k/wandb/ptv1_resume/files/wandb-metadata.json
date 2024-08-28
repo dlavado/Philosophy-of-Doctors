@@ -1,0 +1,171 @@
+{
+    "os": "Linux-6.5.0-21-generic-x86_64-with-glibc2.35",
+    "python": "3.10.13",
+    "heartbeatAt": "2024-03-03T14:40:53.434013",
+    "startedAt": "2024-03-03T14:40:52.669437",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "--model",
+        "pt"
+    ],
+    "state": "running",
+    "program": "/home/didi/VSCode/Philosophy-of-Doctors/TS40K/scripts/main.py",
+    "codePathLocal": "main.py",
+    "codePath": "TS40K/scripts/main.py",
+    "git": {
+        "remote": "https://github.com/dlavado/PhD-Backup.git",
+        "commit": "8aaa7c45ae67a9eac11bbaaf389286a51ac31ef6"
+    },
+    "email": "d.lavado@campus.fct.unl.pt",
+    "root": "/home/didi/VSCode/Philosophy-of-Doctors",
+    "host": "tsuky",
+    "username": "didi",
+    "executable": "/home/didi/miniconda3/envs/ts40k/bin/python3",
+    "cpu_count": 16,
+    "cpu_count_logical": 24,
+    "cpu_freq": {
+        "current": 2858.683958333333,
+        "min": 800.0,
+        "max": 4466.666666666667
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.188,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 815.682,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 4008.071,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 1024.406,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 3607.601,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 3074.986,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.195,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 4375.135,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 1988.791,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4552.838,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4522.132,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4098.269,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 1911.822,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 4694.779,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 4604.327,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 3299.024,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 2562.89,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 3400.185,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 2605.289,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 3548.761,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 3193.556,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 3519.488,
+            "min": 800.0,
+            "max": 3700.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 937.3305015563965,
+            "used": 657.8186645507812
+        }
+    },
+    "gpu": "NVIDIA GeForce RTX 4070 Laptop GPU",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 4070 Laptop GPU",
+            "memory_total": 8585740288
+        }
+    ],
+    "memory": {
+        "total": 31.078022003173828
+    }
+}

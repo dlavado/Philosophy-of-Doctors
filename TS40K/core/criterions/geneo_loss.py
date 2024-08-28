@@ -92,6 +92,7 @@ class GENEO_Loss(torch.nn.Module):
 
         # last cvx_coeffcient is calculated in function of the previous ones for each observer: 
         # phi_n = 1 - sum_i^N-1(phi_i)
+
         cvx_coeffs = cvx_coeffs['lambda']
         last_cvx_coeff = 1 - torch.sum(cvx_coeffs[:, :-1], dim=1)
         cvx_coeffs = cvx_coeffs[:, :-1]
@@ -127,14 +128,6 @@ class GENEO_Loss(torch.nn.Module):
             return 0
 
         return  sum([torch.sum(torch.abs(g)) for g in params.values()])
- 
-    
-    @staticmethod
-    def add_model_specific_args(parent_parser):
-        parent_parser = super().add_model_specific_args(parent_parser)
-        parser = parent_parser.add_argument_group('GENEO_Loss')
-        parser.add_argument('--cvx_w', type=float, default=1. , help='weight of the convexity penalty')
-        return parent_parser
 
 
 class Tversky_Wrapper_Loss(torch.nn.Module):
@@ -191,20 +184,21 @@ class Tversky_Wrapper_Loss(torch.nn.Module):
 
         return dense_criterion + tversky_crit
     
-    @staticmethod
-    def add_model_specific_args(parent_parser):
-        parent_parser = super().add_model_specific_args(parent_parser) #GENEO hyperparams
-        return FocalTverskyLoss.add_model_specific_args(parent_parser) #Tversky hyperparams
+    # @staticmethod
+    # def add_model_specific_args(parent_parser):
+    #     parent_parser = super().add_model_specific_args(parent_parser) #GENEO hyperparams
+    #     return FocalTverskyLoss.add_model_specific_args(parent_parser) #Tversky hyperparams
 
 
 
 if __name__ == '__main__':
    
-    from core.datasets.ts40k import torch_TS40Kv2
+    # from core.datasets.ts40k import torch_TS40Kv2
     EXT_PATH = "/media/didi/TOSHIBA EXT/"
     TS40K_PATH = os.path.join(EXT_PATH, 'TS40K/')
 
-    ts40k = torch_TS40Kv2(dataset_path=TS40K_PATH)
+    # ts40k = torch_TS40Kv2(dataset_path=TS40K_PATH)
+    ts40k = None
     # targets = None
     # for (_, y) in ts40k:
     #      if targets is None:

@@ -90,8 +90,8 @@ DICT_NEW_LABELS = {
     LOW_VEGETATION : 2,
     OVERLAP_POINTS : 2,
     ROAD_SURFACE : 2,
-    MEDIUM_VEGETAION : 2, # vegetation
-    NATURAL_OBSTACLE : 2,
+    MEDIUM_VEGETAION : 3, # vegetation
+    NATURAL_OBSTACLE : 3,
 
     INCIDENTS : 3,
     HUMAN_STRUCTURES : 3, # obstacles
@@ -106,16 +106,18 @@ DICT_NEW_LABELS = {
 DICT_NEW_LABELS_COLORS = {
     0 : [0, 0, 0],      # noise -> black
     1 : [0.58, 0.3, 0], # ground -> brown
-    2 : [0, 1, 0],      # vegetation -> green
-    3 : [1, 0, 0],      # obstacles -> red
+    2 : [0, 0.5, 0],    # low vegetation -> dark green
+    3 : [0, 1, 0],      # medium vegetation -> green
     4 : [0, 0, 1],      # power line support tower -> blue
     5 : [1, 0.5, 0],    # power lines -> orange  
 }
 
 
-DICT_OBJ_DET_LABELS = {
-    2: "Vegetation",
-    3: "Obstacles",
+DICT_OBJ_LABELS_NAMES = {
+    0: "Noise",
+    1: "Ground",
+    2: "Low Vegetation",
+    3: "Medium Vegetation",
     4: "Power line support tower",
     5: "Power lines",
 }
@@ -130,26 +132,25 @@ las.props:
 """
 
 
-def las_to_numpy(las) -> np.ndarray and np.ndarray:
+def las_to_numpy(las, intensity=False):
     """
     Converts las file into a numpy file containing solely the xyz coords of the provided points\n
     Parameters
     ----------
         las: las object to be converted\n
+
+        intensity - bool:
+            if True, returns the intensity of the points\n
     RET:
         pcnp: point cloud in numpy
         classes: classification of the points
     """
-    pcnp = np.vstack((las.x, las.y, las.z)).transpose(
-    )  # pcnp = point cloud in numpy
-    # print(pcnp[:10])
-    classes = np.array(las.classification)
-    #print(classes[:10])
+    if intensity:
+        pcnp = np.vstack((las.x, las.y, las.z, las.intensity)).transpose()
+    else:
+        pcnp = np.vstack((las.x, las.y, las.z)).transpose()  # pcnp = point cloud in numpy
 
-    # assert that all coordinates exist and are different from nan
-    assert np.all(pcnp != np.nan)
-    # assert that all points are classified
-    assert len(pcnp) == len(classes)
+    classes = np.array(las.classification)
 
     return pcnp, classes
 
@@ -191,6 +192,24 @@ def visualize_ply(pcd_load, window_name='Open3D'):
    
     o3d.visualization.draw_geometries(pcd_load, window_name=window_name)
 
+
+def plot_pointcloud(xyz: np.ndarray, classes:np.ndarray, window_name='Open3D', use_preset_colors=False):
+    """
+    Plots the point cloud in 3D\n
+
+    Parameters
+    ----------
+    `xyz` - numpy array: 
+        xyz coords of the point cloud
+    `classes` - numpy array:
+        classes of the points in the point cloud
+    `window_name` - str:
+        name of the window to be displayed
+    """
+    pcd = np_to_ply(xyz)
+    color_pointcloud(pcd, classes, use_preset_colors=use_preset_colors)
+    visualize_ply([pcd], window_name=window_name)
+    
 
 def visualize_ply_with_bboxes(xyz:np.ndarray, bboxes: list[dict], window_name='Open3D'):
     """
@@ -615,7 +634,6 @@ def color_pointcloud(pcd, classes=None, colors=None, use_preset_colors=False):
         The colors for each class in format (N, 3)
     """
 
-
     if colors is None: # if colors are not provided, 
         if classes is None:
             raise ValueError("Either classes or colors needs to be not None.")
@@ -639,7 +657,6 @@ def color_pointcloud(pcd, classes=None, colors=None, use_preset_colors=False):
     # assign colors to point cloud according to their class
     pcd.colors = o3d.utility.Vector3dVector(colors)
     return colors
-
 
 def dbscan(pcd, eps, min_points, visual=False):
     with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Debug) as cm:
@@ -806,22 +823,23 @@ def crop_two_towers(xyz, classes, xyz_tower1, xyz_tower2):
     return a[:, :-1], a[:, -1].astype(int)
 
 
-def crop_ground_samples(xyz, classes, max_tower_h=40):
+def crop_ground_samples(xyz, classes, step_per_cloud=50):
 
 
     xyz_min = np.min(xyz, axis=0)
     xyz_max = np.max(xyz, axis=0)
     samples = []
-    step = int((xyz_max[0] - xyz_min[0]) / 100)
+    step = int((xyz_max[0] - xyz_min[0]) / step_per_cloud) # x is the longest axis
 
-    for x in np.linspace(xyz_min[0], xyz_max[0], step):
+    for x in np.linspace(xyz_min[0], xyz_max[0], step*2):
+        if len(samples) > 20:
+            break # we have enough samples for this sample
 
         a = np.append(xyz, classes.reshape(-1, 1), axis=1)
         rad = a[np.logical_and(a[:, 0] >= x, a[:, 0] <= x + step)]
 
-        if len(rad) > 300 and len(np.unique(rad[:, -1])) >= 2:
+        if len(rad) > 10000: # and len(np.unique(rad[:, -1])) >= 2:
             # visualize_ply([np_to_ply(rad[:, :-1])])
-
             if not POWER_LINE_SUPPORT_TOWER in rad[:, -1].astype(int):
                 rad[:, -1] = rad[:, -1].astype(int)
                 samples.append(np.copy(rad))
@@ -908,7 +926,7 @@ def crop_at_locations(xyz:np.ndarray, coords:np.ndarray, radius:float=0, classes
 
 
 
-def get_bounding_box(xyz, label=0):
+def get_bounding_box(cluster, label=0, normalize=False, xyz_min=np.zeros(3), xyz_max=np.ones(3)):
     """
     Returns the bounding box of the given point cloud object\n
 
@@ -924,32 +942,54 @@ def get_bounding_box(xyz, label=0):
 
     Parameters
     ----------
-    `xyz` - numpy array: 
+    `cluster` - numpy array: 
         xyz coords of the point cloud (N, 3)
+
+    `label` - int:
+        label of the bounding box object to be extracted
+
+    `normalize` - bool:
+        if True, the bounding box is normalized to the range [0, 1]
+
+    `xyz_min` - numpy array:
+        minimum values of the xyz coords of the point cloud
+
+    `xyz_max` - numpy array:
+        maximum values of the xyz coords of the point cloud
 
     Returns
     -------
     `bbox` - dict: 
         dictionary containing the bounding box coordinates
     """
+
+    if len(cluster) == 0:
+        return {}
+
     bbox = dict()
     bbox['class_label'] = label
     bbox['position'] = dict()
     bbox['dimensions'] = dict()
     bbox['rotation'] = 0
 
-    # get the center of the bounding box
-    xyz_centroid = np.mean(xyz, axis=0)
+    if not normalize: # if the bbox is not to be normalized, we use placeholders for the normalization variables
+        xyz_min = np.zeros(3)
+        xyz_max = np.ones(3)
+
+    xyz_centroid = np.mean(cluster, axis=0)
+    cluster_min, cluster_max = np.min(cluster, axis=0), np.max(cluster, axis=0)
+
+    if normalize:
+        # get the center of the bounding box
+        xyz_centroid = (xyz_centroid - cluster_min) / (cluster_max - cluster_min)
+
     bbox['position']['x'] = xyz_centroid[0]
     bbox['position']['y'] = xyz_centroid[1]
     bbox['position']['z'] = xyz_centroid[2]
 
-    # get the dimensions of the bounding box
-    xyz_min = np.min(xyz, axis=0)
-    xyz_max = np.max(xyz, axis=0)
-    bbox['dimensions']['width'] = xyz_max[0] - xyz_min[0]
-    bbox['dimensions']['height'] = xyz_max[1] - xyz_min[1]
-    bbox['dimensions']['length'] = xyz_max[2] - xyz_min[2]
+    bbox['dimensions']['width']  = (cluster_max[0] - cluster_min[0]) / (xyz_max[0] - xyz_min[0])
+    bbox['dimensions']['height'] = (cluster_max[1] - cluster_min[1]) / (xyz_max[1] - xyz_min[1])
+    bbox['dimensions']['length'] = (cluster_max[2] - cluster_min[2]) / (xyz_max[2] - xyz_min[2])
 
     return bbox
 
@@ -982,7 +1022,11 @@ def extract_bounding_boxes(xyz, classes, target_label, eps=0.2, min_samples=10):
     """
 
     pcd, _ = select_object(xyz, classes, [target_label])
-    dbscan(pcd, eps, min_samples, visual=False)
+    try:
+        dbscan(pcd, eps, min_samples, visual=False)
+    except Exception as e:
+        print(e)
+        return []
 
     pcd_points = np.array(pcd.points)
     pcd_colors = np.array(pcd.colors)
@@ -1010,8 +1054,9 @@ def extract_bounding_boxes(xyz, classes, target_label, eps=0.2, min_samples=10):
 
     # get bounding boxes for each cluster
     bboxes = []
+    xyz_min, xyz_max = np.min(xyz, axis=0), np.max(xyz, axis=0)
     for cluster in clusters:
-        bbox = get_bounding_box(cluster)
+        bbox = get_bounding_box(cluster, target_label, normalize=False, xyz_min=xyz_min, xyz_max=xyz_max)
         bboxes.append(bbox)
 
     del clusters, pcd, pcd_points, pcd_colors, cluster_xyz_rgb, df_cluster, group_rgb
@@ -1020,10 +1065,73 @@ def extract_bounding_boxes(xyz, classes, target_label, eps=0.2, min_samples=10):
 
 # %%
 if __name__ == "__main__":
+    import constants
 
     LAS_FILES = "/home/didi/VSCode/lidar_thesis/Data_sample"
 
     NPY_FILES = "/home/didi/VSCode/lidar_thesis/dataset/raw_dataset/samples"
+
+    TS40K_DIR = os.path.join(constants.TOSH_PATH, "TS40K-Dataset")
+    LAS_FILES = [
+        os.path.join(TS40K_DIR, "Labelec_LAS"),
+        os.path.join(TS40K_DIR, "LIDAR-2022"),
+        os.path.join(TS40K_DIR, "LIDAR-2024"),
+        constants.LAS_RGB_PROCESSED,
+        constants.LAS_RGB_ORIGINALS,
+    ]
+
+    curr_las_dir = LAS_FILES[-2]
+
+    for f in os.listdir(curr_las_dir):
+        f_path = os.path.join(curr_las_dir, f)
+        if os.path.isfile(f_path) and ('.las' in f_path or '.laz' in f_path):
+            las = lp.read(f_path)
+            dim_names = las.point_format.dimension_names
+            dim_names = list(dim_names)
+            print(dim_names)
+            
+            xyz = np.vstack((las.x, las.y, las.z)).T
+            classes = np.array(las.classification)
+
+            pointcloud_df = pd.DataFrame()
+
+            # print(f_path)
+            print(xyz.shape)
+            print(classes.shape)
+            print(np.unique(classes))
+
+            for dim in dim_names:
+                data = getattr(las, dim)
+                data = np.array(data)
+                
+                if dim in ['red', 'green', 'blue']:
+                    data = data / 256
+                
+                uq = np.unique(data)
+                if len(uq) > 1:
+                    print(f"unique {dim}: {uq}")
+                else:
+                    print(f"{dim} only contains one placeholder: {data[0]}")
+                
+                if len(data) == len(xyz):
+                    pointcloud_df[dim] = data
+            
+            describe = pointcloud_df.describe()
+            print(describe)
+
+            zero_std = describe.loc['std'] == 0
+            print(describe.columns[zero_std])
+
+            # get unique rgb color
+
+            if pointcloud_df['red'].std() != 0:
+                xyz = pointcloud_df[['X', 'Y', 'Z']].to_numpy()
+                classes = pointcloud_df['classification'].to_numpy()
+                rgb = pointcloud_df[['red', 'green', 'blue']].to_numpy()
+                rgb = rgb / 255
+                pynt = np_to_ply(xyz)
+                color_pointcloud(pynt, None, colors=rgb)
+                visualize_ply([pynt])
     
     # get_tower_files([LAS_FILES])
 

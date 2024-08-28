@@ -2,7 +2,6 @@
 from typing import Any, List, Optional, Sequence, Tuple, Union
 import torch
 import numpy as np
-from torch_cluster import fps
 
 
 import sys
@@ -14,22 +13,32 @@ from utils import pointcloud_processing as eda
 
 
 class Dict_to_Tuple:
-
     def __init__(self, omit:Union[str, list]=None) -> None:
-
         self.omit = omit
 
     def __call__(self, sample:dict):
-
         return tuple([sample[key] for key in sample.keys() if key not in self.omit])
 
 
-class ToTensor:
+class Add_Batch_Dim:
 
+    def __call__(self, sample) -> Any:
+        sample = list(sample)
+        return tuple([s.unsqueeze(0) for s in sample])
+
+class ToTensor:
     def __call__(self, sample):
         sample = list(sample)
         return tuple([torch.from_numpy(s.astype(np.float64)) for s in sample])
 
+class To:
+
+    def __init__(self, dtype:torch.dtype=torch.float32) -> None:
+        self.dtype = dtype
+
+    def __call__(self, sample):
+        sample = list(sample)
+        return tuple([s.to(self.dtype) for s in sample])
 
 class ToDevice:
 
@@ -73,9 +82,9 @@ class ToFullDense:
 
 class Voxelization:
 
-    def __init__(self, keep_labels, vox_size:Tuple[int]=None, vxg_size:Tuple[int]=None) -> None:
+    def __init__(self, keep_labels='all', vox_size:Tuple[int]=None, vxg_size:Tuple[int]=None) -> None:
         """
-        Voxelizes raw LiDAR 3D point points in `numpy` (N, 3) format 
+        Voxelizes raw LiDAR 3D point points in (N, 3) format 
         according to the provided discretization
 
         Parameters
@@ -95,20 +104,35 @@ class Voxelization:
         if vox_size is None and vxg_size is None:
             ValueError("Voxel size or Voxelgrid size must be provided")
 
-
         self.vox_size = vox_size
         self.vxg_size = vxg_size
         self.keep_labels = keep_labels
 
 
-    def __call__(self, sample:np.ndarray):
+    def __call__(self, sample:torch.Tensor):
         
         pts, labels = sample
 
-        voxeled_xyz = Vox.hist_on_voxel(pts, voxel_dims=self.vox_size, voxelgrid_dims=self.vxg_size)
-        voxeled_gt = Vox.reg_on_voxel(pts, labels, self.keep_labels, voxel_dims=self.vox_size, voxelgrid_dims=self.vxg_size)
+        if pts.dim() == 3: # batched point clouds
+            pts = pts[0] # decapsulate the batch dimension
+        if labels.dim() == 2: # batched labels
+            labels = labels[0] # decapsulate the batch dimension
 
-        return voxeled_xyz[None], voxeled_gt[None] # vox-point-density, vox-tower-prob
+        if pts.shape[1] > 3: # if the point cloud has features
+            pts = pts[:, :3] # keep only the xyz coordinates  
+
+        vox, gt = Vox.torch_voxelize_pcd_gt(
+            pts, labels, self.keep_labels,
+            voxel_dims=self.vox_size, voxelgrid_dims=self.vxg_size
+        )
+
+        vox = vox[None]
+        # gt = gt[None] # encapsulate the batch dimension  
+
+        #print shapes
+        # print(f"vox shape: {vox.shape}, gt shape: {gt.shape}")
+
+        return vox, gt
     
 
 class Voxelization_withPCD:
@@ -148,7 +172,8 @@ class Voxelization_withPCD:
 
         if pts.dim() == 3: # batched point clouds
             pts = pts[0] # decapsulate the batch dimension
-            labels = labels[0]
+        if labels.dim() == 2: # batched labels
+            labels = labels[0] # decapsulate the batch dimension
 
         if pts.shape[1] > 3: # if the point cloud has features
             point_feats = pts[:, 3:] # keep the features
@@ -161,6 +186,13 @@ class Voxelization_withPCD:
         
         if point_feats is not None:
             pt_locs = torch.concatenate([pt_locs, point_feats], dim=-1) # add the features to the point locations
+
+        #print shapes
+        # print(f"vox shape: {vox.shape}, gt shape: {gt.shape}, pt_locs shape: {pt_locs.shape}")
+
+        # pt_locs = pt_locs[None]
+        vox = vox[None]
+        # gt = gt[None] # encapsulate the batch dimension  
         
         return vox, gt, pt_locs
     
@@ -212,21 +244,142 @@ class Normalize_Labels:
         labels = labels.sum(dim=-1).long() # shape = (P,)
        
         return labels
-    
 
-class Farthest_Point_Sampling:
+
+class Ignore_Label:
+
+    def __init__(self, ignore_label:int) -> None:
+        self.ignore_label = ignore_label
+
+    def __call__(self, sample) -> Any:
+        """
+        Ignore the points with the ignore label
+        """
+
+        pointcloud, labels = sample
+
+        mask = labels == self.ignore_label
+
+        # if pointcloud.ndim >= 3:
+        #     pointcloud[mask[None]] = -1 # only if 
+        labels[mask] = -1 # ignore the points with the ignore label
+
+        return pointcloud, labels   
+
+class Random_Point_Sampling:
 
     def __init__(self, num_points: Union[int, torch.Tensor]) -> None:
-        self.num_points = num_points # if tensor, then it is the batch size and corresponds to dim 0 of the input tensor
-
+        self.num_points = num_points
 
     def __call__(self, sample) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Randomly sample `num_points` from the point cloud
+        """
 
-        # print(f"Sample: {sample[0].shape}, {sample[1].shape}")
-        if isinstance(sample, tuple): 
+        if isinstance(sample, tuple):
             pointcloud, labels = sample
         else:
             pointcloud, labels = sample[:, :, :-1], sample[:, :, -1]
+
+        if pointcloud.shape[1] < self.num_points:
+            random_indices = torch.randint(0, pointcloud.shape[1] - 1, size=(self.num_points - pointcloud.shape[1],))
+
+            pointcloud = torch.cat([pointcloud, pointcloud[:, random_indices]], dim=1)
+            labels = torch.cat([labels, labels[:, random_indices]], dim=1)
+        
+        else:
+            random_indices = torch.randperm(pointcloud.shape[1])[:self.num_points]
+            pointcloud = pointcloud[:, random_indices]
+            labels = labels[:, random_indices]
+
+
+        return pointcloud, labels
+    
+
+class Inverse_Density_Sampling:
+    """
+    Inverse Density Sampling:
+    1. calcule the neighbors of each 3D point within a ball of radius `ball_radius`
+    2. order the point indices by the number of neighbors
+    3. the `num_points` points with the least number of neighbors are sampled
+    """
+
+    def __init__(self, num_points, ball_radius) -> None:
+        self.num_points = num_points
+        self.ball_radius = ball_radius
+
+    def __call__(self, sample) -> Tuple[torch.Tensor, torch.Tensor]:
+
+        if isinstance(sample, tuple):
+            pointcloud, labels = sample
+        else: # torch tensor
+            if sample.ndim == 3: # batched point clouds
+                pointcloud, labels = sample[:, :, :-1], sample[:, :, -1]
+            else:
+                pointcloud, labels = sample[:, :-1], sample[:, -1] # preprocessed sample
+
+        idis_pointcloud = torch.empty((pointcloud.shape[0], self.num_points, pointcloud.shape[2]), device=pointcloud.device)
+        idis_labels = torch.empty((pointcloud.shape[0], self.num_points), dtype=torch.long, device=pointcloud.device)
+
+        if pointcloud.ndim == 3: # batched point clouds
+            for i in range(pointcloud.shape[0]):
+                knn_indices = self.inverse_density_sampling(pointcloud[i], self.num_points, self.ball_radius)
+                idis_pointcloud[i] = pointcloud[i, knn_indices]
+                idis_labels[i] = labels[i, knn_indices]
+        else:
+            # print(f"pointcloud shape: {pointcloud.shape}, labels shape: {labels.shape}")
+            knn_indices = self.inverse_density_sampling(pointcloud, self.num_points, self.ball_radius)
+            idis_pointcloud = pointcloud[:, knn_indices]
+            idis_labels = labels[:, knn_indices]
+
+        # print(f"idis_pointcloud shape: {idis_pointcloud.shape}, idis_labels shape: {idis_labels.shape}")
+
+        return idis_pointcloud.squeeze(), idis_labels.squeeze()
+    
+    def inverse_density_sampling(self, pointcloud:torch.Tensor, num_points:int, ball_radius:float) -> torch.Tensor:
+        from torch_cluster import radius
+
+        pointcloud = pointcloud.squeeze() # shape = (B, P, 3) -> (P, 3)
+        # print(f"pointcloud shape: {pointcloud.shape}")
+
+        indices = radius(pointcloud, pointcloud, r=ball_radius, max_num_neighbors=pointcloud.shape[0]) # shape = (2, P^2)
+
+        #print(f"indices shape: {indices.shape}")
+        #print(f"indices: {indices}")
+        
+        # count the number of neighbors for each point
+        num_neighbors = torch.bincount(indices[0], minlength=pointcloud.shape[0]) # shape = (P,)
+
+        #print(f"num_neighbors shape: {num_neighbors.shape}; \nnum_neighbors: {num_neighbors}")
+
+        # select the `num_points` points with the least number of neighbors
+        knn_indices = torch.argsort(num_neighbors, dim=-1)[:num_points]
+
+        #print(f"knn_indices shape: {knn_indices.shape}; \nknn_indices: {knn_indices}")
+
+        return knn_indices
+
+        
+
+class Farthest_Point_Sampling:
+
+    def __init__(self, num_points: Union[int, torch.Tensor], fps_labels=True) -> None:
+        self.num_points = num_points # if tensor, then it is the batch size and corresponds to dim 0 of the input tensor
+        self.fps_labels = fps_labels # if True, then the labels are also sampled with the point cloud
+
+
+    def __call__(self, sample) -> Tuple[torch.Tensor, torch.Tensor]:
+        from torch_cluster import fps
+
+        # print(f"Sample: {sample[0].shape}, {sample[1].shape}")
+        if self.fps_labels:
+            if isinstance(sample, tuple): 
+                pointcloud, labels = sample # shape = (B, P, 3), (B, P)
+            else:
+                pointcloud, labels = sample[:, :, :-1], sample[:, :, -1] # shape = (B, P, 3), (B, P)
+        else:
+            pointcloud, target = sample
+            labels = torch.zeros((pointcloud.shape[0], pointcloud.shape[1]), dtype=torch.long, device=pointcloud.device) # shape = (B, P)
 
         if pointcloud.shape[1] < self.num_points: # if the number of points in the point cloud is less than the number of points to sample
             # print(f"sample shape {pointcloud.shape} < num_points {self.num_points}")
@@ -253,7 +406,7 @@ class Farthest_Point_Sampling:
             elif pointcloud.shape[0] > self.num_points:
                 pointcloud = pointcloud[:self.num_points] # shape = (N, 3 + F)
 
-        pointcloud, labels = pointcloud[:, :-1], pointcloud[:, -1]
+        pointcloud, labels = pointcloud[:, :-1], pointcloud[:, -1] # shape = (N, 3), (N,)
 
         # ply = eda.np_to_ply(pointcloud.detach().cpu().numpy())
         # eda.color_pointcloud(ply, labels.detach().cpu().numpy())
@@ -261,7 +414,11 @@ class Farthest_Point_Sampling:
 
         # print(f"Sampled point cloud shape: {pointcloud.shape}, labels shape: {labels.shape}")
         # print(f"Sampled point cloud unique labels: {torch.unique(labels)}")
-        return pointcloud, labels
+
+        if self.fps_labels:
+            return pointcloud, labels
+        else:
+            return pointcloud, target
     
     # code stolen from pytorch3d cuz their library does not install
     def sample_farthest_points_naive(self,
@@ -452,9 +609,28 @@ class Normalize_PCD:
         pointcloud = self.normalize(pointcloud)
 
         return pointcloud, labels
-        
+    
 
     def normalize(self, pointcloud:torch.Tensor) -> torch.Tensor:
+        """
+         (x - min(x)) / (max(x) - min(x))
+        """
+
+        pointcloud = pointcloud.float()
+
+        if pointcloud.dim() == 3: # batched point clouds
+            min_x = pointcloud.min(dim=1, keepdim=True).values
+            max_x = pointcloud.max(dim=1, keepdim=True).values
+            pointcloud = (pointcloud - min_x) / (max_x - min_x)
+        
+        else: # single point cloud
+            min_x = pointcloud.min(dim=0, keepdim=True).values
+            max_x = pointcloud.max(dim=0, keepdim=True).values
+            pointcloud = (pointcloud - min_x) / (max_x - min_x)
+
+        return pointcloud
+
+    def standardize(self, pointcloud:torch.Tensor) -> torch.Tensor:
         """
         Parameters
         ----------
@@ -466,14 +642,12 @@ class Normalize_PCD:
         pointcloud = pointcloud.float()
 
         if pointcloud.dim() == 3: # batched point clouds
-
             centroid = pointcloud.mean(dim=1, keepdim=True)
             pointcloud = pointcloud - centroid
             max_dist:torch.Tensor = torch.sqrt((pointcloud ** 2).sum(dim=-1)).max(dim=1) # shape = (batch_size,)
             pointcloud = pointcloud / max_dist.values[:, None, None]
 
         else: # single point cloud
-
             centroid = pointcloud.mean(dim=0)
             pointcloud = pointcloud - centroid 
             max_dist = torch.sqrt((pointcloud ** 2).sum(dim=-1)).max()
@@ -482,3 +656,44 @@ class Normalize_PCD:
         return pointcloud
 
 
+
+class SMOTE_3D_Upsampling:
+    
+        def __init__(self, sampling_strategy=0.8, k=5, num_points_resampled=11024) -> None:
+            self.sampling_strategy = sampling_strategy
+            self.k = k
+            self.num_points_resampled = num_points_resampled
+    
+        def __call__(self, sample) -> Tuple[torch.Tensor, torch.Tensor]:
+            """
+            Synthetic Minority Over-sampling Technique for 3D point clouds
+            """
+            from utils.SMOTE_3D import SMOTE3D
+    
+            if isinstance(sample, tuple):
+                pointcloud, labels = sample
+            else:
+                pointcloud, labels = sample[:, :, :-1], sample[:, :, -1] # shape = (B, P, 3), (B, P)
+    
+           
+            smote = SMOTE3D(k_neighbors=self.k, sampling_strategy=self.sampling_strategy, num_points_resampled=self.num_points_resampled)
+
+            if pointcloud.dim() < 3: # not batched point clouds
+                pointcloud, labels = smote.fit_resample_batch(pointcloud[None], labels[None])
+            else:
+                pointcloud, labels = smote.fit_resample_batch(pointcloud, labels)
+                
+            # the result is two lists of tensors, we need to convert them to tensors
+            if len(pointcloud) > 1:
+                raise ValueError("The SMOTE_3D output cannot be stacked, provide a single tensor")
+            
+            pointcloud, labels = pointcloud[0], labels[0] # shape = (P, 3), (P,)
+
+            # pointcloud = pointcloud[None] # encapsulate the batch dimension
+
+            return pointcloud, labels
+        
+
+
+
+    

@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.parallel
 import torch.utils.data
 import torch.nn.functional as F
-from pointnet_utils import PointNetEncoder, feature_transform_reguliarzer
+from core.models.pointnet.models.pointnet_utils import PointNetEncoder, feature_transform_reguliarzer
 
 
 class get_model(nn.Module):
@@ -20,6 +20,7 @@ class get_model(nn.Module):
         self.bn3 = nn.BatchNorm1d(128)
 
     def forward(self, x):
+        x = x.permute(0, 2, 1) # (batch_size, num_channels, num_points)
         batchsize = x.size()[0]
         n_pts = x.size()[2]
         x, trans, trans_feat = self.feat(x)
@@ -37,7 +38,7 @@ class get_loss(torch.nn.Module):
         super(get_loss, self).__init__()
         self.mat_diff_loss_scale = mat_diff_loss_scale
 
-    def forward(self, pred, target, trans_feat, weight):
+    def forward(self, pred, target, trans_feat, weight=None):
         loss = F.nll_loss(pred, target, weight = weight)
         mat_diff_loss = feature_transform_reguliarzer(trans_feat)
         total_loss = loss + mat_diff_loss * self.mat_diff_loss_scale
