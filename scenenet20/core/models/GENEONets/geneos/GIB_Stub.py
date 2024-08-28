@@ -19,7 +19,7 @@ class GIB_Stub:
     Abstract class for Geometric Inductive Bias operators.
     """
 
-    def __init__(self, kernel_reach:int, angles=None, **kwargs):
+    def __init__(self, kernel_reach:float, angles=None, **kwargs):
         """
         Initializes the GIB kernel.
 
@@ -78,12 +78,7 @@ class GIB_Stub:
     def compute_integral(self) -> torch.Tensor:
         """
         Computes an integral approximation of the gaussian function within the kernel_reach.
-
-        Parameters
-        ----------
-        n_samples - int:
-            Number of samples to use for the integral approximation using Monte Carlo.
-
+       
         Returns
         -------
         `integral` - torch.Tensor:
@@ -116,9 +111,25 @@ class GIB_Stub:
 
 
     @abstractmethod
-    def forward(self) -> torch.Tensor:
+    def forward(self, points:torch.Tensor, query_idxs:torch.Tensor, supports_idxs:torch.Tensor) -> torch.Tensor:
         """
-        Returns a 3D GENEO kernel in torch format
+        Computes a Cylinder GIB on the query points given the support points.
+
+        Parameters
+        ----------
+        `points` - torch.Tensor:
+            Tensor of shape (N, 3) representing the point cloud.
+
+        `query_idxs` - torch.Tensor[int]:
+            Tensor of shape (M,) representing the indices of the query points in `points`. With M <= N.
+
+        `supports_idxs` - torch.Tensor[int]:
+            Tensor of shape (M, K) representing the indices of the support points for each query point. With K <= N.
+
+        Returns
+        -------
+        `q_output` - torch.Tensor:
+            Tensor of shape (M,) representing the output of the GIB on the query points.    
         """
 
 

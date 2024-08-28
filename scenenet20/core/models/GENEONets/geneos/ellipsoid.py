@@ -13,35 +13,25 @@ from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub
 
 class Ellipsoid(GIB_Stub):
 
-    def __init__(self, name, kernel_size, plot=False, **kwargs):
+    def __init__(self, kernel_reach, **kwargs):
         """
-        GENEO kernel that encodes an ellipsoid.\n
+        GIB that encodes an ellipsoid.
 
         Required
         --------
 
-        radii - torch.tensor \in ]0, kernel_size[1]] with shape (3,):
-            ellipsoid's radii;
+        radii - torch.tensor \in ]0, kernel_reach] with shape (3,):
+            ellipsoid's radii in the x, y, and z directions;
 
-        Optional
-        --------
-
-        scaler - float:
-            scalar to multiply the ellipsoid;
-
-        Returns
-        -------
-            3D torch tensor with the ellipsoid kernel
         """
-
-        super().__init__(name, kernel_size, angles=kwargs.get('angles', None))  
+        super().__init__(kernel_reach, angles=kwargs.get('angles', None))
 
         self.radii = kwargs.get('radii', None)
         if self.radii is None:
-            raise KeyError("Provide radii for the ellipsoid.")
-    
-        self.radii = self.radii.to(self.device)
-        self.scaler = kwargs.get('scaler', torch.tensor(1.0)).to(self.device)
+            raise KeyError("Provide radii for the ellipsoid.")        
+
+        self.radii = self._to_parameter(self.radii).to(self.device)
+        self.intensity = kwargs.get('intensity', 1)
 
   
     def mandatory_parameters():
@@ -50,115 +40,101 @@ class Ellipsoid(GIB_Stub):
     def geneo_parameters():
         return Ellipsoid.mandatory_parameters() + ['scaler']
 
-    def geneo_random_config(name="ellip", kernel_size=None):
-        rand_config = GIB_Stub.geneo_random_config(name, kernel_size)
+    def geneo_random_config(kernel_reach):
+        rand_config = GIB_Stub.geneo_random_config(kernel_reach)
 
         geneo_params = {
-            'radii' : torch.tensor([torch.randint(0.1, rand_config['kernel_size'][0], (1,))[0],  #int \in [0.1, kernel_size[1]] ,
-                                    torch.randint(0.1, rand_config['kernel_size'][1], (1,))[0],  #int \in [0.1, kernel_size[1]] ,
-                                    torch.randint(0.1, rand_config['kernel_size'][2], (1,))[0]   #int \in [0.1, kernel_size[1]] ,
-                                    ], dtype=torch.float),
-            'scaler': torch.randint(1, 10, (1,))[0]/10, #float \in [0, 1]
-        }
+            'radii' : torch.rand(3) * kernel_reach,
+            'intensity' : 1.0,
+        } 
 
         rand_config['geneo_params'] = geneo_params
 
-        rand_config['non_trainable'] = []
 
         return rand_config
 
 
-    def gaussian(self, x:torch.Tensor, epsilon=1e-8) -> torch.Tensor:
-        shape = torch.tensor(self.kernel_size, dtype=torch.float, device=self.device, requires_grad=True)
-        center = (shape - 1) / 2
+    def gaussian(self, x:torch.Tensor) -> torch.Tensor:
+        """
+        Computes the gaussian function of the Ellipsoid GIB for the input tensor.
 
-        x_c = x - center # Nx3
+        Parameters
+        ----------
+        `x` - torch.Tensor:
+            Tensor of shape (K, 3) representing the input tensor.
 
-        cov_matrix = torch.diag(torch.relu(self.radii))  # 3x3, relu to avoid negative radii and ensure positive semi-definite matrix
+        Returns
+        -------
+        `gaussian` - torch.Tensor:
+            Tensor of shape (K,) representing the gaussian function of the input tensor.
+        """
+        cov_matrix = torch.diag(torch.relu(self.radii)) # 3x3, relu to avoid negative radii and ensure positive semi-definite matrix
         precision_matrix = torch.inverse(cov_matrix) # 3x3
 
-        exponent = -0.5 * torch.sum(x_c * torch.matmul(x_c, precision_matrix), dim=1) # Nx1
-        normalization = 1 # torch.sqrt((2 * torch.pi)**3 * torch.det(cov_matrix))
-
+        exponent = -0.5 * torch.sum(x * torch.matmul(x, precision_matrix), dim=1) # K
         gauss_dist = torch.exp(exponent)
-        return self.scaler*gauss_dist[:, None]
 
-    def sum_zero(self, tensor:torch.Tensor) -> torch.Tensor:
-        return tensor - torch.sum(tensor) / torch.prod(torch.tensor(self.kernel_size)) 
-
+        return self.intensity * gauss_dist
     
-    def forward(self):
-        idxs = torch.stack(
-                    torch.meshgrid(
-                                torch.arange(self.kernel_size[0], dtype=torch.float),
-                                torch.arange(self.kernel_size[1], dtype=torch.float),
-                                torch.arange(self.kernel_size[2], dtype=torch.float)
-                            )
-                ).T.reshape(-1, 3)
-        idxs = idxs.to(self.device).requires_grad_(True)
 
-        kernel = self.gaussian(idxs)
-        # kernel = self.sum_zero(kernel)
-        kernel = kernel.view(self.kernel_size)
+    def compute_integral(self) -> torch.Tensor:
+        mc_weights = self.gaussian(self.montecarlo_points)
+        # print(mc_weights.shape)
+        # import matplotlib.pyplot as plt
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # x = self.montecarlo_points.cpu().detach().numpy()
+        # ax.scatter(x[:, 0], x[:, 1], x[:, 2], c=mc_weights.cpu().detach().numpy(), cmap='magma')
+        # plt.show()  
+        return torch.sum(mc_weights)
 
-        if self.angles is not None:
-            kernel = self.rotate_tensor(self.angles, kernel)
 
-        return kernel
+    def forward(self, points: torch.Tensor, query_idxs: torch.Tensor, supports_idxs: torch.Tensor) -> torch.Tensor:
+        q_output = torch.zeros(len(query_idxs), dtype=points.dtype, device=points.device)
+        for i, q in enumerate(query_idxs):
+            center = points[q]
+            support_points = points[supports_idxs[i]]
+            s_centered = support_points - center
+            weights = self.gaussian(s_centered.to(self.device))
+            weights = self.sum_zero(weights)
+            q_output[i] = torch.sum(weights)
 
+        return q_output
 
 
 if __name__ == "__main__":
-    from utils import plot_voxelgrid as Vox
+    from core.neighboring.radius_ball import k_radius_ball
+    from core.neighboring.knn import torch_knn
+    from core.pooling.farthest_point import farthest_point_pooling
     
-    ellip = Ellipsoid('ellip', (9, 9, 9), radii=torch.tensor([4.0, 2.0, 1.0]), scaler=torch.tensor(5.0))
+    # generate some points, query points, and neighbors. For the neighbors, I want to test two scenarios: 
+    # 1) where the neighbors are at radius distance from the query points
+    # 2) where the neighbors are very distance fromt the query points, at least 2*radius distance
+    points = torch.rand((100_000, 3))
+    query_idxs = farthest_point_pooling(points, 20)
+    q_points = points[query_idxs]
+    num_neighbors = 20
+    # neighbors = k_radius_ball(q_points, points, 0.2, 10, loop=True)
+    _, neighbors_idxs = torch_knn(q_points, points, num_neighbors)
 
-    kernel = ellip.forward()
-    print(kernel.shape)
-    Vox.plot_voxelgrid(kernel.cpu().detach().numpy(), color_mode='density')
-    
-    input("Press Enter to continue...")
+    print(points.shape)
+    print(neighbors_idxs.shape)
+    print(query_idxs.shape)
 
+    ellip = Ellipsoid(0.3, radii=torch.tensor([0.01, 0.01, 0.2]))
 
-    # %%
+    ellip_weights = ellip.forward(points, query_idxs, neighbors_idxs)
+    print(ellip_weights.shape)
+    print(ellip_weights)
 
-    mean = torch.tensor([0.0, 0.0, 0.0])
-    cov_matrix = torch.tensor([[5.0, 0.0, 0.0],
-                               [0.0, 1.0, 0.0],
-                               [0.0, 0.0, 2.0]])
-
-    num_samples = 100000
-    samples = torch.distributions.multivariate_normal.MultivariateNormal(mean, cov_matrix).sample((num_samples,))
-
-
-    # %%
+    # plot q_points + kernel
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
+    # ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c='b')
+    ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c=ellip_weights.cpu().detach().numpy(), cmap='magma')
 
-    samples_np = samples.numpy()
-    ax.scatter(samples_np[:, 0], samples_np[:, 1], samples_np[:, 2], c='b', marker='o')
+    plt.show()    
 
-    eigenvalues, eigenvectors = torch.eig(cov_matrix, eigenvectors=True)
-    principal_axes = eigenvectors * torch.sqrt(eigenvalues.unsqueeze(1))
-
-    # Plot principal axes if desired
-    ax.quiver(mean[0], mean[1], mean[2], principal_axes[0, :], principal_axes[1, :], principal_axes[2, :], color='r')
-
-
-    # Set the same range for all axes to make it appear spherical
-    range_value = 3 * torch.max(cov_matrix)
-    ax.set_box_aspect([range_value, range_value, range_value])
-    # ax.set_xlim(mean[0] - range_value, mean[0] + range_value)
-    # ax.set_ylim(mean[1] - range_value, mean[1] + range_value)
-    # ax.set_zlim(mean[2] - range_value, mean[2] + range_value)
-
-    plt.show()
-
-
-
-
-
-# %%

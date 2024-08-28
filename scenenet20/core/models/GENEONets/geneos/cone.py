@@ -14,7 +14,7 @@ class Cone(GIB_Stub):
 
     def __init__(self, kernel_reach, **kwargs):
         """
-        GENEO kernel that encodes a cone.\n
+        GIB that encodes a cone.\n
 
         Required
         --------
@@ -43,7 +43,7 @@ class Cone(GIB_Stub):
         # self.apex = self._to_parameter(self.apex)
         self.cone_inc = kwargs['cone_inc']#.to(self.device)
         # self.cone_inc = self._to_parameter(self.cone_inc)
-        self.cone_inc = self._to_tensor(self.cone_inc)
+        # self.cone_inc = self._to_tensor(self.cone_inc)
         self.cone_radius = kwargs['cone_radius']#.to(self.device)
         # self.cone_radius = self._to_parameter(self.cone_radius)
 
@@ -109,25 +109,7 @@ class Cone(GIB_Stub):
 
     
     def forward(self, points:torch.Tensor, query_idxs:torch.Tensor, supports_idxs:torch.Tensor) -> torch.Tensor:
-        """
-        Computes the Cone GIB on the query points given the support points.
-
-        Parameters
-        ----------
-        `points` - torch.Tensor:
-            Tensor of shape (N, 3) representing the point cloud.
-
-        `query_idxs` - torch.Tensor[int]:
-            Tensor of shape (M,) representing the indices of the query points in `points`. With M <= N.
-
-        `supports_idxs` - torch.Tensor[int]:
-            Tensor of shape (M, K) representing the indices of the support points for each query point. With K <= N.
-
-        Returns
-        -------
-        `q_output` - torch.Tensor:
-            Tensor of shape (M,) representing the output of the GIB on the query points.    
-        """
+     
         self.cone_inc = torch.clamp(self.cone_inc, 0, 0.499) # tan is not defined for 90 degrees
 
         q_output = torch.zeros(len(query_idxs), dtype=points.dtype, device=points.device)

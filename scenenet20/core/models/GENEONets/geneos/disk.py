@@ -12,125 +12,142 @@ from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub
 
 class Disk(GIB_Stub):
 
-    def __init__(self, name, kernel_size, **kwargs):
+    def __init__(self, kernel_reach:float, **kwargs):
         """
-        GENEO kernel that encodes a disk.\n 
-
+        GIB that encodes a disk.
+        
         Parameters
         ----------
+        `radius` - float:
+            radius of the disk; radius <= kernel_reach;
 
-        radius - float \in ]0, kernel_size[1]] :
-            disk's radius;
+        `width` - float:
+            width of the disk; width <= kernel_reach;
 
-        height - float \in ]0, kernel_size[0]] :
-            disk's height;
-
-        Optional
-        --------
-
-        sigma - float:
-            scalar
-
-        angle - torch tensor of shape (3,):
-            rotation angle in degrees around the x, y, and z axis.
+        `intensity` - float:
+            variance for the gaussian function when assigning weights to the kernel;
         """
-        
-        super().__init__(name, kernel_size, angles=kwargs.get('angles', None))  
 
+        super().__init__(kernel_reach, angles=kwargs.get('angles', None))
+
+        if kwargs.get('radius') is None:
+            raise KeyError("Provide a radius for the disk in the kernel.")
+        
+        if kwargs.get('width') is None:
+            raise KeyError("Provide a width for the disk in the kernel.")
 
         self.radius = kwargs['radius']
-        if self.radius is None:
-            raise KeyError("Provide a radius for the disk in the kernel.")
+        self.width = kwargs['width']
 
-        self.radius = self.radius.to(self.device)
-
-        self.height = kwargs['height']
-        if self.height is None:
-            raise KeyError("Provide a height for the disk in the kernel.")
-
-        self.height = self.height.to(self.device).to(torch.int)
-
-        self.sigma = kwargs.get('sigma', 1)
+        self.intensity = kwargs.get('intensity', 1)
 
 
     def mandatory_parameters():
-        return ['radius']
+        return ['radius', 'width']
     
     def geneo_parameters():
-        return disk.mandatory_parameters() + ['sigma']
+        return Disk.mandatory_parameters() + ['intensity']
     
-    
-    def geneo_random_config(name="disk", kernel_size=None):
-        rand_config = GIB_Stub.geneo_random_config(name, kernel_size)
+    def geneo_random_config(kernel_reach):
+        rand_config = GIB_Stub.geneo_random_config(kernel_reach)
 
-        k_size = rand_config['kernel_size']
-
-        geneo_params = {
-            'radius' : torch.randint(1, k_size[1], (1,))[0] / 2, #float \in [0.5, kernel_size[1]/2]
-            'height' : torch.randint(0, k_size[0]-1, (1,))[0] #int \in [1, kernel_size[0]]
+        disk_params = {
+            'radius' : kernel_reach / torch.randint(1, kernel_reach*2, (1,))[0],
+            'width' : kernel_reach / torch.randint(1, kernel_reach*2, (1,))[0],
+            'intensity' : torch.rand(1)
         }
 
-        rand_config['geneo_params'] = geneo_params
-        rand_config['non_trainable'] = ['height']
+        rand_config['geneo_params'] = disk_params
 
         return rand_config
-    
-   
-
-    
-    def gaussian(self, x:torch.Tensor, epsilon=1e-8) -> torch.Tensor:
-        center = torch.tensor([(self.kernel_size[1]-1)/2, (self.kernel_size[2]-1)/2], dtype=torch.float, device=self.device, requires_grad=True)
-
-        x_c = x - center # Nx2
-        x_c_norm = torch.linalg.norm(x_c, dim=1, keepdim=True) # Nx1
-        gauss_dist = x_c_norm**2 #- (self.radius + epsilon)**2 
-
-        return self.sigma*torch.exp((gauss_dist**2) * (-1 / (2*(self.radius + epsilon)**2)))
-    
-    def sum_zero(self, tensor:torch.Tensor) -> torch.Tensor:
-        return tensor - torch.sum(tensor) / torch.prod(torch.tensor(self.kernel_size[1:]))
-    
-
-    def forward(self):
-
-        floor_idxs = torch.stack(
-                torch.meshgrid(torch.arange(self.kernel_size[1], dtype=torch.float, device=self.device, requires_grad=True), 
-                            torch.arange(self.kernel_size[2], dtype=torch.float, device=self.device, requires_grad=True))
-            ).T.reshape(-1, 2)
         
-        floor_vals = self.gaussian(floor_idxs)
-        
-        floor_vals = self.sum_zero(floor_vals)
-        floor_vals = torch.t(floor_vals).view(self.kernel_size[1:])
 
-        kernel = torch.zeros_like(floor_vals, device=self.device)
 
-        if self.height == 0:
-            kernel = torch.cat([floor_vals[None], torch.zeros((self.kernel_size[0] - 1, *self.kernel_size[1:]), device=self.device)], dim=0)
-        
-        elif self.height == self.kernel_size[0] - 1:
-            kernel = torch.cat([torch.zeros((self.kernel_size[0] - 2, *self.kernel_size[1:]), device=self.device), floor_vals[None]], dim=0)
-        else:
-            kernel = torch.cat([torch.zeros((self.height - 1, *self.kernel_size[1:]), device=self.device), floor_vals[None]], dim=0)
-            kernel = torch.cat([kernel, torch.zeros((self.kernel_size[0] - self.height, *self.kernel_size[1:]), device=self.device)], dim=0)
+    def gaussian(self, x:torch.Tensor) -> torch.Tensor:
+        """
+        Computes the gaussian function of the Disk GIB for the input tensor.
 
-        if self.angles is not None:
-            kernel = self.rotate_tensor(self.angles, kernel)
-        # kernel = self.sum_zero(kernel)
+        Parameters
+        ----------
+        `x` - torch.Tensor:
+            Tensor of shape (K, 2) representing the input tensor.
 
-        return kernel
+        Returns
+        -------
+        `gaussian` - torch.Tensor:
+            Tensor of shape (K, 1) representing the gaussian function of the input tensor.
+        """
+        x_norm = torch.linalg.norm(x, dim=1, keepdim=True) # Kx1
+        return self.intensity * torch.exp((x_norm**2) * (-1 / (2*(self.radius + self.epsilon)**2))) # Kx1
     
+
+    def compute_integral(self) -> torch.Tensor:
+        mc_weights = self.gaussian(self.montecarlo_points[:, :2]).squeeze()
+        in_width_mask = torch.abs(self.montecarlo_points[:, 2]) <= self.width
+        mc_weights = mc_weights * in_width_mask
+        # print(mc_weights.shape)
+        # import matplotlib.pyplot as plt
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # x = self.montecarlo_points.cpu().detach().numpy()
+        # ax.scatter(x[:, 0], x[:, 1], x[:, 2], c=mc_weights.cpu().detach().numpy(), cmap='magma')
+        # plt.show()  
+        return torch.sum(mc_weights)    
+
+
+    def forward(self, points: torch.Tensor, query_idxs: torch.Tensor, supports_idxs: torch.Tensor) -> torch.Tensor:
+        
+        q_output = torch.zeros(len(query_idxs), dtype=points.dtype, device=points.device)
+
+        for i, q in enumerate(query_idxs):
+            center = points[q] # 1x3
+            support_points = points[supports_idxs[i]] #Kx3
+            s_centered = support_points - center
+            weights = self.gaussian(s_centered[:, :2]).squeeze()
+            # zero the weights of all points outside the disk's width
+            in_width_mask = torch.abs(s_centered[:, 2]) <= self.width
+            weights = weights * in_width_mask
+
+            weights = self.sum_zero(weights)
+            q_output[i] = torch.sum(weights) 
+
+        return q_output
 
 if __name__ == '__main__':
-    from utils import plot_voxelgrid as Vox
+    from core.neighboring.radius_ball import k_radius_ball
+    from core.neighboring.knn import torch_knn
+    from core.pooling.farthest_point import farthest_point_pooling
+    
+    # generate some points, query points, and neighbors. For the neighbors, I want to test two scenarios: 
+    # 1) where the neighbors are at radius distance from the query points
+    # 2) where the neighbors are very distance fromt the query points, at least 2*radius distance
+    points = torch.rand((100_000, 3))
+    query_idxs = farthest_point_pooling(points, 20)
+    q_points = points[query_idxs]
+    num_neighbors = 20
+    # neighbors = k_radius_ball(q_points, points, 0.2, 10, loop=True)
+    _, neighbors_idxs = torch_knn(q_points, q_points, num_neighbors)
 
-    rot_angles = torch.tensor([0.0, 0.0, 0.0], requires_grad=True, device='cuda')
+    print(points.shape)
+    print(neighbors_idxs.shape)
+    print(query_idxs.shape)
 
-    disk = Disk('disk', [9, 9, 9], radius=torch.tensor(3.5), height=torch.tensor(3.0), angles=rot_angles, sigma=torch.tensor(4.0))
+    disk = Disk(0.2, radius=0.1, width=0.01)
 
-    disk_kernel = disk.forward()
+    disk_weights = disk.forward(points, query_idxs, neighbors_idxs)
+    print(disk_weights.shape)
+    print(disk_weights)
 
-    Vox.plot_voxelgrid(disk_kernel.cpu().detach().numpy(), title='Disk Kernel', color_mode='density')
+    # plot q_points + kernel
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    # ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c='b')
+    ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c=disk_weights.cpu().detach().numpy(), cmap='magma')
+
+    plt.show()  
 
     
     

@@ -15,19 +15,16 @@ class Cylinder(GIB_Stub):
 
     def __init__(self, kernel_reach, **kwargs):
         """
-        Creates a 3D torch tensor that demonstrates a cylinder.\n
+        GIB that encodes a cylinder.
 
         Parameters
         ----------
-        radius - float:
-        radius of the cylinder's base; radius <= kernel_size[1];
+        `radius` - float:
+            radius of the cylinder's base; radius <= kernel_size[1];
 
-        sigma - float:
-        variance for the gaussian function when assigning weights to the kernel;
+        `intensity` - float:
+            variance for the gaussian function when assigning weights to the kernel;
 
-        Returns
-        -------
-            3D torch tensor with the cylinder kernel 
         """
 
         super().__init__(kernel_reach, angles=kwargs.get('angles', None))
@@ -79,25 +76,7 @@ class Cylinder(GIB_Stub):
     
 
     def forward(self, points:torch.Tensor, query_idxs:torch.Tensor, supports_idxs:torch.Tensor) -> torch.Tensor:
-        """
-        Computes a Cylinder GIB on the query points given the support points.
 
-        Parameters
-        ----------
-        `points` - torch.Tensor:
-            Tensor of shape (N, 3) representing the point cloud.
-
-        `query_idxs` - torch.Tensor[int]:
-            Tensor of shape (M,) representing the indices of the query points in `points`. With M <= N.
-
-        `supports_idxs` - torch.Tensor[int]:
-            Tensor of shape (M, K) representing the indices of the support points for each query point. With K <= N.
-
-        Returns
-        -------
-        `q_output` - torch.Tensor:
-            Tensor of shape (M,) representing the output of the GIB on the query points.    
-        """
         q_output = torch.zeros(len(query_idxs), dtype=points.dtype, device=points.device)
         for i, q in enumerate(query_idxs):
             center = points[q] # 1x3
