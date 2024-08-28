@@ -10,6 +10,7 @@ dummy_res/*
 *.npy
 *.tar
 *.tar.gz
+*pyc
 *.gz
 *.ckpt
 ##### environments #####
