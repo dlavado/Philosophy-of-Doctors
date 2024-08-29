@@ -28,7 +28,7 @@ voxel_grid_size:
 voxel_size:
   value: None
 batch_size:
-  value: 16
+  value: 8
 ignore_index:
   value: 0 # noise
 num_workers: 
