@@ -7,7 +7,7 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 sys.path.insert(3, '../../../..')
-from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub
+from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub, GIB_PARAMS, NON_TRAINABLE
 
 
 
@@ -35,6 +35,23 @@ class Cylinder(GIB_Stub):
         self.radius = kwargs['radius']
 
         self.intensity = kwargs.get('intensity', 1)
+
+    def mandatory_parameters():
+        return ['radius']
+    
+    def gib_parameters():
+        return Cylinder.mandatory_parameters() + ['intensity']
+
+    def gib_random_config(kernel_reach):
+        rand_config = GIB_Stub.gib_random_config(kernel_reach)
+
+        geneo_params = {
+            'radius' : torch.randint(1, 10, (1,))[0]/100, # float \in [0.1, 1]
+            'intensity' : torch.randint(0, 10, (1,))[0]/5 # float \in [0, 2]
+        }   
+        rand_config[GIB_PARAMS].update(geneo_params)
+
+        return rand_config
 
 
     def gaussian(self, x:torch.Tensor) -> torch.Tensor:
@@ -80,31 +97,19 @@ class Cylinder(GIB_Stub):
         q_output = torch.zeros(len(query_idxs), dtype=points.dtype, device=points.device)
         for i, q in enumerate(query_idxs):
             center = points[q] # 1x3
-            support_points = points[supports_idxs[i]] #Kx3
+            support = supports_idxs[i]
+            support = support[support != -1]
+            support_points = points[support] #Kx3
+            # center the support points
             s_centered = support_points - center
+            # rotate the support points
+            # s_centered = s_centered.to(self.device)
+            s_centered = self.rotate(s_centered)
             weights = self.gaussian(s_centered[:, :2]) # Kx1; seeing as the cylinder is in 3D, we only consider the first two dimensions
             weights = self.sum_zero(weights)
             q_output[i] = torch.sum(weights)
 
         return q_output
-    
-    def mandatory_parameters():
-        return ['radius']
-    
-    def geneo_parameters():
-        return Cylinder.mandatory_parameters() + ['intensity']
-
-    def geneo_random_config(kernel_reach):
-        rand_config = GIB_Stub.geneo_random_config(kernel_reach)
-
-        geneo_params = {
-            'radius' : kernel_reach / torch.randint(1, kernel_reach*2, (1,))[0],
-            'intensity' : torch.randint(0, 10, (1,))[0]/5 # float \in [0, 2]
-        }   
-        rand_config['geneo_params'] = geneo_params
-
-        return rand_config
-
 
 
 if __name__ == "__main__":
@@ -115,12 +120,13 @@ if __name__ == "__main__":
     # generate some points, query points, and neighbors. For the neighbors, I want to test two scenarios: 
     # 1) where the neighbors are at radius distance from the query points
     # 2) where the neighbors are very distance fromt the query points, at least 2*radius distance
-    points = torch.rand((100_000, 3))
+    points = torch.rand((100_000, 3), devicde='cuda')
     query_idxs = farthest_point_pooling(points, 20)
     q_points = points[query_idxs]
     num_neighbors = 20
     # neighbors = k_radius_ball(q_points, points, 0.2, 10, loop=True)
     _, neighbors_idxs = torch_knn(q_points, q_points, num_neighbors)
+
 
     print(points.shape)
     print(neighbors_idxs.shape)

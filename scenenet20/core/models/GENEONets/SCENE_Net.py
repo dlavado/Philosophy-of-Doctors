@@ -12,9 +12,7 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 
-from core.models.GENEONets.GENEO_utils import GENEO_Layer, GENEO_Transposed
-
-
+from core.models.GENEONets.GENEO_utils import GIB_Layer
 
 
 class GeometricInductiveBiasModel(nn.Module):
@@ -48,7 +46,7 @@ class GeometricInductiveBiasModel(nn.Module):
 
         self.gibs = nn.ModuleList()
         for _ in range(num_layers):
-            gib_layer = GENEO_Layer(gib_dict, in_channels, num_observers, kernel_size)
+            gib_layer = GIB_Layer(gib_dict, in_channels, num_observers, kernel_size)
             self.gibs.append(gib_layer)
     
 
@@ -57,9 +55,3 @@ if __name__ == "__main__":
     import sys
     import os
    
-    
-    # make random torch data to test the model
-    x = torch.rand((2, 1, 32, 32, 32)).cuda() # (batch, c, z, x, y)
-
-
-    

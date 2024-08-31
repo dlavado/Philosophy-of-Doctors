@@ -7,7 +7,7 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 sys.path.insert(3, '../../../..')
-from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub
+from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub, GIB_PARAMS
 
 
 class Disk(GIB_Stub):
@@ -45,19 +45,19 @@ class Disk(GIB_Stub):
     def mandatory_parameters():
         return ['radius', 'width']
     
-    def geneo_parameters():
+    def gib_parameters():
         return Disk.mandatory_parameters() + ['intensity']
     
-    def geneo_random_config(kernel_reach):
-        rand_config = GIB_Stub.geneo_random_config(kernel_reach)
+    def gib_random_config(kernel_reach):
+        rand_config = GIB_Stub.gib_random_config(kernel_reach)
 
         disk_params = {
-            'radius' : kernel_reach / torch.randint(1, kernel_reach*2, (1,))[0],
-            'width' : kernel_reach / torch.randint(1, kernel_reach*2, (1,))[0],
+            'radius' : kernel_reach / torch.randint(1, kernel_reach*2, (1,))[0], # float \in ]0, kernel_reach]
+            'width' : kernel_reach / torch.randint(1, kernel_reach*2, (1,))[0],  # float \in ]0, kernel_reach]
             'intensity' : torch.rand(1)
         }
 
-        rand_config['geneo_params'] = disk_params
+        rand_config[GIB_PARAMS].update(disk_params)
 
         return rand_config
         
@@ -100,9 +100,15 @@ class Disk(GIB_Stub):
         q_output = torch.zeros(len(query_idxs), dtype=points.dtype, device=points.device)
 
         for i, q in enumerate(query_idxs):
+            # retrieve the query point and its support points
             center = points[q] # 1x3
             support_points = points[supports_idxs[i]] #Kx3
+            # center the support points
             s_centered = support_points - center
+            # rotate the support points
+            # s_centered = s_centered.to(self.device)
+            s_centered = self.rotate(s_centered)
+            # compute the weights of the support points
             weights = self.gaussian(s_centered[:, :2]).squeeze()
             # zero the weights of all points outside the disk's width
             in_width_mask = torch.abs(s_centered[:, 2]) <= self.width

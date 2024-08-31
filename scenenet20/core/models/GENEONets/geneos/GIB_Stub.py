@@ -2,7 +2,6 @@
 
 
 from abc import abstractmethod
-from numpy import number
 import torch
 
 import sys
@@ -10,11 +9,13 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 
-import core.models.GENEONets.geneos.diff_rotation_transform as drt
+
+GIB_PARAMS = "gib_params"
+NON_TRAINABLE = "non_trainable"
+KERNEL_REACH = "kernel_reach"
 
 
-
-class GIB_Stub:
+class GIB_Stub(torch.nn.Module):
     """
     Abstract class for Geometric Inductive Bias operators.
     """
@@ -29,11 +30,12 @@ class GIB_Stub:
         `kernel_reach` - int:
             The kernel's neighborhood reach in Geometric space.
         """
+        super(GIB_Stub, self).__init__()
+
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.sign = 1 if torch.any(torch.rand(1) > 0.5) else -1 # random sign for the kernel
 
-        self.angles = angles
-
+        self.angles:torch.Tensor = angles
         self.kernel_reach = kernel_reach
         
         # variables to compute the integral of the GIB function within the kernel reach
@@ -45,33 +47,6 @@ class GIB_Stub:
 
         self.epsilon = 1e-8 # small value to avoid division by zero
         self.intensity = 1 # intensity of the gaussian function
-
-    def _to_parameter(self, value):
-        """
-        Converts the input value to a torch Parameter.
-        """
-        if isinstance(value, torch.Tensor):
-            return torch.nn.Parameter(value)
-        elif isinstance(value, int) or isinstance(value, float):
-            return torch.nn.Parameter(torch.tensor(value, dtype=torch.float))
-        else:
-            raise ValueError("Input value must be a torch.Tensor")
-        
-    def _to_tensor(self, value):
-        """
-        Converts the input value to a torch Tensor.
-        """
-        import numpy as np
-        if isinstance(value, torch.Tensor):
-            return value
-        elif isinstance(value, int) or isinstance(value, float):
-            return torch.tensor(value, dtype=torch.float)
-        elif isinstance(value, np.ndarray):
-            return torch.from_numpy(value).float()
-        elif isinstance(value, list) or isinstance(value, tuple):
-            return torch.tensor(value, dtype=torch.float)
-        else:
-            raise ValueError("Input value must be a torch.Tensor")
         
 
     @abstractmethod
@@ -138,58 +113,56 @@ class GIB_Stub:
         return []
 
     @staticmethod
-    def geneo_parameters():
+    def gib_parameters():
         return []
 
     @staticmethod
-    def geneo_random_config(kernel_reach:int):
+    def gib_random_config(kernel_reach:int):
         """
         Returns a random GENEO configuration
         """
         config = {
-            'kernel_reach': kernel_reach   
+                KERNEL_REACH: kernel_reach   
         }
-        geneo_params = {}
+        gib_params = {
+            'intensity' : torch.randint(5, 10, (1,))[0]/5, # float \in [0, 1]
+            'angles'    : torch.zeros(3)
+        }
 
-        for param in GIB_Stub.geneo_parameters():
-            geneo_params[param] = torch.randint(0, 10, (1,))[0]/5 # float \in [0, 2]
+        for param in GIB_Stub.gib_parameters():
+            gib_params[param] = torch.randint(0, 10, (1,))[0]/5 # float \in [0, 2]
 
-        config['geneo_params'] = geneo_params
-
-        config['non_trainable'] = []
+        config[GIB_PARAMS] = gib_params
+        config[NON_TRAINABLE] = []
 
         return config
     
+    
    
-    def rotate_tensor(self, angles:torch.Tensor, data):
+    def rotate(self, points:torch.Tensor) -> torch.Tensor:
         """
         Rotate a tensor along the x, y, and z axes by the given angles.
         
         Parameters
         ----------
-        angles - torch.Tensor: 
-            Tensor of shape (3,) containing rotation angles for the z, x, and y axes.
-            These are in the range [0, 2] and represent a fraction of pi.
-        data - torch.Tensor: 
-            Input 3D tensor to be rotated.
+        `angles` - torch.Tensor:
+            Tensor of shape (3,) containing rotation angles for the x, y, and z axes.
+            These are nromalized in the range [-1, 1] and represent angles_normalized = angles / pi.
+
+        points - torch.Tensor:
+            Tensor of shape (N, 3) representing the 3D points to rotate.
             
         Returns
         -------
-        rotated_data - torch.Tensor: 
-            Rotated tensor
+        points - torch.Tensor:
+            Tensor of shape (N, 3) containing the rotated
         """
-
-        angles = angles * 180 # convert to degrees
-        angle_z, angle_x, angle_y = angles
-        interpolation = 'bilinear'
-        if angle_z != 0:
-            data = drt.rotation_3d(data, 0, angle_z, expand=False, interpolation=interpolation)
-        if angle_x != 0:
-            data = drt.rotation_3d(data, 1, angle_x, expand=False, interpolation=interpolation)
-        if angle_y != 0:
-            data = drt.rotation_3d(data, 2, angle_y, expand=False, interpolation=interpolation)
-    
-        return data
+        if self.angles is None:
+            return points
+        
+        from core.models.GENEONets.geneos.diff_rotation_transform import rotate_points
+        angles = torch.tanh(self.angles) # convert to range [-1, 1]
+        return rotate_points(angles, points)
         
 
 

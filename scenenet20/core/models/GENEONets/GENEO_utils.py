@@ -1,105 +1,128 @@
-from typing import List, Mapping
+from typing import Mapping
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 import sys
-import os
 
 
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
+sys.path.insert(2, '../../..')
 
-from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub
-from core.models.GENEONets.geneos import cylinder, neg_sphere, arrow, disk, cone, ellipsoid
-
-
-###############################################################
-#                         Args Utils                          #
-###############################################################
-
-import collections
-from itertools import repeat
-
-def _ntuple(n, name="parse"):
-        def parse(x):
-            if isinstance(x, collections.abc.Iterable):
-                return tuple(x)
-            return tuple(repeat(x, n))
-
-        parse.__name__ = name
-        return parse
-_triple = _ntuple(3, "_triple")
-
+from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub, NON_TRAINABLE, GIB_PARAMS
+from core.models.GENEONets.geneos import cylinder, disk, cone, ellipsoid
 
 
 ###############################################################
-#                         GENEO Layer                         #
+#                          GIB Utils                          #
 ###############################################################
 
-class GENEO_Operator(nn.Module):
+def to_parameter(value):
+    """
+    Converts the input value to a torch.nn.Parameter.
+    """
+    if isinstance(value, torch.Tensor):
+        return torch.nn.Parameter(value, requires_grad=True)
+    elif isinstance(value, int) or isinstance(value, float):
+        return torch.nn.Parameter(torch.tensor(value, dtype=torch.float), requires_grad=True)
+    
+    raise ValueError("Input value must be a torch.Tensor")
+    
+def to_tensor(value):
+    """
+    Converts the input value to a torch.Tensor.
+    """
+    import numpy as np
+    if isinstance(value, torch.Tensor):
+        return value
+    elif isinstance(value, int) or isinstance(value, float):
+        return torch.tensor(value, dtype=torch.float)
+    elif isinstance(value, np.ndarray):
+        return torch.from_numpy(value).float()
+    elif isinstance(value, list) or isinstance(value, tuple):
+        return torch.tensor(value, dtype=torch.float)
+ 
+    raise ValueError("Input value must be a torch.Tensor")
 
-    def __init__(self, geneo_class:GIB_Stub, kernel_reach:tuple=None, **kwargs):
-        super(GENEO_Operator, self).__init__()  
+###############################################################
+#                          GIB Layer                          #
+###############################################################
 
-        self.geneo_class = geneo_class
+class GIB_Operator(nn.Module):
+
+    def __init__(self, gib_class:GIB_Stub, kernel_reach:float=None, **kwargs):
+        super(GIB_Operator, self).__init__()  
+
+        self.gib_class = gib_class
         self.kernel_reach = kernel_reach
+        # self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         
         if len(kwargs) > 0:
-            self.init_from_kwargs(**kwargs)
+            self.init_from_kwargs(kwargs)
         else:
-            self.init_from_config()
+            self.random_init()
+
+        self.gib = self.gib_class(kernel_reach=self.kernel_reach, **self.gib_params)
 
     
-    def init_from_config(self):
+    def random_init(self):
+        config = self.gib_class.gib_random_config(self.kernel_reach)
+        self.gib_params = {}
 
-        config = self.geneo_class.geneo_random_config()
+        for param_name in config[GIB_PARAMS]:
+            t_param = to_tensor(config[GIB_PARAMS][param_name])
+            self.gib_params[param_name] = nn.Parameter(t_param, requires_grad = not param_name in config[NON_TRAINABLE])
 
-        self.geneo_params = {}
-        for param in config['geneo_params']:
-            if isinstance(config['geneo_params'][param], torch.Tensor):
-                t_param = config['geneo_params'][param].to(dtype=torch.float)
-            else:
-                t_param = torch.tensor(config['geneo_params'][param], dtype=torch.float)
-            t_param = nn.Parameter(t_param, requires_grad = not param in config['non_trainable'])
-            self.geneo_params[param] = t_param
-
-        self.geneo_params = nn.ParameterDict(self.geneo_params)
+        self.gib_params = nn.ParameterDict(self.gib_params)
 
 
-    def init_from_kwargs(self, **kwargs):
-        self.geneo_params = {}
-        for param in self.geneo_class.mandatory_parameters():
-            self.geneo_params[param] = nn.Parameter(torch.tensor(kwargs[param], dtype=torch.float))
+    def init_from_kwargs(self, kwargs):
+        self.gib_params = {}
+        for param_name in self.gib_class.mandatory_parameters():
+            self.gib_params[param_name] = to_parameter(kwargs[param_name])
 
-        self.geneo_params = nn.ParameterDict(self.geneo_params)
-
-    def compute_kernel(self) -> torch.Tensor:
-       """
-       TODO
-       """
-
-    def forward(self, x:torch.Tensor) -> torch.Tensor:
-      """
-      TODO
-      """
+        self.gib_params = nn.ParameterDict(self.gib_params)
 
 
-
-###############################################################
-#                         SCENE-Nets                          #
-###############################################################
-
-class GENEO_Layer(nn.Module):
-
-    def __init__(self, gib_dict:dict, kernel_reach:int, num_observers:int=1):
+    def forward(self, points:torch.Tensor, query_idxs:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
         """
-        Instantiates a GENEO-Layer Module with specific GENEOs and their respective cvx coefficients.
+        Computes the output of the GIB on the query points given the support points.
 
         Parameters
         ----------
-        `gib_dict` - dict:
-            Mappings that contain the number of GENEOs of each kind (the key) to initialize
+        `points` - torch.Tensor:
+            Tensor of shape (N, 3) representing the point cloud.
+
+        `query_idxs` - torch.Tensor[int]:
+            Tensor of shape (M,) representing the indices of the query points in `points`. With M <= N.
+
+        `supports_idxs` - torch.Tensor[int]:
+            Tensor of shape (M, K) representing the indices of the support points for each query point. With K <= N.
+
+        Returns
+        -------
+        `q_output` - torch.Tensor:
+            Tensor of shape (M,) representing the output of the GIB on the query points.
+        """
+        return self.gib(points, query_idxs, support_idxs)
+
+
+###############################################################
+#                           GIB-Net                           #
+###############################################################
+
+class GIB_Layer(nn.Module):
+
+    def __init__(self, gib_dict:dict, kernel_reach:int, num_observers:int=1):
+        """
+        Instantiates a GIB-Layer Module with GIBs and their cvx coefficients.
+
+        Parameters
+        ----------
+        `gib_dict` - dict[str, int]:
+            Mappings that contain the number of GIBs of each kind (the key) to initialize;
+            keys \in ['cy', 'cone', 'disk', 'ellip']
 
         `kernel_reach` - int:
             The kernel's neighborhood reach in Geometric space.
@@ -108,28 +131,25 @@ class GENEO_Layer(nn.Module):
             number os GENEO observers to form the output of the Module
         
         """
-        super(GENEO_Layer, self).__init__()
+        super(GIB_Layer, self).__init__()
         
         if gib_dict is None or gib_dict == {}:
-            geneo_keys = ['cy', 'arrow', 'cone', 'neg', 'disk', 'ellip']
+            geneo_keys = ['cy', 'cone', 'disk', 'ellip']
             self.gib_dict = {
                 g : torch.randint(1, 64, (1,))[0] for g in geneo_keys
             }
         else:
             self.gib_dict = gib_dict
 
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.num_observers = num_observers
 
-        self.gibs:Mapping[str, GENEO_Operator] = nn.ModuleDict()
+        self.gibs:Mapping[str, GIB_Operator] = nn.ModuleDict()
 
-        # --- Initializing GENEOs ---
+        # --- Initializing GIBs ---
         for key in self.gib_dict:
             if key == 'cy':
                 g_class = cylinder.Cylinder
-            elif key == 'arrow':
-                g_class = arrow.arrow
-            elif key == 'neg':
-                g_class = neg_sphere.negSpherev2
             elif key == 'disk':
                 g_class = disk.Disk
             elif key == 'cone':
@@ -138,16 +158,16 @@ class GENEO_Layer(nn.Module):
                 g_class = ellipsoid.Ellipsoid
 
             for i in range(self.gib_dict[key]):
-                self.gibs[f'{key}_{i}'] = GENEO_Operator(g_class, kernel_reach=kernel_reach)
+                self.gibs[f'{key}_{i}'] = GIB_Operator(g_class, kernel_reach=kernel_reach).to(self.device)
 
         # --- Initializing Convex Coefficients ---
-        self.lambdas = torch.rand((num_observers, len(self.gibs)))
-        self.lambdas = torch.softmax(self.lambdas, dim=1) # make sure they sum to 1
-        self.lambdas = nn.Parameter(self.lambdas, requires_grad=True)   
+        self.lambdas = torch.randn((len(self.gibs), num_observers), device=self.device) # shape (num_gibs, num_observers)
+        self.maintain_convexity() # make sure the coefficients are convex
+        self.lambdas = to_parameter(self.lambdas)
 
 
     def maintain_convexity(self):
-        self.lambdas = torch.softmax(self.lambdas, dim=1)
+        self.lambdas = torch.softmax(self.lambdas, dim=0)
 
     def get_cvx_coefficients(self) -> torch.Tensor:
         return self.lambdas
@@ -156,291 +176,146 @@ class GENEO_Layer(nn.Module):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
     
 
+    def _compute_gib_outputs(self, points:torch.Tensor, query_idxs:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
+
+        q_outputs = torch.zeros((len(query_idxs), len(self.gibs)), dtype=points.dtype, device=points.device)
+        for i, gib_key in enumerate(self.gibs):
+            q_outputs[:, i] = self.gibs[gib_key](points, query_idxs, support_idxs)
+
+        return q_outputs
     
-    def forward(self, x:torch.Tensor) -> torch.Tensor:
-
-        conv = self._perform_conv(x)
-
-        conv_pred = self._observer_cvx_combination(conv)
-        conv_pred = torch.relu(torch.tanh(conv_pred)) # (batch, num_observers, z, x, y)
-
-        return conv_pred
+    def _compute_observers(self, q_outputs:torch.Tensor) -> torch.Tensor:
+        # --- Convex Combination ---
+        # for each query point, compute the convex combination of the outputs of the GIBs
+        return q_outputs @ self.lambdas # shape (M, num_gibs) @ (num_gibs, num_observers) = (M, num_observers)
     
 
-
-
-
-##############################################################
-# Replicating ConvTransposed with GENEO weights
-##############################################################
-
-
-class GENEO_Transposed(nn.ConvTranspose3d):
-
-
-    def __init__(self, 
-                 in_channels, 
-                 out_channels, 
-                 kernel_size, 
-                 stride=1, 
-                 padding=0, 
-                 dilation=1, 
-                 output_padding=0, 
-                 groups=1, 
-                 bias=False, 
-                 padding_mode='zeros', 
-                 device=None, 
-                 dtype=None) -> None:
-        
-        kernel_size = _triple(kernel_size)
-        stride = _triple(stride)
-        padding = _triple(padding)
-        dilation = _triple(dilation)
-        output_padding = _triple(output_padding)
-        super().__init__(in_channels, out_channels, kernel_size, stride, padding, output_padding, groups, bias, dilation, padding_mode, device, dtype)
-
-        self.geneo_layer = GENEO_Layer(gib_dict=None, num_observers=out_channels, kernel_size=kernel_size)
-        self.weight = None
-
-
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        weight = self._build_weights(repeat=input.shape[1])
-        # print(f"forward->build_weights: {weight.shape}; {weight.requires_grad}; {weight.grad_fn}")
-        conv_trans = F.conv_transpose3d(input, weight, self.bias, self.stride, self.padding, self.output_padding, self.groups, self.dilation)
-        # print(conv_trans.shape)
-        # print(f"forward->conv_transpose3d: {conv_trans.shape}; {conv_trans.requires_grad}; {conv_trans.grad_fn}")
-        conv_trans = self.geneo_layer._observer_cvx_combination(conv_trans)
-        # print(f"forward->observer_cvx_combination: {conv_trans.shape}; {conv_trans.requires_grad}; {conv_trans.grad_fn}")
-        # print(conv_trans.shape)
-        return conv_trans
     
-    def _build_weights(self, repeat=1) -> torch.Tensor:
-        kernels = self.geneo_layer._build_kernels()
-        # print(f"build_weights->build_kernels: {kernels.shape}; {kernels.requires_grad}; {kernels.grad_fn}")
-        kernels = kernels.permute(1, 0, 2, 3, 4) # (1, num_geneos, k_z, k_x, k_y)
-        # print(f"build_weights->permute: {kernels.shape}; {kernels.requires_grad}; {kernels.grad_fn}")
-        kernels = kernels.repeat(repeat, 1, 1, 1, 1) # (num_channels, num_geneos, k_z, k_x, k_y)
-        # print(f"build_weights->repeat: {kernels.shape}; {kernels.requires_grad}; {kernels.grad_fn}")
-        # kernels = torch.nn.Parameter(kernels, requires_grad=True)
-        return kernels
+    def forward(self, points:torch.Tensor, query_idxs:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
+        """
+        Computes the output of the GIB-Layer on the query points given the support points.
 
-    def maintain_convexity(self):
-        self.geneo_layer.maintain_convexity()
+        Parameters
+        ----------
+        `points` - torch.Tensor:
+            Tensor of shape (N, 3) representing the point cloud.
 
-    def get_cvx_coefficients(self):
-        return self.geneo_layer.get_cvx_coefficients()
-    
-    def get_geneo_params(self):
-        return self.geneo_layer.get_geneo_params()
+        `query_idxs` - torch.Tensor[int]:
+            Tensor of shape (M,) representing the indices of the query points in `points`. With M <= N.
+
+        `supports_idxs` - torch.Tensor[int]:
+            Tensor of shape (M, K) representing the indices of the support points for each query point. With K <= N.
+
+        Returns
+        -------
+        `q_outputs` - torch.Tensor:
+            Tensor of shape (M, num_observers) representing the output of the GIB-Layer on the query points.
+        """
+        q_outputs = self._compute_gib_outputs(points, query_idxs, support_idxs) # shape (M, num_gibs)
+        q_outputs = self._compute_observers(q_outputs) # shape (M, num_observers)
+        return q_outputs
     
 
 
 if __name__ == "__main__":
-    torch.set_printoptions(profile="full")
-    import numpy as np
-
-    def kernel2matrix(K:torch.Tensor) -> torch.Tensor:
-        """
-        Matrix transposition of a 2D kernel; used to perform the convolution operation with a matrix multiplication
-
-        Parameters
-        ----------
-        K - torch.Tensor:
-            2D tensor representing the kernel
-
-        Returns
-        -------
-        W - torch.Tensor:
-            2D tensor representing the kernel in matrix form
-        """
-        W_height, W_width = K.numel(), K.numel()*2 + (K.shape[0] - 1)
-        line = torch.zeros(K.numel() + K.shape[0] - 1) # 1D tensor to store the kernel, with zeros to separate the rows
-
-        offset = 0
-        for i in range(K.shape[0]): # for each row
-            line[offset:offset+K.shape[1]] = K[i]
-            offset += K.shape[1] + 1
-
-        W = torch.zeros((W_height, W_width))
-
-        # print(W.shape)
-        # print(line)
-
-        offset = 0
-        for i in range(W_height//2): # for each row
-            # wrtite at the top left corner of the matrix
-            W[i, offset : line.shape[0] + offset] = line
-            # write at the bottom right of the matrix
-            W[W_height - i - 1, W_width - line.shape[0] - offset : W_width - offset] = line
-            # update the offset to write the next row
-            offset += 1
-
-        if W_height % 2 == 1:
-            W[W_height//2, offset: line.shape[0] + offset] = line
-
-        return W
+    from core.neighboring.radius_ball import k_radius_ball
+    from core.neighboring.knn import torch_knn
+    from core.pooling.farthest_point import farthest_point_pooling
     
-    def _kernel2matrix(K: torch.Tensor) -> torch.Tensor:
-        """
-        Matrix transposition of a 2D kernel; used to perform the convolution operation with a matrix multiplication
+    # # generate some points, query points, and neighbors. For the neighbors, I want to test two scenarios: 
+    # # 1) where the neighbors are at radius distance from the query points
+    # # 2) where the neighbors are very distance fromt the query points, at least 2*radius distance
+    # points = torch.rand((100_000, 3), device='cuda')
+    # query_idxs = farthest_point_pooling(points, 20)
+    # q_points = points[query_idxs]
+    # num_neighbors = 20
+    # # neighbors = k_radius_ball(q_points, points, 0.2, 10, loop=True)
+    # _, neighbors_idxs = torch_knn(q_points, points, num_neighbors)
 
-        Parameters
-        ----------
-        K - torch.Tensor with shape (C, H, W)
-            2D tensor representing the kernel; 
+    # # print(points.device, q_points.device, neighbors_idxs.device)
 
-        Returns
-        -------
-        W - torch.Tensor:
-            2D tensor representing the kernel in matrix form
-        """
+    # gib_setup = {
+    #     'cy': 2,
+    #     'cone': 2,
+    #     'disk': 2,
+    #     'ellip': 2
+    # }
 
-        if K.ndim == 2:
-            return kernel2matrix(K)
+    # gib_layer = GIB_Layer(gib_setup, kernel_reach=16, num_observers=2)
 
-        W_height, W_width = K[0].numel(), K[0].numel()*2 + (K.shape[1] - 1)
-        W = torch.zeros((K.shape[0], W_height, W_width))
+    # gib_weights = gib_layer(points, query_idxs, neighbors_idxs)
 
-        # print(W.shape)
+    # print(gib_layer.get_cvx_coefficients())
+    # print(gib_weights.shape)
 
-        for i in range(K.shape[0]):
-            W[i] = kernel2matrix(K[i])
 
-        return W
+    # input("Press Enter to continue...")
 
+
+    from core.datasets.TS40K import TS40K_FULL_Preprocessed
+    from utils import constants as C
+    import utils.pointcloud_processing as eda
+
+    ts40k = TS40K_FULL_Preprocessed(
+        C.TS40K_FULL_PREPROCESSED_PATH,
+        split='fit',
+        sample_types=['tower_radius'],
+        transform=None,
+        load_into_memory=False
+    )
+
+    pcd, y = ts40k[0]
+    pcd = pcd.to('cuda')
+    num_query_points = 10000
+    num_neighbors = 10
+    kernel_reach = 0.1
+
+    # max dist between points:
+    # c_dist = torch.cdist(pcd, pcd)
+    # print(torch.max(c_dist), torch.min(c_dist), torch.mean(c_dist)) # tensor(1.5170, device='cuda:0') tensor(0., device='cuda:0') tensor(0.4848, device='cuda:0')
+
+    query_idxs = farthest_point_pooling(pcd, num_query_points)
+    # support_idxs = torch_knn(pcd[query_idxs], pcd[query_idxs], num_neighbors)[1]
+    support_idxs = k_radius_ball(pcd[query_idxs], pcd, kernel_reach, num_neighbors, loop=False)
+
+    gib_setup = {
+        'cy': 1,
+        # 'cone': 1,
+        # 'disk': 1,
+        # 'ellip': 1
+    }
+
+    # gib_layer = GIB_Layer(gib_setup, kernel_reach=0.1, num_observers=1)
+
+    # effectively retrieve the body of towers
+    # gib_layer = cylinder.Cylinder(kernel_reach=kernel_reach, radius=0.02)
+
+    # disk is a generalization of the cylinder with the width parameter;
+    # small width -> can be used to detect ground / surface
+    # large width -> can be used to detect towers
+    # gib_layer = disk.Disk(kernel_reach=kernel_reach, radius=0.02, width=0.1)
+
+    # cone can be used to detect arboreal structures such as medium vegetation with small apex
+    # gib_layer = cone.Cone(kernel_reach=kernel_reach, radius=0.05, inc=torch.tensor([0.1], device='cuda'), apex=1, intensity=1.0)
+
+    # Ideally and ellipsoid can be used to detect the ground and power lines by assuming different radii
+    gib_layer = ellipsoid.Ellipsoid(kernel_reach=kernel_reach, radii=torch.tensor([0.1, 0.1, 0.001], device='cuda'))
     
 
-    def trans_conv(X, K):
-        h, w = K.shape
-        Y = torch.zeros((X.shape[0] + h - 1, X.shape[1] + w - 1))
-        for i in range(X.shape[0]):
-            for j in range(X.shape[1]):
-                Y[i: i + h, j: j + w] += X[i, j] * K
-        return Y 
-       
-    
-    inputShape = [64, 64, 64]    
-    batch_size = 2
-    CIn        = 1
-    COut       = 8    
-    kernelSize = (9,7,7)
-    pad        =  'valid' #'same' # (4,2,2)
-    stride     = (2,2,2)
+    gib_weights = gib_layer(pcd, query_idxs, support_idxs)
 
-    def same_padding_3d(input_size, kernel_size, stride):
-        """
-        Calculate 'same' padding for 3D convolution.
 
-        Args:
-            input_size (tuple): Size of the input tensor (batch, channels, depth, height, width).
-            kernel_size (tuple): Size of the convolutional kernel (depth, height, width).
-            stride (tuple): Stride of the convolution (depth, height, width).
+    # eda.plot_pointcloud(
+    #     pcd.cpu().detach().numpy(),
+    #     y.cpu().detach().numpy(),
+    #     use_preset_colors=True
+    # )
 
-        Returns:
-            tuple: Padding values for the 'same' padding.
-        """
-        input_depth, input_height, input_width = input_size[2:]
-        kernel_depth, kernel_height, kernel_width = kernel_size
-        stride_depth, stride_height, stride_width = stride
+    # print(gib_weights.shape)
 
-        pad_depth = ((input_depth - 1) * stride_depth + kernel_depth - input_depth) // 2
-        pad_height = ((input_height - 1) * stride_height + kernel_height - input_height) // 2
-        pad_width = ((input_width - 1) * stride_width + kernel_width - input_width) // 2
-
-        return (pad_depth, pad_height, pad_width)
-
-    # normal conv
-    conv = nn.Conv3d(CIn, COut, kernelSize, stride, pad, bias=False).cuda()
-
-    deconv = nn.ConvTranspose3d(COut, CIn, kernelSize, stride, pad, bias=False).cuda()
-                      
-    # alternativeConv
-    def alternativeConv(X, K,
-                        COut       = None,
-                        kernelSize = (3,3,3),
-                        pad        = (1,1,1),
-                        stride     = (1,1,1) ):
-        
-        if pad == 'same':
-            pad = same_padding_3d(X.shape, kernelSize, stride)
-        elif pad == 'valid':
-            pad = (0,0,0)
-
-        def unfold3d(tensor, kernelSize, pad, stride): 
-
-            B, C, _, _, _ = tensor.shape
-
-            # Input shape: (B, C, D, H, W)
-            
-            tensor = F.pad(tensor,
-                            (pad[2], pad[2],
-                             pad[1], pad[1],
-                             pad[0], pad[0]),
-                            )
-
-            tensor = (tensor
-                      .unfold(2, size=kernelSize[0], step=stride[0])
-                      .unfold(3, size=kernelSize[1], step=stride[1])
-                      .unfold(4, size=kernelSize[2], step=stride[2])
-                      .permute(0, 2, 3, 4, 1, 5, 6, 7)
-                      .reshape(B, -1, C * np.prod(kernelSize))
-                      .transpose(1, 2)
-                     )
-            
-            return tensor
-    
-        B,_,H,W,D = X.shape
-        outShape = ( (torch.tensor([H,W,D]) - torch.tensor(kernelSize) + 2 * torch.tensor(pad)) / torch.tensor(stride) ) + 1
-        outShape = outShape.int()
-        
-        X = unfold3d(X, kernelSize, pad, stride)
-  
-        K = K.view(COut, -1)
-        #K = torch.randn(COut, CIn, *kernelSize).cuda() 
-        #K = K.view(COut, -1)
-                    
-        Y = torch.matmul(K, X).view(B, COut, *outShape)
-        
-        return Y
-    
-    
-    X = torch.randn(batch_size, CIn, *inputShape).cuda()
-    
-    Y1 = conv(X)
-    
-    Y2 = alternativeConv(X, conv.weight, 
-                         COut       = COut,
-                         kernelSize = kernelSize,
-                         pad        = pad,
-                         stride     = stride
-                         )
-    
-    print(Y2.shape)
-    
-    print(torch.all(torch.isclose(Y1, Y2)))   
-    
-    
-    
-    # X = torch.randint(1, 10, size=(1, 64, 64, 64))
-    # # K = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
-    # K = torch.randint(1, 10, size=(1, 3, 3))
-    # W = _kernel2matrix(K)
-    # print(K)
-    # print(W.shape)
-    # print(W)
-    
-    
-    # Example usage
-    # X  = torch.arange(9.0).reshape(3, 3)
-    # K = torch.tensor([[1.0, 2.0], [3.0, 4.0]])
-    # W = kernel2matrix(K)
-    # CONV = torch.matmul(W, X.reshape(-1)).reshape(2, 2)
-    # DECONV = torch.matmul(W.T, CONV.reshape(-1)).reshape(3, 3)
-    # Z = trans_conv(CONV, K)
-    # print(K)
-    # print(W)
-    # print(CONV)
-    # print(DECONV)
-    # print(Z)
-    # print(Z == DECONV)
-    
+    colors = eda.weights_to_colors(gib_weights.cpu().detach().numpy(), cmap='seismic')
+    eda.plot_pointcloud(
+        pcd[query_idxs].cpu().detach().numpy(), 
+        classes=None,
+        rgb=colors
+    )

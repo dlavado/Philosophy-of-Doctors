@@ -1,13 +1,12 @@
 
 import torch
-
 import sys
 
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 sys.path.insert(3, '../../../..')
-from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub
+from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub, GIB_PARAMS, NON_TRAINABLE
 
 
 class Cone(GIB_Stub):
@@ -18,10 +17,10 @@ class Cone(GIB_Stub):
 
         Required
         --------
-        `cone_radius` - float \in  ]0, kernel_size[1]]:
+        `radius` - float \in  ]0, kernel_size[1]]:
         cone's base radius
 
-        `cone_inc` - float \in ]0, 1[
+        `inc` - float \in ]0, 1[
         cone's inclination
         
         `apex` - int \in [0, kernel_size[0]-1]
@@ -33,43 +32,42 @@ class Cone(GIB_Stub):
         if kwargs.get('apex') is None:
             raise KeyError("Provide a height for the cone.")
 
-        if kwargs.get('cone_inc') is None:
+        if kwargs.get('inc') is None:
             raise KeyError("Provide an inclination for the cone.")
         
-        if kwargs.get('cone_radius') is None:
+        if kwargs.get('radius') is None:
             raise KeyError("Provide a radius for the cone.")
 
         self.apex = kwargs['apex']#.to(self.device)
         # self.apex = self._to_parameter(self.apex)
-        self.cone_inc = kwargs['cone_inc']#.to(self.device)
+        self.cone_inc = kwargs['inc']#.to(self.device)
         # self.cone_inc = self._to_parameter(self.cone_inc)
         # self.cone_inc = self._to_tensor(self.cone_inc)
-        self.cone_radius = kwargs['cone_radius']#.to(self.device)
+        self.cone_radius = kwargs['radius']#.to(self.device)
         # self.cone_radius = self._to_parameter(self.cone_radius)
 
         self.intensity = kwargs.get('intensity', 1)#.to(self.device)
             
     
     def mandatory_parameters():
-        return ['apex', 'cone_radius','cone_inc', 'cylinder_radius']
+        return ['apex', 'radius','inc', 'cylinder_radius']
 
-    def geneo_parameters():
+    def gib_parameters():
         return Cone.mandatory_parameters() + ['intensity']
 
     
-    def geneo_random_config(kernel_reach):
-        rand_config = GIB_Stub.geneo_random_config(kernel_reach)
+    def gib_random_config(kernel_reach):
+        rand_config = GIB_Stub.gib_random_config(kernel_reach)
 
         geneo_params = {
-            'cone_radius' : kernel_reach / torch.randint(1, kernel_reach*2, (1,))[0],
-            'cone_inc' : torch.rand(1,)[0], #float \in [0, 1]
+            'radius' : kernel_reach / torch.randint(1, kernel_reach*2, (1,))[0],
+            'inc' : torch.rand(1,)[0], #float \in [0, 1]
             'apex': torch.randint(0, kernel_reach-1, (1,))[0],
             'intensity' : torch.randint(5, 10, (1,))[0] / 5 #float \in [1, 2]
         }   
         
-        rand_config['geneo_params'] = geneo_params
-
-        rand_config['non_trainable'] = ['apex']
+        rand_config[GIB_PARAMS].update(geneo_params)
+        rand_config[NON_TRAINABLE] = ['apex']
 
         return rand_config
 
@@ -92,8 +90,9 @@ class Cone(GIB_Stub):
         """
         # import matplotlib.pyplot as plt
         # calculate the integral of the gaussian function in a `self.kernel_reach` ball radius
+        cone_inc = torch.clamp(self.cone_inc, 0, 0.499) # tan is not defined for 90 degrees
         mc_height = self.apex - self.montecarlo_points[:, 2]
-        radius = self.cone_radius*mc_height*torch.tan(self.cone_inc*torch.pi) # cone's radius at the height of the support point
+        radius = self.cone_radius*mc_height*torch.tan(cone_inc*torch.pi) # cone's radius at the height of the support point
         gaussian_x = self.gaussian(self.montecarlo_points[:, :2], rad=radius)
         # print(f"{gaussian_x.shape=}")
         # fig = plt.figure()
@@ -110,15 +109,19 @@ class Cone(GIB_Stub):
     
     def forward(self, points:torch.Tensor, query_idxs:torch.Tensor, supports_idxs:torch.Tensor) -> torch.Tensor:
      
-        self.cone_inc = torch.clamp(self.cone_inc, 0, 0.499) # tan is not defined for 90 degrees
+        cone_inc = torch.clamp(self.cone_inc, 0, 0.499) # tan is not defined for 90 degrees
 
         q_output = torch.zeros(len(query_idxs), dtype=points.dtype, device=points.device)
         for i, q in enumerate(query_idxs):
             center = points[q] # 1x3
             support_points = points[supports_idxs[i]] #Kx3
+            # center the support points
             s_centered = support_points - center
+            # rotate the support points
+            # s_centered = s_centered.to(self.device)
+            s_centered = self.rotate(s_centered)
             s_height = self.apex - support_points[:, 2]
-            radius = self.cone_radius*s_height*torch.tan(self.cone_inc*torch.pi) #S; cone's radius at the height of the support point
+            radius = self.cone_radius*s_height*torch.tan(cone_inc*torch.pi) #S; cone's radius at the height of the support point
             weights = self.gaussian(s_centered[:, :2], rad=radius) # Kx1;
             weights = self.sum_zero(weights)
             q_output[i] = torch.sum(weights)

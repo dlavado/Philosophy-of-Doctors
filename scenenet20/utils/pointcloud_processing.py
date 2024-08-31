@@ -253,7 +253,30 @@ def visualize_ply(pcd_load, window_name='Open3D'):
     o3d.visualization.draw_geometries(pcd_load, window_name=window_name)
 
 
-def plot_pointcloud(xyz: np.ndarray, classes:np.ndarray=None, rgb=None, window_name='Open3D', use_preset_colors=False):
+def weights_to_colors(weights:np.ndarray, cmap:str='viridis'):
+    """
+    Converts the weights into colors\n
+
+    Parameters
+    ----------
+    `weights` - (N,) ndarray:
+        weights of the points
+    `cmap` - str:
+        colormap to be used
+
+    Returns
+    -------
+    `colors` - (N, 3) ndarray:
+        colors of the points
+    """
+    # normalize weights
+    weights = weights.squeeze()
+    weights = (weights - np.min(weights)) / (np.max(weights) - np.min(weights))
+    colors = plt.get_cmap(cmap)(weights)
+    return colors[:, :3]
+
+
+def plot_pointcloud(xyz: np.ndarray, classes:np.ndarray=None, rgb=None, window_name='Open3D', cmap:str=None, use_preset_colors=False):
     """
     Plots the point cloud in 3D\n
 
@@ -296,12 +319,12 @@ def color_pointcloud(pcd, classes=None, colors=None, use_preset_colors=False):
 
     Pre-Conds
     ---------
-        class_color.shape == (22, 3);
-        np_colors.shape == (len(classes), 3) -> pickle file shape;
+    class_color.shape == (22, 3);
+    np_colors.shape == (len(classes), 3) -> pickle file shape;
 
     Returns
     -------
-    np_colors - np.ndarray:
+    `np_colors` - np.ndarray:
         The colors for each class in format (N, 3)
     """
 

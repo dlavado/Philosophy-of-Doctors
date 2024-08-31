@@ -1,15 +1,12 @@
-# %%
 
 import torch
-
-
 import sys
 
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 sys.path.insert(3, '../../../..')
-from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub
+from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub, GIB_PARAMS, NON_TRAINABLE, KERNEL_REACH
 
 class Ellipsoid(GIB_Stub):
 
@@ -30,26 +27,24 @@ class Ellipsoid(GIB_Stub):
         if self.radii is None:
             raise KeyError("Provide radii for the ellipsoid.")        
 
-        self.radii = self._to_parameter(self.radii).to(self.device)
+        # self.radii = GIB_Stub._to_parameter(self.radii).to(self.device)
         self.intensity = kwargs.get('intensity', 1)
 
   
     def mandatory_parameters():
         return ['radii']
     
-    def geneo_parameters():
-        return Ellipsoid.mandatory_parameters() + ['scaler']
+    def gib_parameters():
+        return Ellipsoid.mandatory_parameters() + ['intensity']
 
-    def geneo_random_config(kernel_reach):
-        rand_config = GIB_Stub.geneo_random_config(kernel_reach)
+    def gib_random_config(kernel_reach):
+        rand_config = GIB_Stub.gib_random_config(kernel_reach)
 
-        geneo_params = {
-            'radii' : torch.rand(3) * kernel_reach,
+        gib_params = {
+            'radii' : torch.randn(3),
             'intensity' : 1.0,
-        } 
-
-        rand_config['geneo_params'] = geneo_params
-
+        }
+        rand_config[GIB_PARAMS].update(gib_params)
 
         return rand_config
 
@@ -95,7 +90,9 @@ class Ellipsoid(GIB_Stub):
             center = points[q]
             support_points = points[supports_idxs[i]]
             s_centered = support_points - center
-            weights = self.gaussian(s_centered.to(self.device))
+            # s_centered = s_centered.to(self.device)
+            s_centered = self.rotate(s_centered)
+            weights = self.gaussian(s_centered)
             weights = self.sum_zero(weights)
             q_output[i] = torch.sum(weights)
 
@@ -121,7 +118,9 @@ if __name__ == "__main__":
     print(neighbors_idxs.shape)
     print(query_idxs.shape)
 
-    ellip = Ellipsoid(0.3, radii=torch.tensor([0.01, 0.01, 0.2]))
+    ellip = Ellipsoid(0.3,
+                      angles = torch.tensor([0.0, 0.0, 0.0]),
+                      radii  = torch.tensor([0.01, 0.01, 0.1]))
 
     ellip_weights = ellip.forward(points, query_idxs, neighbors_idxs)
     print(ellip_weights.shape)
