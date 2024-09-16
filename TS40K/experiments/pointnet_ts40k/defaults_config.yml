@@ -15,7 +15,7 @@ preprocessed:
   value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: False
+  value: True
 data_path:
   value: ''
 num_classes:
@@ -24,9 +24,9 @@ num_data_channels:
   value: 3
   description: 'Number of channels in the dataset'
 batch_size:
-  value: 1
+  value: 8
 ignore_index:
-  value: 0 # noise
+  value: -1 # noise
 num_workers: 
   value: 0
 val_split:
@@ -42,7 +42,7 @@ min_points:
 # model config
 # ------------------ #
 model:
-  value: 'pointnet2'
+  value: 'pointnet'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'
@@ -99,9 +99,10 @@ save_onnx:
 # Checkpoint config
 # ------------------ #
 resume_from_checkpoint:
-  value: False
+  value: True
 checkpoint_dir:
-  value: '${experiment_path}/checkpoints'
+  value: '${experiment_path}/pointnet/'
+  # value: '${experiment_path}/pointnet++/'
 resume_checkpoint_name:
   value: MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive

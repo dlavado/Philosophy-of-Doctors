@@ -1,5 +1,5 @@
 
-# Description: config file for default parameters of scenenet_ts40k experiment
+# Description: config file for default parameters of ensemble experiment
 # Author: Diogo Mateus
 
 project:
@@ -23,10 +23,8 @@ num_classes:
 num_data_channels:
   value: 3
   description: 'Number of channels in the dataset'
-voxel_grid_size:
-  value: (64, 64, 64)
 batch_size:
-  value: 16
+  value: 4
 ignore_index:
   value: 0 # noise
 num_workers: 
@@ -44,10 +42,19 @@ min_points:
 # model config
 # ------------------ #
 model:
-  value: 'kpconv'
+  value: "ensemble"
+ensemble_models:
+  value: "['KPCONV', 'PTV1', 'PTV2', 'POINTNET++']"
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'
+full_train:
+  value: True
+  description: 'If True, trains all weights in the ensemble'
+use_small_net:
+  value: False
+  description: 'If True, uses a small network to aggregate the ensemble scores'
+##### kpconv setup #####
 num_stages:
     value: 5
 voxel_size:
@@ -62,21 +69,6 @@ init_dim:
     value: 64
 neighbor_limits:
     value: "[10, 10, 10, 10, 10]" # if None, recompute neighbors
-###################### sceneNet prebackbone ######################
-cylinder_geneo:
-  value: 10
-arrow_geneo:
-  value: 10
-neg_sphere_geneo:
-  value: 10
-disk_geneo:
-  value: 10
-cone_geneo:
-  value: 10
-ellipsoid_geneo:
-  value: 10
-num_observers:
-  value: "[8]"
 # ------------------ #
 # training config
 # ------------------ #
@@ -130,11 +122,13 @@ save_onnx:
 # Checkpoint config
 # ------------------ #
 resume_from_checkpoint:
-  value: True
+  value: False
 checkpoint_dir:
-  value: '${experiment_path}/checkpoints'
+  value: '${experiment_path}/checkpoints/'
 resume_checkpoint_name:
-  value: MulticlassJaccardIndex-v1 # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+  value: MulticlassJaccardIndex-v1
+pretrained_model_dir:
+  value: '${experiment_path}/pretrained_model_ckpts/'
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:

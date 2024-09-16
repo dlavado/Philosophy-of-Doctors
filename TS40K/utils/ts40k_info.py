@@ -1,6 +1,5 @@
 
 import torch
-from prettytable import PrettyTable
 from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
@@ -144,9 +143,9 @@ def generate_density_plots():
     DICT_OBJ_LABELS_NAMES = {
         0: "Noise",
         1: "Ground",
-        2: "Low Vegetation",
-        3: "Medium Vegetation",
-        4: "Power line support tower",
+        2: "Low Veg.",
+        3: "Medium Veg.",
+        4: "Support tower",
         5: "Power lines",
     }
 
@@ -166,21 +165,23 @@ def generate_density_plots():
     # Creating legend patches for each color and sample type
     legend_patches = [Patch(color=color, label=sample_type) for sample_type, color in colors.items()]
 
-    ax.set_xlabel('Class Labels')
-    ax.set_ylabel('Class Density')
+    # ax.set_xlabel('Class Labels')
+    # ax.set_ylabel('Class Density')
     # ax.set_title('Class Densities for Each Class Label')
     ax.set_xticks(index + (bar_width * (len(colors) - 1)) / 2)
     ax.set_xticklabels(DICT_OBJ_LABELS_NAMES.values())
-
-    ax.legend(handles=legend_patches)
+    
+    ax.legend(handles=legend_patches, fontsize=16)
 
     # Remove the upper and right spines
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
-
-    plt.xticks(rotation=45)
+    
+    plt.yticks(fontsize=16)
+    plt.xticks(rotation=60, fontsize=20)
     plt.tight_layout()
+    # plt.savefig('ts40k_class_densities.png')
     plt.show()
 
     # Assigning colors to each sample type
@@ -197,19 +198,22 @@ def generate_density_plots():
     ax.bar(index - bar_width/2, class_densities_fit, bar_width, color=colors['fit'], label='Train')
     ax.bar(index + bar_width/2, class_densities_test, bar_width, color=colors['test'], label='Test')
 
-    ax.set_xlabel('Class Labels')
-    ax.set_ylabel('Class Density')
+    # ax.set_xlabel('Class Labels')
+    # ax.set_ylabel('Class Density')
     # ax.set_title('Overall Class Densities')
     ax.set_xticks(index)
     ax.set_xticklabels([DICT_OBJ_LABELS_NAMES[i] for i in range(len(DICT_OBJ_LABELS_NAMES))])
-    ax.legend()
+    ax.legend(fontsize=16)
 
     # Remove the upper and right spines
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
-    plt.xticks(rotation=45)
+    plt.yticks(fontsize=16)
+
+    plt.xticks(rotation=60, fontsize=20)
     plt.tight_layout()
+    # plt.savefig('ts40k_train_test_distribution.png')
     plt.show()
 
 
@@ -223,7 +227,8 @@ def get_info_on_ts40k_full(data_path):
         'class_counts' : torch.zeros(num_classes, dtype=torch.long),
         'num_samples' : 0,
         'num_points' : 0 ,
-        'num_bboxes' : 0
+        'num_bboxes' : 0 ,
+        'sample_lengths' : []
     }
 
     # init dataset  info dict
@@ -259,6 +264,9 @@ def get_info_on_ts40k_full(data_path):
             sem_target : torch.Tensor = sample['semantic_labels']
             sem_target = sem_target.reshape(-1) # ensures that removes batch or channel dims
 
+            pcd = sample['input_pcd']
+            distances = torch.max(pcd, dim=0).values - torch.min(pcd, dim=0).values # get length of each axis
+
             # print(f"{sample_type =}, {sem_target.unique() =}")2
 
             # get class counts
@@ -271,12 +279,14 @@ def get_info_on_ts40k_full(data_path):
             dataset_info[sample_type][split]['num_samples'] += 1
             dataset_info[sample_type][split]['num_points'] += len(sem_target)
             dataset_info[sample_type][split]['num_bboxes'] += len(sample['obj_boxes'])
+            dataset_info[sample_type][split]['sample_lengths'].append(distances)
 
             # update overall dataset info
             dataset_info['overall'][split]['class_counts'] += counts
             dataset_info['overall'][split]['num_samples'] += 1
             dataset_info['overall'][split]['num_points'] += len(sem_target)
             dataset_info['overall'][split]['num_bboxes'] += len(sample['obj_boxes'])
+            dataset_info['overall'][split]['sample_lengths'].append(distances)
 
 
     # update class density
@@ -284,6 +294,8 @@ def get_info_on_ts40k_full(data_path):
         for split in ['fit', 'test']:
             dataset_info[key][split]['class_density'] = dataset_info[key][split]['class_counts'] / dataset_info[key][split]['num_points']
 
+            dataset_info[key][split]['sample_lengths'] = torch.stack(dataset_info[key][split]['sample_lengths'])
+            
     return dataset_info
 
 
@@ -295,7 +307,8 @@ def get_info_on_ts40k_full_preprocessed(data_path):
     init_dict = {
         'class_counts' : torch.zeros(num_classes, dtype=torch.long),
         'num_samples' : 0,
-        'num_points' : 0 ,
+        'num_points' : 0,
+        'sample_lengths' : []
     }
 
     # init dataset  info dict
@@ -322,9 +335,11 @@ def get_info_on_ts40k_full_preprocessed(data_path):
 
                     labels : torch.tensor with shape (N,)  
                 """
-                _, sem_target = dataset[i]
+                pcd, sem_target = dataset[i]
 
                 sem_target = sem_target.to(torch.int)
+
+                distances = torch.max(pcd, dim=0).values - torch.min(pcd, dim=0).values # get length of each axis
 
                 # print(f"{sem_target.unique() =}")
 
@@ -337,16 +352,20 @@ def get_info_on_ts40k_full_preprocessed(data_path):
                 dataset_info[sample_type][split]['class_counts'] += counts
                 dataset_info[sample_type][split]['num_samples'] += 1
                 dataset_info[sample_type][split]['num_points'] += len(sem_target)
+                dataset_info[sample_type][split]['sample_lengths'].append(distances)
 
                 # update overall dataset info
                 dataset_info['overall'][split]['class_counts'] += counts
                 dataset_info['overall'][split]['num_samples'] += 1
                 dataset_info['overall'][split]['num_points'] += len(sem_target)
+                dataset_info['overall'][split]['sample_lengths'].append(distances)
 
     # update class density
     for key in dataset_info.keys():
         for split in ['fit', 'test']:
             dataset_info[key][split]['class_density'] = dataset_info[key][split]['class_counts'] / dataset_info[key][split]['num_points']
+
+            dataset_info[key][split]['sample_lengths'] = torch.stack(dataset_info[key][split]['sample_lengths'])
 
     return dataset_info
 
@@ -364,7 +383,8 @@ def get_info_on_ts40k_raw(data_paths:list[str]):
         'edp_labels' : {
             'class_counts' : np.zeros(num_classes, dtype=np.int32),
             'num_samples' : 0,
-            'num_points' : 0
+            'num_points' : 0,
+            'lidar_lengths' : [] 
         },
         'semantic_labels' : {
             'class_counts' : np.zeros(num_sem_classes, dtype=np.int32),
@@ -392,7 +412,9 @@ def get_info_on_ts40k_raw(data_paths:list[str]):
 
             print(f"\n\n\nReading...{filename}")
 
-            _, classes = eda.las_to_numpy(las)
+            pcd, classes = eda.las_to_numpy(las)
+
+            distances = np.max(pcd, axis=0) - np.min(pcd, axis=0)
 
             sem_labels = np.array([eda.DICT_NEW_LABELS[c] for c in classes])
 
@@ -407,6 +429,7 @@ def get_info_on_ts40k_raw(data_paths:list[str]):
             dataset_dict['edp_labels']['class_counts'] += counts
             dataset_dict['edp_labels']['num_samples'] += 1
             dataset_dict['edp_labels']['num_points'] += len(classes)
+            dataset_dict['edp_labels']['lidar_lengths'].append(distances)
 
             dataset_dict['semantic_labels']['class_counts'] += sem_counts
             dataset_dict['semantic_labels']['num_samples'] += 1
@@ -416,6 +439,8 @@ def get_info_on_ts40k_raw(data_paths:list[str]):
     # update class density
     for key in dataset_dict.keys():
         dataset_dict[key]['class_density'] = dataset_dict[key]['class_counts'] / dataset_dict[key]['num_points']
+
+    dataset_dict['edp_labels']['lidar_lengths'] = np.array(dataset_dict['edp_labels']['lidar_lengths'])
     
     return dataset_dict
 
@@ -476,7 +501,7 @@ if __name__ == '__main__':
 
     data_path = constants.TS40K_FULL_PATH
     data_path_preprocessed = constants.TS40K_FULL_PREPROCESSED_PATH
-    TS40K_DIR = os.path.join(constants.TOSH_PATH, "TS40K-Dataset")
+    TS40K_DIR = constants.TS40K_PATH
 
     LAS_DIRS = [
         os.path.join(TS40K_DIR, "LIDAR-2022"),
@@ -485,21 +510,38 @@ if __name__ == '__main__':
     ]
     
 
-    visualize_full_ts40k(data_path, sample_type=['2_towers'], task='sem_seg')
+    # visualize_full_ts40k(data_path, sample_type=['2_towers'], task='sem_seg')
 
     #visualize_raw_ts40k(LAS_DIRS[0])
 
     # ----------------------------------------------
 
     # dataset_info = get_info_on_ts40k_raw(
-    #     [os.path.join(TS40K_DIR, "LIDAR"), os.path.join(TS40K_DIR, "Labelec_LAS")]
-    # )  
+    #     [os.path.join(TS40K_DIR, "LIDAR-2022"), os.path.join(TS40K_DIR, "Labelec_LAS")]
+    # )
+
+    # lengths = dataset_info['edp_labels']['lidar_lengths']
+    # print(f"Average lengths: {np.mean(lengths, axis=0)}")
+    # print(f"Max lengths: {np.max(lengths, axis=0)}")
+    # print(f"Min lengths: {np.min(lengths, axis=0)}")
+
     # pprint.pprint(dataset_info)
     # input("Press Enter to continue...")
 
     # ----------------------------------------------
 
-    # dataset_info = get_info_on_ts40k_full_preprocessed(data_path_preprocessed)
+    # dataset_info = get_info_on_ts40k_full(data_path)
+
+    # for key in dataset_info.keys():
+    #     for split in ['fit', 'test']:
+    #         print(f"{key} {split} dataset:")
+    #         print(f"{dataset_info[key][split]['num_samples'] =}")
+    #         print(f"{dataset_info[key][split]['num_points'] =}")
+    #         lengths = dataset_info[key][split]['sample_lengths']
+    #         print(f"Average lengths: {torch.mean(lengths, dim=0)}")
+    #         print(f"Max lengths: {torch.max(lengths, dim=0).values}")
+    #         print(f"Min lengths: {torch.min(lengths, dim=0).values}")
+    #         print("\n\n")
     # print dataset info dict in a nice way
     # pprint.pprint(dataset_info)
     #generate_plots(dataset_info)

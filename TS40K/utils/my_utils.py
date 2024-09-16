@@ -7,7 +7,7 @@ import random
 import pytorch_lightning as pl
 import sys
 
-from torchmetrics import MetricCollection, JaccardIndex, F1Score, Accuracy, Precision, Recall
+from torchmetrics import MetricCollection, JaccardIndex, F1Score, Accuracy, Precision, Recall, ConfusionMatrix
 import wandb
 
 sys.path.insert(0, '..')
@@ -98,15 +98,15 @@ def resolve_optimizer(optimizer_name:str, model, learning_rate):
     
 
 def init_metrics(task='multiclass', tau=0.5, num_classes=2, ignore_index=-1):
-
-    params = {'task': task, 'num_classes': num_classes, 'ignore_index': ignore_index, 'threshold': tau}
+    params = {'task': task, 'num_classes': num_classes, 'ignore_index': -1, 'threshold': tau}
     # 'multidim_average': 'global'
     return MetricCollection([
         JaccardIndex(**params, average=None),
         # JaccardIndex(**params, average=None),
+        ConfusionMatrix(**params, normalize='true'),
         F1Score(**params, average='macro'),
-        Precision(**params, average='micro'),
-        Recall(**params, average='micro'),
+        Precision(**params, average=None),
+        Recall(**params, average=None),
         Accuracy(**params, average='micro'),
     ])
 

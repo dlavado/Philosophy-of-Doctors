@@ -38,6 +38,7 @@ class LitWrapperModel(pl.LightningModule):
 
         self.save_hyperparameters()
 
+        self.test_preds = [] # code for rebuttal
 
         if metric_initializer is not None:
             self.train_metrics:MetricCollection = metric_initializer()
@@ -53,6 +54,14 @@ class LitWrapperModel(pl.LightningModule):
     
     def prediction(self, model_output:torch.Tensor) -> torch.Tensor:
         return model_output
+    
+    def get_prediction_scores(self, model_output:torch.Tensor) -> torch.Tensor:
+        """
+        Returns the softmax scores of the model output.
+        """
+        # (batch, num_points, num_classes) -> (batch, num_points)
+        scores = torch.softmax(model_output, dim=-1) # get the softmax scores
+        return scores
 
     def evaluate(self, batch, stage=None, metric=None, prog_bar=True, logger=True):
         x, y = batch
@@ -108,7 +117,9 @@ class LitWrapperModel(pl.LightningModule):
         state = {"test_loss": loss,
                  "preds": preds,
                 }
-     
+    
+        self.test_preds.append(preds) # code for rebuttal
+
         return state
 
     def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> Any:

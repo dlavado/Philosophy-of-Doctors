@@ -62,9 +62,8 @@ class LitTS40K_FULL(pl.LightningDataModule):
     def setup(self, stage:str=None):
         # build dataset
         if stage == 'fit':
-            fit_ds = TS40K_FULL(self.data_dir, split="fit", task=self.task, sample_types=self.sample_types, transform=self.transform, load_into_memory=self.load_into_memory)
-            self.train_ds, self.val_ds = random_split(fit_ds, [1 - self.hparams.val_split, self.hparams.val_split])
-            del fit_ds
+            self.fit_ds = TS40K_FULL(self.data_dir, split="fit", task=self.task, sample_types=self.sample_types, transform=self.transform, load_into_memory=self.load_into_memory)
+            self.train_ds, self.val_ds = random_split(self.fit_ds, [1 - self.hparams.val_split, self.hparams.val_split])
         if stage == 'test':
             self.test_ds = TS40K_FULL(self.data_dir, split="test", task=self.task, sample_types=self.sample_types, transform=self.transform_test, load_into_memory=self.load_into_memory)
 
@@ -78,10 +77,13 @@ class LitTS40K_FULL(pl.LightningDataModule):
         return DataLoader(self.val_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=True)
 
     def test_dataloader(self):
-        return DataLoader(self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
+        return DataLoader(self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=False)
     
     def predict_dataloader(self):
         return DataLoader(self.predict_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
+    
+    def _fit_dataloader(self):
+        return DataLoader(self.fit_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, pin_memory=True, shuffle=False)
     
     @staticmethod
     def add_model_specific_args(parent_parser):
@@ -105,9 +107,8 @@ class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
     def setup(self, stage:str=None):
         # build dataset
         if stage == 'fit':
-            fit_ds = TS40K_FULL_Preprocessed(self.data_dir, split="fit", sample_types=self.sample_types, transform=self.transform, load_into_memory=self.load_into_memory)
-            self.train_ds, self.val_ds = random_split(fit_ds, [1 - self.hparams.val_split, self.hparams.val_split])
-            del fit_ds
+            self.fit_ds = TS40K_FULL_Preprocessed(self.data_dir, split="fit", sample_types=self.sample_types, transform=self.transform, load_into_memory=self.load_into_memory)
+            self.train_ds, self.val_ds = random_split(self.fit_ds, [1 - self.hparams.val_split, self.hparams.val_split])
         if stage == 'test':
             self.test_ds = TS40K_FULL_Preprocessed(self.data_dir, split="test", sample_types=self.sample_types, transform=self.transform_test, load_into_memory=self.load_into_memory)
 

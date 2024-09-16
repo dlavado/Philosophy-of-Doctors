@@ -53,33 +53,41 @@ class LitKPConv(LitWrapperModel):
 
         self.train_metrics = metric_initializer(num_classes=num_classes, ignore_index=0)
         self.val_metrics = metric_initializer(num_classes=num_classes, ignore_index=0)
-        self.test_metrics = metric_initializer(num_classes=num_classes, ignore_index=0)
+        self.test_metrics = metric_initializer(num_classes=num_classes)
 
         self.save_hyperparameters()
 
 
 
-    def forward(self, points, feats, lengths):
+    def forward(self, x:torch.Tensor):
+        points, lengths = batch_to_pack(x)
+        if x.shape[-1] > 3:
+            feats = points[:, 3:]
+        else:
+            feats = torch.ones_like(points[:, :2])
+
         return self.model(points, feats, lengths)
     
     def prediction(self, model_output:torch.Tensor) -> torch.Tensor:
         return torch.argmax(model_output, dim=1)
     
+    def forward_model_output(self, x:torch.Tensor) -> torch.Tensor:
+        # runs the model and returns the model output in (B, N, C) format
+        points, lengths = batch_to_pack(x)
+        if x.shape[-1] > 3:
+            feats = points[:, 3:]
+        else:
+            feats = torch.ones_like(points[:, :2])
+
+        model_dict = self.model(points, feats, lengths)
+
+        return pack_to_batch(model_dict["scores"], lengths)[0]
+    
 
     def evaluate(self, batch, stage=None, metric=None, prog_bar=True, logger=True):
         x, y = batch
 
-        # print(x.shape, y.shape)
-
-        points, lengths = batch_to_pack(x)
-        # this has to be like this because of the way the model is implemented, top notch code ik
-        feats = torch.ones_like(points[:, :2]) # dummy features, shape = (N, 2)
-
-        # print(points.shape, feats.shape, lengths.shape)
-        
-        out_dict = self(points, feats, lengths)
-
-        # print(out_dict.keys())
+        out_dict = self(x)
 
         scores = out_dict["scores"]
         # flat targets

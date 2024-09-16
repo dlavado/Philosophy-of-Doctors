@@ -162,88 +162,6 @@ def init_scenenet(criterion):
     return model
 
 
-def init_unet(criterion):
-    from core.lit_modules.lit_unet import LitUNet
-
-    model_config = {
-        'name' : wandb.config.model_name,
-        'in_channels': 1,
-        'out_channels': wandb.config.num_classes,
-        'final_sigmoid': False,
-        'f_maps': wandb.config.f_maps,
-        'layer_order': wandb.config.layer_order,
-        'num_groups': wandb.config.num_groups,
-        'num_levels': wandb.config.num_levels,
-        'is_segmentation': wandb.config.is_segmentation,
-        'conv_padding': wandb.config.conv_padding,
-        'conv_upscale': wandb.config.conv_upscale,
-        'upsample': wandb.config.upsample,
-        'dropout_prob': wandb.config.dropout_prob,
-        'is_geneo': wandb.config.is_geneo,
-    }
-
-    # Model definition
-    model = LitUNet(
-                    model_config=model_config,
-                    num_classes=wandb.config.num_classes,
-                    ignore_index=wandb.config.ignore_index,
-                    criterion=criterion,
-                    optimizer=wandb.config.optimizer,
-                    learning_rate=wandb.config.learning_rate,
-                    metric_initializer=su.init_metrics,
-                )
-    return model
-
-
-def init_cnn(criterion):
-    from core.lit_modules.lit_cnn import LitCNNBaseline
-    from core.lit_modules.lit_scenenet import LitSceneNet_multiclass_CNN
-
-    if wandb.config.model == 'cnn_scenenet':
-        geneo_config = {
-            'cy'   : wandb.config.cylinder_geneo,
-            'arrow': wandb.config.arrow_geneo,
-            'neg'  : wandb.config.neg_sphere_geneo,
-            'disk' : wandb.config.disk_geneo,
-            'cone' : wandb.config.cone_geneo,
-            'ellip': wandb.config.ellipsoid_geneo, 
-        }
-
-        model = LitSceneNet_multiclass_CNN(
-                    geneo_num=geneo_config,
-                    num_observers=ast.literal_eval(wandb.config.num_observers),
-                    kernel_size=ast.literal_eval(wandb.config.kernel_size),
-                    hidden_dims=ast.literal_eval(wandb.config.hidden_dims),
-                    num_classes=wandb.config.num_classes,
-                    cnn_out_channels=wandb.config.out_channels,
-                    cnn_kernel_size=wandb.config.cnn_kernel_size,
-                    ignore_index=wandb.config.ignore_index,
-                    criterion=criterion,
-                    optimizer=wandb.config.optimizer,
-                    learning_rate=wandb.config.learning_rate,
-                    metric_initializer=su.init_metrics,
-                )
-        return model
-
-    # Model definition
-    model = LitCNNBaseline(
-                    in_channels=wandb.config.in_channels,
-                    out_channels=wandb.config.out_channels,
-                    kernel_size=wandb.config.cnn_kernel_size,
-                    num_groups=wandb.config.num_groups,
-                    padding=wandb.config.padding,
-                    MLP_hidden_dims=ast.literal_eval(wandb.config.hidden_dims),
-                    num_classes=wandb.config.num_classes,
-                    ignore_index=wandb.config.ignore_index,
-                    criterion=criterion,
-                    optimizer=wandb.config.optimizer,
-                    learning_rate=wandb.config.learning_rate,
-                    metric_initializer=su.init_metrics,
-                )
-    return model
-
-
-
 def init_GENEO_loss(model, base_criterion=None):
     criterion_params = {}
 
@@ -275,11 +193,11 @@ def init_GENEO_loss(model, base_criterion=None):
     model.criterion = criterion # assign criterion to model
     
 
-def init_pointnet():
+def init_pointnet(model_name='pointnet'):
     from core.lit_modules.lit_pointnet import LitPointNet
 
     # Model definition
-    model = LitPointNet(model=wandb.config.model,
+    model = LitPointNet(model=model_name,
                         criterion=None, # criterion is defined in the model
                         optimizer_name=wandb.config.optimizer,
                         num_classes=wandb.config.num_classes,
@@ -326,7 +244,7 @@ def init_randlanet(criterion):
 
     return model
 
-def init_point_transformer(criterion):
+def init_point_transformer(criterion, model_version='v3'):
     from core.lit_modules.lit_point_transformer import Lit_PointTransformer
    
 
@@ -334,13 +252,60 @@ def init_point_transformer(criterion):
     model = Lit_PointTransformer(criterion=criterion,
                                    in_channels=wandb.config.num_data_channels,
                                    num_classes=wandb.config.num_classes,
-                                   version=wandb.config.model_version,
+                                   version=model_version,
                                    optimizer_name=wandb.config.optimizer,
                                    learning_rate=wandb.config.learning_rate,
                                    metric_initializer=su.init_metrics,
     )
 
     return model
+
+
+def init_ensemble_model(criterion):
+    from core.lit_modules.lit_ensemble import Lit_EnsembleModel
+    model_names:list[str] = ast.literal_eval(wandb.config.ensemble_models) # list[str]
+    model_names = [model_name.strip().lower() for model_name in model_names]
+
+    models = []
+
+    pretrained_dir = wandb.config.pretrained_model_dir
+    pretrained_dir = replace_variables(pretrained_dir)
+
+    for model_name in model_names:
+        pretrained_path = None
+
+        if model_name == 'kpconv':
+            model = init_kpconv(criterion)
+        elif 'pointnet' in model_name:
+            ptnet_name = model_name.replace('++', '2')
+            model = init_pointnet(ptnet_name)
+        elif 'ptv' in model_name:
+            model_version = model_name.split('pt')[-1]
+            model = init_point_transformer(criterion, model_version)
+
+        for ckpt_file in os.listdir(pretrained_dir):
+            if model_name in ckpt_file.lower() and ckpt_file.endswith('.ckpt'):
+                pretrained_path = os.path.join(pretrained_dir, ckpt_file)
+        
+        if pretrained_path is None:
+            raise FileNotFoundError(f"Pretrained model for {model_name} not found.")
+        else:
+            model = resume_from_checkpoint(pretrained_path, model, criterion.weight)
+        
+        models.append(model)
+
+    model = Lit_EnsembleModel(models=models,
+                              criterion=criterion,
+                              num_classes=wandb.config.num_classes,
+                              use_small_net=wandb.config.use_small_net,
+                              full_train=wandb.config.full_train,
+                              optimizer_name=wandb.config.optimizer,
+                              learning_rate=wandb.config.learning_rate,
+                              ignore_index=wandb.config.ignore_index,
+                              metric_initializer=su.init_metrics,
+                            )
+    
+    return model   
 
 #####################################################################
 # INIT DATASETS
@@ -414,26 +379,26 @@ def init_ts40k(data_path, preprocessed=False):
                         )
     
     return data_module
+ 
 
-
-
+#####################################################################
+# INIT MODELS
+#####################################################################
 
 def init_model(model_name, criterion) -> pl.LightningModule:
     if model_name == 'scenenet':
         # test_MulticlassJaccardIndex: tensor([0.0000, 0.6459, 0.3951, 0.3087, 0.0633, 0.7802], device='cuda:0'); mean: 0.4387
         return init_scenenet(criterion)
-    elif model_name == 'unet':
-        return init_unet(criterion)
-    elif 'cnn' in model_name:
-        return init_cnn(criterion)
     elif 'pointnet' in model_name:
-        return init_pointnet()
+        return init_pointnet(model_name)
     elif 'kpconv' in model_name:
         return init_kpconv(criterion)
     elif 'randlanet' in model_name:
         return init_randlanet(criterion)
     elif 'pt_transformer' in model_name:
-        return init_point_transformer(criterion)
+        return init_point_transformer(criterion, wandb.config.model_version)
+    elif 'ensemble' in model_name:
+        return init_ensemble_model(criterion)
     else:
         raise ValueError(f"Model {model_name} not supported.")
     
@@ -445,7 +410,7 @@ def resume_from_checkpoint(ckpt_path, model:pl.LightningModule, class_weights=No
     checkpoint = torch.load(ckpt_path)
     # print(f"{checkpoint.keys()}")
     print(f"Loading model from checkpoint {ckpt_path}...\n\n")
-    if wandb.config.class_weights and 'pointnet' not in wandb.config.model and 'scenenet' not in wandb.config.model:
+    if wandb.config.class_weights and 'pointnet' not in ckpt_path.lower() and 'scenenet' not in ckpt_path.lower():
         checkpoint['state_dict']['criterion.weight'] = class_weights
     model.load_state_dict(checkpoint['state_dict'])
     print(f"Model loaded from checkpoint {ckpt_path}")
@@ -596,15 +561,64 @@ def main():
         model.to_onnx(onnx_file_path, input_sample, export_params=True)
         wandb_logger.log({"onnx_model": wandb.File(onnx_file_path)})
 
-    
+
     
     test_results = trainer.test(model,
                                 datamodule=data_module,
                                 ckpt_path='best' if not prediction_mode else None,
                             )
+    
+    # test_preds = model.test_preds
+
+    # test_preds = torch.cat(test_preds, dim=0)
+    # torch.save(test_preds, os.path.join(ckpt_dir, 'test_preds.pt'))
+    input("Press Enter to continue...")
+    from tqdm import tqdm
+    batch_size = wandb.config.batch_size
+    model_name = wandb.config.model
+    if model_name == 'pt_transformer':
+        model_name = f"pt_transformer_{wandb.config.model_version}"
+
+    if torch.no_grad():
+        model = model.to(device)
+        for stage in ['fit', 'test']:
+            data_module.setup(stage=stage)
+
+            dataset = data_module.fit_ds if stage == 'fit' else data_module.test_ds
+            dataloader = data_module._fit_dataloader() if stage == 'fit' else data_module.test_dataloader()
+
+            for i, batch in tqdm(enumerate(dataloader), desc=f"Predicting {stage} data..."):
+                x, _ = batch
+                batch = (batch[0].to(device), batch[1].to(device))
+                preds = model.evaluate(batch, stage=stage, metric=None, prog_bar=False, logger=False)[1]
+
+                preds = preds.reshape(x.shape[0], x.shape[1])
+
+                assert x.shape[:2] == preds.shape
+                # get dataset index
+                for j in range(x.shape[0]):
+                    idx = batch_size * i + j
+
+                    dataset_x, _ = dataset[idx]
+                    assert dataset_x.squeeze().shape == x[j].squeeze().shape
+
+                    file_path = dataset._get_file_path(idx)
+                    file_name =     (file_path) 
+                    preds_file_path = file_path.replace('TS40K-FULL', 'TS40K-FULL-Preds')
+                    preds_file_path = preds_file_path.replace(file_name, f'{file_name.split(".")[0]}/{model_name}.pt')
+
+                    if torch.randint(0, 10, (1,)).item() >= 9:
+                        print(f"{preds[j].shape}")
+                        print(f"Saving predictions to {preds_file_path}")
+
+                    os.makedirs(os.path.dirname(preds_file_path), exist_ok=True)
+                    torch.save(preds[j], preds_file_path)
+
+
+        
+
 
 if __name__ == '__main__':
-
     # --------------------------------
     su.fix_randomness()
     warnings.filterwarnings("ignore")

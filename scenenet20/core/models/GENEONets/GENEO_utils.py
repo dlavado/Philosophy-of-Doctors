@@ -307,7 +307,6 @@ if __name__ == "__main__":
             W[i] = kernel2matrix(K[i])
 
         return W
-
     
 
     def trans_conv(X, K):

@@ -832,6 +832,9 @@ class TS40K_FULL(Dataset):
             return self[random.randint(0, len(self)-1)]
         
         return sample_dict
+    
+    def _get_file_path(self, idx):
+        return os.path.join(self.dataset_path, self.data_files[idx])
 
     def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -922,6 +925,9 @@ class TS40K_FULL_Preprocessed(Dataset):
 
     def __len__(self):
         return len(self.data_files)
+    
+    def _get_file_path(self, idx) -> str:
+        return os.path.join(self.dataset_path, self.data_files[idx])
 
 
     def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:

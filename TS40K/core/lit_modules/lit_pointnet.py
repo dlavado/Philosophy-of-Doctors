@@ -1,6 +1,7 @@
 
 
 
+from typing import Tuple
 import torch
 from core.lit_modules.lit_model_wrappers import LitWrapperModel
 
@@ -40,13 +41,18 @@ class LitPointNet(LitWrapperModel):
 
         self.train_metrics = metric_initializer(num_classes=num_classes, ignore_index=0)
         self.val_metrics = metric_initializer(num_classes=num_classes, ignore_index=0)
-        self.test_metrics = metric_initializer(num_classes=num_classes, ignore_index=0)
+        self.test_metrics = metric_initializer(num_classes=num_classes)
 
         self.save_hyperparameters()
 
 
     def forward(self, x):
         return self.model(x)
+    
+    def forward_model_output(self, x:torch.Tensor) -> torch.Tensor:
+        # run the model and return the model output in (B, N, C) format
+        return self.model(x)[0]
+    
     
     def prediction(self, model_output:torch.Tensor) -> torch.Tensor:
         return torch.argmax(model_output, dim=1)
