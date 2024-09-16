@@ -264,7 +264,24 @@ class Ignore_Label:
         #     pointcloud[mask[None]] = -1 # only if 
         labels[mask] = -1 # ignore the points with the ignore label
 
-        return pointcloud, labels   
+        return pointcloud, labels
+    
+
+
+class Add_Normal_Vectors:
+
+   def __call__(self, sample) -> Any:
+        """
+        Add normal vectors to the point cloud
+        """
+
+        pointcloud, labels = sample
+
+        normals = eda.no
+
+        pointcloud = torch.cat([pointcloud, normals], dim=-1)
+
+        return pointcloud, labels
 
 class Random_Point_Sampling:
 
@@ -360,7 +377,6 @@ class Inverse_Density_Sampling:
         return knn_indices
 
         
-
 class Farthest_Point_Sampling:
 
     def __init__(self, num_points: Union[int, torch.Tensor], fps_labels=True) -> None:
