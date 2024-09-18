@@ -19,7 +19,7 @@ from tqdm import tqdm
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 import utils.pointcloud_processing as eda
-from core.datasets.torch_transforms import Farthest_Point_Sampling, Normalize_PCD, To, Voxelization, Inverse_Density_Sampling, SMOTE_3D_Upsampling
+from core.datasets.torch_transforms import Farthest_Point_Sampling, Normalize_PCD, To, Voxelization, Inverse_Density_Sampling, SMOTE_3D_Upsampling, Add_Normal_Vector
 
 import os
 
@@ -652,7 +652,6 @@ class TS40K(Dataset):
         return f"TS40K {self.split} Dataset with {len(self)} samples"
     
     def _load_data_into_memory(self):
-        
         self.data = []
         for i in tqdm(range(len(self)), desc="Loading data into memory..."):
             self.data.append(self.__getitem__(i))
@@ -818,7 +817,6 @@ class TS40K_FULL(Dataset):
         sample_path = self.data_files[idx]
 
         try:
-
             if sample_path.endswith('.pt'):
                 sample_dict = torch.load(sample_path)
             elif sample_path.endswith('.npy'):
@@ -858,7 +856,7 @@ class TS40K_FULL(Dataset):
             if self.task == "sem_seg":
                 y = sample_dict['semantic_labels']
                 y = torch.squeeze(y) # reshape to (N,)
-                sample = (x[None], y[None]) # xyz-coord (1, N, 3); label (1, N)
+                sample = (x, y) # xyz-coord (N, 3); label (N,)
             else:
                 y = sample_dict['obj_boxes']
                 if not isinstance(y, torch.Tensor):
@@ -872,7 +870,7 @@ class TS40K_FULL(Dataset):
         
         else: # data was preprocessed as saved as a tuple
             x, y = sample_dict
-            sample = (x.squeeze().unsqueeze(0), y.squeeze().unsqueeze(0))
+            sample = (x.squeeze(), y.squeeze())
         
         return sample
 
@@ -886,10 +884,10 @@ class TS40K_FULL_Preprocessed(Dataset):
 
     This results in a datasets with similar structure to the original TS40K_FULL dataset, but with the preprocessed data.
 
-    The targets are specific to the sem-_seg task, for others, different preprocessing should be applied.
+    The targets are specific to the sem_seg task, for others, different preprocessing should be applied.
     """
 
-    def __init__(self, dataset_path, split='fit', sample_types='all', transform=None, load_into_memory=True) -> None:
+    def __init__(self, dataset_path:str, split='fit', sample_types='all', transform=None, load_into_memory=True, use_full_test_set=False) -> None:
         super().__init__()
 
         if sample_types != 'all' and not isinstance(sample_types, list):
@@ -897,6 +895,9 @@ class TS40K_FULL_Preprocessed(Dataset):
         
         self.dataset_path = dataset_path
         self.transform = transform
+
+        if split == 'test' and use_full_test_set:
+            self.dataset_path = self.dataset_path.replace('-Preprocessed', '')
 
         if sample_types == 'all':
             sample_types = ['tower_radius', '2_towers', 'no_tower']
@@ -989,9 +990,9 @@ def main():
     #                        os.path.join(TS40K_DIR, "TS40K-FULL-Preprocessed-SMOTE"),
     #                     )
 
-    process_ts40k_for_mmlab_pcdet_framework(os.path.join(TS40K_DIR, "TS40K-FULL"),
-                                            "/home/didi/VSCode/Philosophy-of-Doctors/OpenPCDet/data/ts40k/",
-                                            fps_points=10000)    
+    # process_ts40k_for_mmlab_pcdet_framework(os.path.join(TS40K_DIR, "TS40K-FULL"),
+    #                                         "/home/didi/VSCode/Philosophy-of-Doctors/OpenPCDet/data/ts40k/",
+    #                                         fps_points=10000)    
 
     # save_normalized_data(os.path.join(TS40K_DIR, "TS40K-FULL"),
     #                      os.path.join(TS40K_DIR, "TS40K-FULL-Normalized")
@@ -1005,6 +1006,43 @@ def main():
     #     split='fit',
     # )
 
+    transform = Compose([
+                Normalize_PCD([0, 10]),
+                Add_Normal_Vector(),
+            ])
+
+    for split in ['fit', 'test']:
+        for sample_type in ['tower_radius', '2_towers', 'no_tower']:
+            ts40k = TS40K_FULL(constants.TS40K_FULL_PATH, 
+                               split=split, 
+                               sample_types=[sample_type], 
+                               task='sem_seg', transform=transform, load_into_memory=False)
+            print(f"TS40K {split} {sample_type} Dataset has {len(ts40k)} samples")
+
+            for i in tqdm(range(len(ts40k)), desc=f"Processing {split} {sample_type} samples..."):
+                sample_path = ts40k._get_file_path(i)
+                sample_dict = ts40k._get_dict(i)
+
+                transformed_sample = ts40k[i][0]
+
+                new_sample_path = sample_path.replace('TS40K-FULL', 'TS40K-FULL-Normals-Normalized')
+                
+                if os.path.exists(new_sample_path): # skip already processed samples
+                    continue
+                os.makedirs(os.path.dirname(new_sample_path), exist_ok=True)
+                sample_dict['normal_vectors'] = transformed_sample[:, 3:]
+                sample_dict['input_pcd'] = transformed_sample[:, :3]
+                # print(transformed_sample[:, 3:].shape)
+                # print(torch.min(transformed_sample[:, :3], axis=0).values)
+                # print(torch.max(transformed_sample[:, :3], axis=0).values)
+                # input("Press Enter to continue...")
+
+                for key in sample_dict.keys():
+                    if isinstance(sample_dict[key], torch.Tensor):
+                        sample_dict[key] = sample_dict[key].squeeze().to(torch.float16)
+
+                torch.save(sample_dict, new_sample_path)
+
     # for i in tqdm(range(len(ts40k)), desc="Visualizing samples..."):
     #     xyz, y = ts40k[i]
     #     print(f"Sample {i} has {xyz.shape[0]} points")
@@ -1014,7 +1052,7 @@ def main():
     #         # eliminate the file
     #         os.remove(file_path)
 
-    # input("Press Enter to continue...")
+    input("Press Enter to continue...")
 
    
     composed = Compose([

@@ -32,7 +32,6 @@ class ToTensor:
         return tuple([torch.from_numpy(s.astype(np.float64)) for s in sample])
 
 class To:
-
     def __init__(self, dtype:torch.dtype=torch.float32) -> None:
         self.dtype = dtype
 
@@ -265,6 +264,45 @@ class Ignore_Label:
         labels[mask] = -1 # ignore the points with the ignore label
 
         return pointcloud, labels   
+
+
+class Merge_Label:
+
+    def __init__(self, merge_labels:dict[int, int]) -> None:
+        """
+        merge_labels = {
+            label_to_transform: new_label
+        }
+        """
+        self.merge_labels = merge_labels
+
+    def __call__(self, sample) -> Any:
+        """
+        Merge the labels according to the provided dictionary
+        """
+
+        pointcloud, labels = sample
+
+        for key, value in self.merge_labels.items():
+            labels[labels == key] = value
+
+        return pointcloud, labels
+
+class Add_Normal_Vector:
+
+    def __call__(self, sample) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Add the normal vector to the point cloud
+        """
+
+        pointcloud, labels = sample
+
+        normals = eda.estimate_normals(pointcloud.numpy())
+        normals = torch.from_numpy(normals).to(pointcloud.device)
+        pointcloud = torch.cat([pointcloud, normals], dim=-1)
+
+        return pointcloud, labels
+
 
 class Random_Point_Sampling:
 
@@ -599,6 +637,15 @@ class Farthest_Point_Sampling:
         
 class Normalize_PCD:
 
+    def __init__(self, range=[0,1]) -> None:
+        
+        assert len(range) == 2
+        assert range[0] < range[1]
+
+        self.range = range
+
+
+
     def __call__(self, sample) -> torch.Tensor:
         """
         Normalize the point cloud to have zero mean and unit variance.
@@ -613,7 +660,8 @@ class Normalize_PCD:
 
     def normalize(self, pointcloud:torch.Tensor) -> torch.Tensor:
         """
-         (x - min(x)) / (max(x) - min(x))
+        normalize = (x - min(x)) / (max(x) - min(x))
+        now x \in pointcloud is such that x \in [0, 1] (i.e., range)
         """
 
         pointcloud = pointcloud.float()
@@ -627,6 +675,9 @@ class Normalize_PCD:
             min_x = pointcloud.min(dim=0, keepdim=True).values
             max_x = pointcloud.max(dim=0, keepdim=True).values
             pointcloud = (pointcloud - min_x) / (max_x - min_x)
+
+        # put pointcloud in range
+        pointcloud = pointcloud * (self.range[1] - self.range[0]) + self.range[0]
 
         return pointcloud
 

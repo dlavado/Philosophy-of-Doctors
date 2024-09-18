@@ -33,12 +33,12 @@ import utils.my_utils as su
 import utils.pointcloud_processing as eda
 
 
-from core.datasets.torch_transforms import Farthest_Point_Sampling
 import core.lit_modules.lit_callbacks as lit_callbacks
 from core.lit_modules.lit_scenenet import LitSceneNet_multiclass
 from core.lit_modules.lit_ts40k import LitTS40K_FULL, LitTS40K_FULL_Preprocessed
+from core.lit_modules.lit_labelec import LitLabelec
 from core.criterions.geneo_loss import GENEO_Loss
-from core.datasets.torch_transforms import *
+import core.datasets.torch_transforms as tt
 
 #####################################################################
 # PARSER
@@ -256,7 +256,7 @@ def init_point_transformer(criterion, model_version='v3'):
                                    optimizer_name=wandb.config.optimizer,
                                    learning_rate=wandb.config.learning_rate,
                                    metric_initializer=su.init_metrics,
-    )
+                            )
 
     return model
 
@@ -317,53 +317,47 @@ def init_ts40k(data_path, preprocessed=False):
     sample_types = 'all'
     
     if preprocessed:
-        if wandb.config.model == 'unet':
-            # vxg_size = ast.literal_eval(wandb.config.voxel_grid_size) # default is 64^3
-            # vox_size = ast.literal_eval(wandb.config.voxel_size) # only use vox_size after training or with batch_size = 1
-            # voxel_method = Voxelization_withPCD if wandb.config.model == 'scenenet' else Voxelization
-            # transform = voxel_method(keep_labels='all', vxg_size=vxg_size, vox_size=vox_size)
-            #data_path = TS40K_FULL_PREPROCESSED_VOXELIZED_PATH
-
-            transform = Compose([
-                           Ignore_Label(0) # turn noise class into ignore
-                        ])
-
-        elif 'scenenet' in wandb.config.model or wandb.config.model == 'cnn':
+        if 'scenenet' in wandb.config.model or wandb.config.model == 'cnn':
             vxg_size = ast.literal_eval(wandb.config.voxel_grid_size) # default is 64^3
             vox_size = ast.literal_eval(wandb.config.voxel_size) # only use vox_size after training or with batch_size = 1
             transform = Compose([
-                            # Ignore_Label(0), # turn noise class into ignore,
-                            Voxelization_withPCD(keep_labels='all', vxg_size=vxg_size, vox_size=vox_size)
+                            tt.Voxelization_withPCD(keep_labels='all', vxg_size=vxg_size, vox_size=vox_size)
                         ])
         else:
-            transform = None
+            transform = Compose([
+                    tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
+            ])
+
+        if wandb.config.add_normals:
+            transform.transforms.append(tt.Add_Normal_Vector())
 
         return LitTS40K_FULL_Preprocessed(
-                            data_path,
-                            wandb.config.batch_size,
-                            sample_types=sample_types,
-                            transform=transform,
-                            transform_test=transform,
-                            num_workers=wandb.config.num_workers,
-                            val_split=wandb.config.val_split,
-                            load_into_memory=wandb.config.load_into_memory,
-        )
+                        data_path,
+                        wandb.config.batch_size,
+                        sample_types=sample_types,
+                        transform=transform,
+                        transform_test=transform,
+                        num_workers=wandb.config.num_workers,
+                        val_split=wandb.config.val_split,
+                        load_into_memory=wandb.config.load_into_memory,
+                        use_full_test_set=True
+                    )
 
     if wandb.config.model == 'scenenet' or wandb.config.model == 'unet':
         vxg_size = ast.literal_eval(wandb.config.voxel_grid_size) # default is 64^3
         vox_size = ast.literal_eval(wandb.config.voxel_size) # only use vox_size after training or with batch_size = 1
 
-        voxel_method = Voxelization_withPCD if wandb.config.model == 'scenenet' else Voxelization
+        voxel_method = tt.Voxelization_withPCD if wandb.config.model == 'scenenet' else tt.Voxelization
 
         composed = Compose([
-                            Farthest_Point_Sampling(wandb.config.fps_points),
+                            tt.Farthest_Point_Sampling(wandb.config.fps_points),
                             voxel_method(keep_labels='all', vxg_size=vxg_size, vox_size=vox_size)
                         ])
     else:
         composed = Compose([
-                            Normalize_PCD(),
-                            Farthest_Point_Sampling(wandb.config.fps_points),
-                            To(torch.float32),
+                            tt.Normalize_PCD(),
+                            tt.Farthest_Point_Sampling(wandb.config.fps_points),
+                            tt.To(torch.float32),
                         ])
     
     data_module = LitTS40K_FULL(
@@ -379,6 +373,34 @@ def init_ts40k(data_path, preprocessed=False):
                         )
     
     return data_module
+
+
+def init_labelec(data_path):
+
+    transform = Compose([
+        tt.EDP_Labels(),
+        tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
+        tt.Normalize_PCD([0, 10]),
+        # tt.Add_Normal_Vector(),
+    ])
+
+    if wandb.config.add_normals:
+        transform.transforms.append(tt.Add_Normal_Vector())
+
+
+    data_module = LitLabelec(
+        data_path,
+        save_chunks=False,
+        transform=transform,
+        test_transform=transform,
+        load_into_memory=wandb.config.load_into_memory,
+        batch_size=wandb.config.batch_size,
+        val_split=wandb.config.val_split,
+        num_workers=wandb.config.num_workers,
+    )
+
+    return data_module
+
  
 
 #####################################################################
@@ -498,6 +520,9 @@ def main():
             elif smote_mode:
                 data_path = TS40K_FULL_PREPROCESSED_SMOTE_PATH
         data_module = init_ts40k(data_path, wandb.config.preprocessed)
+    elif dataset_name == 'labelec':
+        data_path = LABELEC_RGB_DIR
+        data_module = init_labelec(data_path)
     else:
         raise ValueError(f"Dataset {dataset_name} not supported.")
     
@@ -536,7 +561,6 @@ def main():
     )
 
     if not prediction_mode:
-
         trainer.fit(model, data_module)
 
         print(f"{'='*20} Model ckpt scores {'='*20}")
@@ -673,8 +697,12 @@ if __name__ == '__main__':
                 name = f'{model_name}_{dataset_name}_{datetime.now().strftime("%Y%m%d-%H%M%S")}',
                 config=sweep_config,
                 mode=main_parser.wandb_mode,
-        )        
+        )  
 
+    if wandb.config.add_normals:
+        wandb.config.update({'num_data_channels': wandb.config.num_data_channels + 3}, allow_val_change=True) # override data path
+      
+    # print(f"wandb.config.num_data_channels: {wandb.config.num_data_channels}")
     main()
     
 

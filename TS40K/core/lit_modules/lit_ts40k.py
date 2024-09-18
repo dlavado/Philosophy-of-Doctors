@@ -98,10 +98,11 @@ class LitTS40K_FULL(pl.LightningDataModule):
 
 class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
 
-    def __init__(self, data_dir, batch_size, sample_types='all', transform=None, transform_test=None, num_workers=8, val_split=0.1, load_into_memory=False):
-
+    def __init__(self, data_dir, batch_size, sample_types='all', transform=None, transform_test=None, num_workers=8, val_split=0.1, load_into_memory=False, use_full_test_set=True):
 
         super().__init__(data_dir, batch_size, sample_types, None, transform, transform_test, num_workers, val_split, None, load_into_memory)
+
+        self.use_full_test_set = use_full_test_set
 
 
     def setup(self, stage:str=None):
@@ -110,12 +111,18 @@ class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
             self.fit_ds = TS40K_FULL_Preprocessed(self.data_dir, split="fit", sample_types=self.sample_types, transform=self.transform, load_into_memory=self.load_into_memory)
             self.train_ds, self.val_ds = random_split(self.fit_ds, [1 - self.hparams.val_split, self.hparams.val_split])
         if stage == 'test':
-            self.test_ds = TS40K_FULL_Preprocessed(self.data_dir, split="test", sample_types=self.sample_types, transform=self.transform_test, load_into_memory=self.load_into_memory)
+            self.test_ds = TS40K_FULL_Preprocessed(self.data_dir, split="test", sample_types=self.sample_types, transform=self.transform_test, load_into_memory=self.load_into_memory, )
 
         if stage == 'predict':
             self.predict_ds = TS40K_FULL_Preprocessed(self.data_dir, split="test", sample_types=self.sample_types, transform=self.transform_test, load_into_memory=self.load_into_memory)
 
+    def test_dataloader(self):
+        if self.use_full_test_set:
+            batch_size = 1 # point clouds do not have the same number of points; thus they cannot be stacked.
+        else:
+            batch_size = self.hparams.batch_size
 
+        return DataLoader(self.test_ds, batch_size=batch_size, num_workers=self.hparams.num_workers, shuffle=False)
 
 
       

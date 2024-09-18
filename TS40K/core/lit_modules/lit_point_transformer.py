@@ -23,10 +23,14 @@ class Lit_PointTransformer(LitWrapperModel):
                 metric_initializer=None, 
                 ignore_index=-1,
                 **kwargs):
-    
 
         if version == 'v2':
-            model = ptv2.PointTransformerV2(in_channels=in_channels, num_classes=num_classes)
+            model = ptv2.PointTransformerV2(in_channels=in_channels, 
+                                            num_classes=num_classes,
+                                            patch_embed_channels=256,
+                                            patch_embed_groups=8,
+                                            patch_embed_depth=2,
+                                        )
         elif version == 'v3':
             model = ptv3.PointTransformerV3(in_channels=in_channels, num_classes=num_classes,
                                             order=["z", "z-trans", "hilbert", "hilbert-trans"], enable_flash=False)     
@@ -46,7 +50,10 @@ class Lit_PointTransformer(LitWrapperModel):
 
 
     def forward(self, x):
-        return self.model(self.process_input_tensor(x))
+        x_dict = self.process_input_tensor(x)
+        # for k, v in x_dict.items():
+        #     print(f"{k} shape = {v.shape}")
+        return self.model(x_dict)
     
     def prediction(self, model_output):
         # model_output shape = (batch_size*num_points, classes)

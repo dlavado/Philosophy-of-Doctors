@@ -8,7 +8,7 @@ os.environ["OPT"] = " ".join(
     flag for flag in opt.split() if flag != "-Wstrict-prototypes"
 )
 
-src = "src"
+src = "src" 
 sources = [
     os.path.join(root, file)
     for root, dirs, files in os.walk(src)
