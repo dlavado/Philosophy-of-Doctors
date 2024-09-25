@@ -42,7 +42,7 @@ TS40K_FULL_PREPROCESSED_IDIS_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-
 TS40K_FULL_PREPROCESSED_SMOTE_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-FULL-Preprocessed-SMOTE/')
 # TS40K_PATH = os.path.join(EXT_PATH, "TS40K-NEW/TS40K-Sample/")
 
-LABELEC_RGB_DIR = os.path.join(TS40K_PATH, 'Labelec_LAC_RGB_2024')
+LABELEC_RGB_DIR = os.path.join(TS40K_PATH, 'Labelec_LAS_RGB_2024')
 
 LAS_RGB_PROCESSED = os.path.join(SSD_PATH, 'TS40K-Dataset/Labelec_LAS_RGB_2024/Processados/')
 LAS_RGB_ORIGINALS = os.path.join(SSD_PATH, 'TS40K-Dataset/Labelec_LAS_RGB_2024/Originais/')

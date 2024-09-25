@@ -2,8 +2,9 @@
 
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader, random_split
-
-
+import sys
+sys.path.insert(0, '..')
+sys.path.insert(1, '../..')
 from core.datasets.Labelec import Labelec_Dataset as Labelec
 
 
@@ -55,3 +56,31 @@ class LitLabelec(pl.LightningDataModule):
     
     def predict_dataloader(self):
         return DataLoader(self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
+    
+
+
+if __name__ == '__main__':
+    from utils import constants as consts
+
+    lit_labelec = LitLabelec(las_data_dir=consts.LABELEC_RGB_DIR, 
+                             save_chunks=False, 
+                             chunk_size=10_000_000, 
+                             bins=5, 
+                             transform=None, 
+                             test_transform=None, 
+                             load_into_memory=False, 
+                             batch_size=16, 
+                             val_split=0.2, 
+                             num_workers=8
+                        )
+    
+    lit_labelec.setup('fit')
+
+    train_loader = lit_labelec.train_dataloader()
+
+    for batch in train_loader:
+        x, y = batch
+
+        print(x.shape, y.shape)
+    
+

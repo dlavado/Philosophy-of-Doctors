@@ -145,12 +145,14 @@ class Labelec_Dataset(Dataset):
             chunk_las = chunk_las.read()
             chunk = eda.las_to_numpy(chunk_las, include_feats=['classification', 'rgb']) #xyz;rgb;label
 
-        chunk = torch.from_numpy(chunk).to(torch.float16)
+        chunk = torch.from_numpy(chunk)
 
         sample = (chunk[:, :-1], chunk[:, -1])
 
         if self.transform:
-            return self.transform(sample)
+            sample = self.transform(sample)
+        
+        return sample
 
     def _save_chunks(self, las_file_path: str, chunk_size: int, bins: int = 5, to_laz=True) -> list[str]:
         file_paths = []
@@ -190,9 +192,18 @@ if __name__ == '__main__':
     labelec = Labelec_Dataset(
         las_data_dir=LABELEC_DIR,
         split='test',
-        save_chunks=True,
+        save_chunks=False,
         chunk_size=20_000_000,
         bins=20,
         transform=None,
         load_into_memory=False
     )
+
+
+    x, y = labelec[0]
+
+    print(x.shape, y.shape)
+
+    rgb = x[:, 3:]
+    print(x[:10, :])
+    print(y[:10])

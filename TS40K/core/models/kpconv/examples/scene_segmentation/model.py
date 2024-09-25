@@ -96,7 +96,7 @@ class KPFCNN(nn.Module):
         subsampling_list = graph_pyramid["subsampling"]
         upsampling_list = graph_pyramid["upsampling"]
 
-        feats_s1 = torch.cat([torch.ones_like(feats[:, :1]), feats], dim=1)
+        feats_s1 = feats
         feats_s1 = self.encoder1_1(points_list[0], points_list[0], feats_s1, neighbors_list[0])
         feats_s1 = self.encoder1_2(points_list[0], points_list[0], feats_s1, neighbors_list[0])
 

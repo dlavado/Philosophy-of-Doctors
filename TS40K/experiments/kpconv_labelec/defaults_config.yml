@@ -3,7 +3,7 @@
 # Author: Diogo Mateus
 
 project:
-  value: 'Labelec'
+  value: 'TS40K'
 output_dir: 
   value: '${experiment_path}/outputs'
 # ------------------ #
@@ -45,13 +45,24 @@ min_points:
 # model config
 # ------------------ #
 model:
-  value: 'pt_transformer'
+  value: 'kpconv'
 in_channels:
   value: 3 # xyz coords
-  description: 'Number of channels in the input''${experiment_path}/wandb/ptv2_resume' # v2
-model_version:
-  value: 'v2' # 'v1' or 'v2' or 'v3'
-  description: 'Point Transformer version'
+  description: 'Number of channels in the input'
+num_stages:
+    value: 5
+voxel_size:
+    value: 0.02
+kernel_size:
+    value: 15
+kpconv_radius:
+    value: 12
+kpconv_sigma:
+    value: 2.0
+init_dim:
+    value: 64
+neighbor_limits:
+    value: "[10, 10, 10, 10, 10]" # if None, recompute neighbors
 # ------------------ #
 # training config
 # ------------------ #
@@ -60,7 +71,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 40 # -1 for infinite
+  value: 100 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -78,7 +89,7 @@ criterion:
   value: 'cross_entropy' # this is not in use
   description: 'Loss function' # this is not in use since pointnet models have their own loss function
 class_weights:
-  value: False
+  value: True
   description: 'Use class weights in the loss function'
 # ------------------ #
 # Lit Trainer config
@@ -107,12 +118,11 @@ save_onnx:
 resume_from_checkpoint:
   value: False
 checkpoint_dir:
-  # value: '${experiment_path}/wandb/ptv2_resume' # v2
-  value: '${experiment_path}/wandb/ptv1_resume/files/checkpoints/'
-  #value: '${experiment_path}/wandb/run-20240510_143031-p82umf3x/files/checkpoints/' # '${experiment_path}/wandb/ptv2_resume' # v2
+  value: '${experiment_path}/checkpoints'
 resume_checkpoint_name:
   value: MulticlassJaccardIndex-v1 # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:
   value: 0 # every n steps
+  

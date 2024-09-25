@@ -203,6 +203,7 @@ def init_pointnet(model_name='pointnet'):
                         num_classes=wandb.config.num_classes,
                         num_channels=wandb.config.num_data_channels,
                         learning_rate=wandb.config.learning_rate,
+                        ignore_index=wandb.config.ignore_index,
                         metric_initializer=su.init_metrics,
                     )
     return model
@@ -223,6 +224,7 @@ def init_kpconv(criterion):
                       num_classes=wandb.config.num_classes,
                       input_dim=wandb.config.num_data_channels,
                       learning_rate=wandb.config.learning_rate,
+                      ignore_index=wandb.config.ignore_index,
                       metric_initializer=su.init_metrics,
                     )
     return model
@@ -239,6 +241,7 @@ def init_randlanet(criterion):
                          num_neighbors=wandb.config.num_neighbors,
                          decimation=wandb.config.decimation,
                          learning_rate=wandb.config.learning_rate,
+                         
                          metric_initializer=su.init_metrics,
     )
 
@@ -250,12 +253,13 @@ def init_point_transformer(criterion, model_version='v3'):
 
     # Model definition
     model = Lit_PointTransformer(criterion=criterion,
-                                   in_channels=wandb.config.num_data_channels,
-                                   num_classes=wandb.config.num_classes,
-                                   version=model_version,
-                                   optimizer_name=wandb.config.optimizer,
-                                   learning_rate=wandb.config.learning_rate,
-                                   metric_initializer=su.init_metrics,
+                                 in_channels=wandb.config.num_data_channels,
+                                 num_classes=wandb.config.num_classes,
+                                 version=model_version,
+                                 optimizer_name=wandb.config.optimizer,
+                                 learning_rate=wandb.config.learning_rate,
+                                 ignore_index=wandb.config.ignore_index,
+                                 metric_initializer=su.init_metrics,
                             )
 
     return model
@@ -379,9 +383,10 @@ def init_labelec(data_path):
 
     transform = Compose([
         tt.EDP_Labels(),
-        tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
+        # tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
+        # tt.Farthest_Point_Sampling(10_000),
+        tt.Repeat_Points(1_000_000),
         tt.Normalize_PCD([0, 10]),
-        # tt.Add_Normal_Vector(),
     ])
 
     if wandb.config.add_normals:
@@ -397,7 +402,7 @@ def init_labelec(data_path):
         batch_size=wandb.config.batch_size,
         val_split=wandb.config.val_split,
         num_workers=wandb.config.num_workers,
-    )
+    )  
 
     return data_module
 

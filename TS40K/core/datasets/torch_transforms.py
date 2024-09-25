@@ -298,10 +298,44 @@ class Add_Normal_Vector:
         pointcloud, labels = sample
 
         normals = eda.estimate_normals(pointcloud.numpy())
-        normals = torch.from_numpy(normals).to(pointcloud.device)
+        normals = torch.from_numpy(normals).to(pointcloud.device).to(torch.float32)
         pointcloud = torch.cat([pointcloud, normals], dim=-1)
 
         return pointcloud, labels
+
+
+class Repeat_Points:
+
+    def __init__(self, num_points:int) -> None:
+        """
+        Repeat the points in the point cloud until the number of points is equal to the number of points to sample;
+
+        Useful for batch training.
+        """
+        self.num_points = num_points
+
+    def __call__(self, sample) -> Any:
+
+        pointcloud, labels = sample
+        if pointcloud.ndim == 3: # batched point clouds
+           point_dim = 1
+        else:
+            point_dim = 0
+
+        if pointcloud.shape[point_dim] < self.num_points:
+            # duplicate the points until the number of points is equal to the number of points to sample
+            random_indices = torch.randint(0, pointcloud.shape[point_dim] - 1, size=(self.num_points - pointcloud.shape[point_dim],))
+
+            if pointcloud.ndim == 3:    
+                pointcloud = torch.cat([pointcloud, pointcloud[:, random_indices]], dim=point_dim)
+                labels = torch.cat([labels, labels[:, random_indices]], dim=point_dim)
+            else:
+                pointcloud = torch.cat([pointcloud, pointcloud[random_indices]], dim=point_dim)
+                labels = torch.cat([labels, labels[random_indices]], dim=point_dim)
+
+        return pointcloud, labels
+        
+        
 
 
 class Random_Point_Sampling:

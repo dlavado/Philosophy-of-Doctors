@@ -579,7 +579,6 @@ class PointTransformerV2(nn.Module):
             feat = torch.zeros((coords.shape[0], 1), device=coords.device)
 
         batch = torch.cat([torch.full((inpt.shape[1],), i, device=inpt.device) for i in range(inpt.shape[0])], dim=0)
-        # batch = batch.reshape(-1, 1)
 
         return coords, feat, batch
 

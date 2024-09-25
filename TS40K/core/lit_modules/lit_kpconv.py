@@ -29,6 +29,7 @@ class LitKPConv(LitWrapperModel):
                  kernel_size=15,
                  num_classes=10,
                  learning_rate=0.001, 
+                 ignore_index=-1,
                  metric_initializer=None, 
                  **kwargs
             ):
@@ -51,8 +52,8 @@ class LitKPConv(LitWrapperModel):
         super().__init__(model, criterion, optimizer_name, learning_rate, metric_initializer, **kwargs)
 
 
-        self.train_metrics = metric_initializer(num_classes=num_classes, ignore_index=0)
-        self.val_metrics = metric_initializer(num_classes=num_classes, ignore_index=0)
+        self.train_metrics = metric_initializer(num_classes=num_classes, ignore_index=ignore_index)
+        self.val_metrics = metric_initializer(num_classes=num_classes, ignore_index=ignore_index)
         self.test_metrics = metric_initializer(num_classes=num_classes)
 
         self.save_hyperparameters()
@@ -61,8 +62,8 @@ class LitKPConv(LitWrapperModel):
 
     def forward(self, x:torch.Tensor):
         points, lengths = batch_to_pack(x)
-        if x.shape[-1] > 3:
-            feats = points[:, 3:]
+        if points.shape[-1] > 3:
+            points, feats = points[:, :3], points[:, 3:]
         else:
             feats = torch.ones_like(points[:, :2])
 
@@ -75,7 +76,7 @@ class LitKPConv(LitWrapperModel):
         # runs the model and returns the model output in (B, N, C) format
         points, lengths = batch_to_pack(x)
         if x.shape[-1] > 3:
-            feats = points[:, 3:]
+            points, feats = points[:, :3], points[:, 3:]
         else:
             feats = torch.ones_like(points[:, :2])
 

@@ -160,6 +160,7 @@ def las_to_numpy(las, include_feats = ['classification', 'rgb'], header=False):
         
         if feat == 'rgb':
             rgb = np.vstack((las.red, las.green, las.blue)).transpose()
+            rgb = process_labelec_rgb(rgb)
             xyz = np.append(xyz, rgb, axis=1)
             continue
         
@@ -186,6 +187,23 @@ def las_to_numpy(las, include_feats = ['classification', 'rgb'], header=False):
     return xyz
     
 
+def process_labelec_rgb(rgb:np.ndarray) -> np.ndarray:
+    """
+    Processes the RGB data of the point cloud wrt Labelec's data.\n
+
+    Parameters
+    ----------
+    `rgb` - (N, 3) ndarray:
+        RGB data of the point cloud
+
+    Returns
+    -------
+    `rgb` - (N, 3) ndarray \in [0, 1]:
+        processed RGB data of the point cloud
+    """
+    rgb = rgb / 256 # normalize the rgb values
+    rgb = rgb / 255 # normalize the rgb values
+    return rgb
 
 def np_to_ply(xyz:np.ndarray, save=False, filename="pcd.ply"):
     """

@@ -27,9 +27,9 @@ class Lit_PointTransformer(LitWrapperModel):
         if version == 'v2':
             model = ptv2.PointTransformerV2(in_channels=in_channels, 
                                             num_classes=num_classes,
-                                            patch_embed_channels=256,
-                                            patch_embed_groups=8,
-                                            patch_embed_depth=2,
+                                            # patch_embed_channels=256,
+                                            # patch_embed_groups=8,
+                                            # patch_embed_depth=2,
                                         )
         elif version == 'v3':
             model = ptv3.PointTransformerV3(in_channels=in_channels, num_classes=num_classes,
@@ -112,6 +112,9 @@ class Lit_PointTransformer(LitWrapperModel):
     def evaluate(self, batch, stage=None, metric=None, prog_bar=True, logger=True):
         x, y = batch # x shape = (batch_size, num_points, in_channels), y shape = (batch_size, num_points)
         y = y.to(torch.long)
+
+        # print(f"x shape = {x.shape}")
+        # print(f"y shape = {y.shape}")
 
         out = self(x) # out shape = (batch_size*num_points, num_classes)
     
