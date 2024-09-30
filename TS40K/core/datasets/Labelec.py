@@ -87,6 +87,7 @@ class Labelec_Dataset(Dataset):
                 las_data_dir,
                 split = 'fit',
                 save_chunks = False,
+                include_rgb = True,
                 chunk_size = 10_000_000,
                 bins = 5,
                 transform = None,
@@ -98,6 +99,7 @@ class Labelec_Dataset(Dataset):
         self.chunk_dir = os.path.join(las_dir, 'chunks/')
         self.split = split
         self.transform = transform
+        self.include_rgb = include_rgb
 
         if save_chunks:
             assert isinstance(bins, (float, int)) and isinstance(chunk_size, (float, int)) and bins <= chunk_size
@@ -135,15 +137,19 @@ class Labelec_Dataset(Dataset):
             self.data.append(self.__getitem__(i))
 
     def __getitem__(self, index):
+        # print(f"Loading chunk {index}...")
+        
         if self.load_into_memory:
             return self.data[index]
-        
 
         # upload las file
         chunk_las_file = self.chunk_file_paths[index]
         with lp.open(chunk_las_file) as chunk_las:
             chunk_las = chunk_las.read()
-            chunk = eda.las_to_numpy(chunk_las, include_feats=['classification', 'rgb']) #xyz;rgb;label
+            feats = ['classification']
+            if self.include_rgb:
+                feats.append('rgb')
+            chunk = eda.las_to_numpy(chunk_las, include_feats=feats) #xyz;rgb;label
 
         chunk = torch.from_numpy(chunk)
 
@@ -186,6 +192,17 @@ class Labelec_Dataset(Dataset):
 
 if __name__ == '__main__':
     from utils import constants as consts
+    import core.datasets.torch_transforms as tt
+    from torchvision.transforms import Compose
+
+    transform = Compose([
+        tt.EDP_Labels(),
+        # tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
+        tt.Repeat_Points(100_000),
+        # tt.Farthest_Point_Sampling(1_000),
+        tt.Normalize_PCD([0, 1]),
+        tt.To(torch.float32),
+    ])
 
     LABELEC_DIR = consts.LABELEC_RGB_DIR
 
@@ -194,16 +211,25 @@ if __name__ == '__main__':
         split='test',
         save_chunks=False,
         chunk_size=20_000_000,
-        bins=20,
-        transform=None,
+        bins=200,
+        transform=transform,
         load_into_memory=False
     )
 
+    for i in range(len(labelec)):
+        x, y = labelec[i]
+        print(x.shape, y.shape)
 
-    x, y = labelec[0]
+        if torch.isnan(x).any():
+            ValueError("NANs in x")
+        if torch.isnan(y).any():
+            ValueError("NANs in y")
 
-    print(x.shape, y.shape)
+        print(torch.unique(y))
+        print(torch.min(x, dim=0).values, torch.max(x, dim=0).values)
+        print(torch.mean(x, dim=0), torch.std(x, dim=0))
+
 
     rgb = x[:, 3:]
     print(x[:10, :])
-    print(y[:10])
+    print(torch.unique(y))

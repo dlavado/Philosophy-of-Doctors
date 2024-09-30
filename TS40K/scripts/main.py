@@ -328,23 +328,30 @@ def init_ts40k(data_path, preprocessed=False):
                             tt.Voxelization_withPCD(keep_labels='all', vxg_size=vxg_size, vox_size=vox_size)
                         ])
         else:
-            transform = Compose([
-                    tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
-            ])
+            transform = None
+            # transform = Compose([
+            #         tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
+            # ])
 
         if wandb.config.add_normals:
             transform.transforms.append(tt.Add_Normal_Vector())
+
+        # test_transform = Compose([
+        #     tt.Normalize_PCD(),
+        #     tt.To(torch.float32),
+        # ])
+        test_transform = None
 
         return LitTS40K_FULL_Preprocessed(
                         data_path,
                         wandb.config.batch_size,
                         sample_types=sample_types,
                         transform=transform,
-                        transform_test=transform,
+                        transform_test=test_transform,
                         num_workers=wandb.config.num_workers,
                         val_split=wandb.config.val_split,
                         load_into_memory=wandb.config.load_into_memory,
-                        use_full_test_set=True
+                        use_full_test_set=False
                     )
 
     if wandb.config.model == 'scenenet' or wandb.config.model == 'unet':
@@ -384,25 +391,37 @@ def init_labelec(data_path):
     transform = Compose([
         tt.EDP_Labels(),
         # tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
-        # tt.Farthest_Point_Sampling(10_000),
-        tt.Repeat_Points(1_000_000),
-        tt.Normalize_PCD([0, 10]),
+        tt.Repeat_Points(100_000),
+        tt.Farthest_Point_Sampling(10_000),
+        tt.Normalize_PCD([0, 1]),
+        tt.To(torch.float32),
     ])
 
     if wandb.config.add_normals:
         transform.transforms.append(tt.Add_Normal_Vector())
 
+    # no fps
+    test_transform = Compose([
+        tt.EDP_Labels(),
+        # tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
+        tt.Repeat_Points(100_000),
+        tt.Normalize_PCD([0, 1]),
+    ])
+
+    if wandb.config.add_normals:
+        test_transform.transforms.append(tt.Add_Normal_Vector())
 
     data_module = LitLabelec(
         data_path,
         save_chunks=False,
         transform=transform,
-        test_transform=transform,
+        test_transform=test_transform,
+        add_rgb = wandb.config.add_rgb,
         load_into_memory=wandb.config.load_into_memory,
         batch_size=wandb.config.batch_size,
         val_split=wandb.config.val_split,
         num_workers=wandb.config.num_workers,
-    )  
+    )
 
     return data_module
 
@@ -462,8 +481,6 @@ def init_criterion(class_weights=None):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=wandb.config.ignore_index,
                                           weight=class_weights) # default criterion; idx zero is noise
     return criterion
-
-
 
 def main():
     # ------------------------
@@ -562,6 +579,7 @@ def main():
         enable_model_summary=True,
         enable_checkpointing=True,
         enable_progress_bar=True,
+        # overfit_batches=0.2, # overfit on 10 batches
         accumulate_grad_batches = wandb.config.accumulate_grad_batches,
     )
 
@@ -651,7 +669,7 @@ if __name__ == '__main__':
     # --------------------------------
     su.fix_randomness()
     warnings.filterwarnings("ignore")
-    torch.set_float32_matmul_precision('medium')
+    torch.set_float32_matmul_precision('high')
     torch.autograd.set_detect_anomaly(True)
     os.environ['TORCH_CUDA_ARCH_LIST'] = '8.9'
     # --------------------------------
@@ -666,7 +684,7 @@ if __name__ == '__main__':
     
     model_name = main_parser.model
     dataset_name = main_parser.dataset
-    project_name = f"TS40K_SoA"
+    project_name = f"{dataset_name.upper()}_SoA"
 
     prediction_mode = main_parser.predict
     idis_mode = main_parser.idis

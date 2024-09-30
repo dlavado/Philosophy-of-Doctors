@@ -15,7 +15,10 @@ preprocessed:
   value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: True
+  value: False
+add_normals:
+  value: False
+  description: 'If True, adds normals to the dataset'
 data_path:
   value: ''
 num_classes:
@@ -130,7 +133,7 @@ save_onnx:
 # Checkpoint config
 # ------------------ #
 resume_from_checkpoint:
-  value: True
+  value: False
 checkpoint_dir:
   value: '${experiment_path}/checkpoints'
 resume_checkpoint_name:

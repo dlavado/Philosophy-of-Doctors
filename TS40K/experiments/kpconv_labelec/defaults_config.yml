@@ -23,8 +23,11 @@ data_path:
   value: ''
 num_classes:
   value: 6
+add_rgb:
+  value: True
+  description: 'If True, adds rgb to the dataset'
 num_data_channels:
-  value: 3 # rgb
+  value: 6 # rgb
   description: 'Number of channels in the dataset'
 batch_size:
   value: 1
@@ -89,7 +92,7 @@ criterion:
   value: 'cross_entropy' # this is not in use
   description: 'Loss function' # this is not in use since pointnet models have their own loss function
 class_weights:
-  value: True
+  value: False
   description: 'Use class weights in the loss function'
 # ------------------ #
 # Lit Trainer config

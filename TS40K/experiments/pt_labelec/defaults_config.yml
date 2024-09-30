@@ -21,10 +21,13 @@ add_normals:
   description: 'If True, adds normals to the dataset'
 data_path:
   value: ''
+add_rgb:
+  value: True
+  description: 'If True, adds rgb to the dataset'
 num_classes:
   value: 6
 num_data_channels:
-  value: 3 # rgb
+  value: 6 # 3 for coords and 3 for rgb
   description: 'Number of channels in the dataset'
 batch_size:
   value: 1
@@ -34,13 +37,8 @@ num_workers:
   value: 0
 val_split:
   value: 0.1
-test_split:
-  value: 0.3
 fps_points:
   value: 10000
-min_points:
-  value: null
-  description: 'Number of points to sample from the point cloud with farthest point sampling'
 # ------------------ #
 # model config
 # ------------------ #
@@ -60,7 +58,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 40 # -1 for infinite
+  value: 50 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -78,7 +76,7 @@ criterion:
   value: 'cross_entropy' # this is not in use
   description: 'Loss function' # this is not in use since pointnet models have their own loss function
 class_weights:
-  value: False
+  value: True
   description: 'Use class weights in the loss function'
 # ------------------ #
 # Lit Trainer config
@@ -86,12 +84,12 @@ class_weights:
 fast_dev_run:
   value: True
 precision: # 16 or 32 FPU precision
-  value: 16
+  value: 32
   description: 'FPU precision'
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: False
+  value: True
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'

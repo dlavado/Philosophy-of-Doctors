@@ -44,7 +44,7 @@ class Lit_PointTransformer(LitWrapperModel):
         
         if metric_initializer is not None:
             self.train_metrics = metric_initializer(num_classes=num_classes, ignore_index=ignore_index)
-            self.val_metrics = metric_initializer(num_classes=num_classes, ignore_index=ignore_index)
+            self.val_metrics = metric_initializer(num_classes=num_classes)
             self.test_metrics = metric_initializer(num_classes=num_classes)
 
 
@@ -89,7 +89,8 @@ class Lit_PointTransformer(LitWrapperModel):
         coords = inpt[:, :, :3].contiguous()
         coords = coords.view(-1, 3)
         if inpt.shape[-1] > 3:
-            feat = inpt[:, :, 3:].contiguous()
+            # feat = inpt[:, :, 3:].contiguous()
+            feat = inpt.contiguous() # coords included in the features
             # print(f"feat shape = {feat.shape}")
             feat = feat.view(-1, feat.shape[-1])
         else:
@@ -117,9 +118,20 @@ class Lit_PointTransformer(LitWrapperModel):
         # print(f"y shape = {y.shape}")
 
         out = self(x) # out shape = (batch_size*num_points, num_classes)
+
+        # print(f"out shape = {out.shape}")
+
+        # print(torch.max(out), torch.min(out))
+
+        # check if out has nan
+        if torch.isnan(out).any():
+            ValueError("out has nan")
     
         loss = self.criterion(out, y.reshape(-1))
         preds = self.prediction(out) # preds shape = (batch_size*num_points)
+
+        # print(f"{loss=}")
+        # print(f"{torch.unique(preds)=}")
 
         # print(f"preds shape = {preds.shape}")
         # print(preds)

@@ -15,6 +15,7 @@ class LitRandLANet(LitWrapperModel):
                  optimizer_name: str, 
                  in_channels, num_classes, num_neighbors=16, decimation=4,
                  learning_rate=0.01, 
+                 ignore_index=-1,
                  metric_initializer=None, 
                  **kwargs):
 
@@ -25,9 +26,9 @@ class LitRandLANet(LitWrapperModel):
 
         super().__init__(model, criterion, optimizer_name, learning_rate, metric_initializer, **kwargs)
 
-        self.train_metrics = metric_initializer(num_classes=num_classes, ignore_index=0)
-        self.val_metrics = metric_initializer(num_classes=num_classes, ignore_index=0)
-        self.test_metrics = metric_initializer(num_classes=num_classes, ignore_index=0)
+        self.train_metrics = metric_initializer(num_classes=num_classes, ignore_index=ignore_index)
+        self.val_metrics = metric_initializer(num_classes=num_classes)
+        self.test_metrics = metric_initializer(num_classes=num_classes)
 
         self.save_hyperparameters()
 

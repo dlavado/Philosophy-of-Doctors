@@ -60,7 +60,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 200 # -1 for infinite
+  value: 100 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -105,10 +105,10 @@ save_onnx:
 # Checkpoint config
 # ------------------ #
 resume_from_checkpoint:
-  value: False
+  value: True
 checkpoint_dir:
-  # value: '${experiment_path}/wandb/ptv2_resume' # v2
-  value: '${experiment_path}/wandb/ptv1_resume/files/checkpoints/'
+  value: '${experiment_path}/wandb/ptv2_resume' # v2
+  # value: '${experiment_path}/wandb/ptv1_resume/files/checkpoints/'
   #value: '${experiment_path}/wandb/run-20240510_143031-p82umf3x/files/checkpoints/' # '${experiment_path}/wandb/ptv2_resume' # v2
 resume_checkpoint_name:
   value: MulticlassJaccardIndex-v1 # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'

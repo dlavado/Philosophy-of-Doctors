@@ -892,7 +892,7 @@ if __name__ == "__main__":
     # input("Press enter to continue...")
 
     curr_las_dir = LAS_FILES[-3] # New data from Labelec
-    curr_las_dir = os.path.join(curr_las_dir, 'fit')
+    curr_las_dir = os.path.join(curr_las_dir, 'fit/')
 
     num_samples = {
         "tower_radius": 0,

@@ -111,7 +111,7 @@ class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
             self.fit_ds = TS40K_FULL_Preprocessed(self.data_dir, split="fit", sample_types=self.sample_types, transform=self.transform, load_into_memory=self.load_into_memory)
             self.train_ds, self.val_ds = random_split(self.fit_ds, [1 - self.hparams.val_split, self.hparams.val_split])
         if stage == 'test':
-            self.test_ds = TS40K_FULL_Preprocessed(self.data_dir, split="test", sample_types=self.sample_types, transform=self.transform_test, load_into_memory=self.load_into_memory, )
+            self.test_ds = TS40K_FULL_Preprocessed(self.data_dir, split="test", sample_types=self.sample_types, transform=self.transform_test, load_into_memory=self.load_into_memory, use_full_test_set=self.use_full_test_set)
 
         if stage == 'predict':
             self.predict_ds = TS40K_FULL_Preprocessed(self.data_dir, split="test", sample_types=self.sample_types, transform=self.transform_test, load_into_memory=self.load_into_memory)

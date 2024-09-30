@@ -898,6 +898,9 @@ class TS40K_FULL_Preprocessed(Dataset):
 
         if split == 'test' and use_full_test_set:
             self.dataset_path = self.dataset_path.replace('-Preprocessed', '')
+            self.ts40k_full = TS40K_FULL(self.dataset_path, split='test', sample_types=sample_types, task='sem_seg', transform=transform, load_into_memory=load_into_memory)
+        else:
+            self.ts40k_full = None
 
         if sample_types == 'all':
             sample_types = ['tower_radius', '2_towers', 'no_tower']
@@ -933,6 +936,9 @@ class TS40K_FULL_Preprocessed(Dataset):
 
     def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
         # data[i]
+
+        if self.ts40k_full:
+            return self.ts40k_full[idx]
 
         if self.load_into_memory:
             return self.data[idx]
