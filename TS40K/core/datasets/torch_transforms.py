@@ -265,6 +265,26 @@ class Ignore_Label:
         return pointcloud, labels   
 
 
+
+class Remove_Label:
+
+    def __init__(self, remove_label:int) -> None:
+        self.remove_label = remove_label
+
+    def __call__(self, sample) -> Any:
+        """
+        Remove the points with the remove label
+        """
+
+        pointcloud, labels = sample
+
+        mask = labels != self.remove_label
+
+        pointcloud = pointcloud[mask]
+        labels = labels[mask]
+
+        return pointcloud, labels
+
 class Merge_Label:
 
     def __init__(self, merge_labels:dict[int, int]) -> None:
@@ -333,7 +353,51 @@ class Repeat_Points:
 
         return pointcloud, labels
         
-        
+
+
+class Remove_Noise_DBSCAN:
+
+    def __init__(self, eps=0.1, min_points=150) -> None:
+        """
+        Best parameters across samples: (tensor(0.1000), tensor(150.)) with mean score: 0.91946
+        Best parameters across samples: (tensor(0.1000), tensor(150.)) with mean noise removal density: 0.95495
+
+        These parameters assume that the points cloud is normalized to [0, 1]
+
+        Parameters
+        ----------
+
+        `eps` - float:
+            The maximum distance between two samples for one to be considered as in the neighborhood of the other.
+
+        `min_points` - int:
+            The number of samples in a neighborhood for a point to be considered as a core point.
+        """
+         
+        self.eps = eps
+        self.min_points = min_points
+
+    def __call__(self, sample) -> Tuple[torch.Tensor, torch.Tensor]:
+
+        pointcloud, labels = sample
+
+        if pointcloud.ndim == 3: # batched point clouds (B, P, F) ; (B, P)
+            data = torch.cat([pointcloud, labels], dim=-1)
+            for i in range(pointcloud.shape[0]):
+                data[i] = self.remove_noise(data[i])
+
+        else: # single point cloud (P, F) ; (P,)
+            data = torch.cat([pointcloud, labels.unsqueeze(-1)], dim=-1)
+            data = self.remove_noise(data)
+
+        return data[..., :-1], data[..., -1]
+    
+
+    def remove_noise(self, data:torch.Tensor) -> torch.Tensor:
+
+        data = eda.remove_noise(data.cpu().numpy(), self.eps, self.min_points)
+        return torch.from_numpy(data)
+            
 
 
 class Random_Point_Sampling:
@@ -380,11 +444,8 @@ class Inverse_Density_Sampling:
 
         if isinstance(sample, tuple):
             pointcloud, labels = sample
-        else: # torch tensor
-            if sample.ndim == 3: # batched point clouds
-                pointcloud, labels = sample[:, :, :-1], sample[:, :, -1]
-            else:
-                pointcloud, labels = sample[:, :-1], sample[:, -1] # preprocessed sample
+        else:
+            pointcloud, labels = sample[..., :-1], sample[..., -1] # preprocessed sample
 
         idis_pointcloud = torch.empty((pointcloud.shape[0], self.num_points, pointcloud.shape[2]), device=pointcloud.device)
         idis_labels = torch.empty((pointcloud.shape[0], self.num_points), dtype=torch.long, device=pointcloud.device)
@@ -444,7 +505,7 @@ class Farthest_Point_Sampling:
             if isinstance(sample, tuple): 
                 pointcloud, labels = sample 
             else:
-                pointcloud, labels = sample[:, :-1], sample[:, -1]
+                pointcloud, labels = sample[..., :-1], sample[..., -1]
         else:
             pointcloud, target = sample
             labels = torch.zeros_like(target)
@@ -731,9 +792,8 @@ class SMOTE_3D_Upsampling:
             if isinstance(sample, tuple):
                 pointcloud, labels = sample
             else:
-                pointcloud, labels = sample[:, :, :-1], sample[:, :, -1] # shape = (B, P, 3), (B, P)
+                pointcloud, labels = sample[..., :-1], sample[..., -1] # shape = (B, P, 3), (B, P)
     
-           
             smote = SMOTE3D(k_neighbors=self.k, sampling_strategy=self.sampling_strategy, num_points_resampled=self.num_points_resampled)
 
             if pointcloud.dim() < 3: # not batched point clouds

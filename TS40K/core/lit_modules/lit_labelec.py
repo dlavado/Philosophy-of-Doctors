@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader, random_split
 import sys
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
-from core.datasets.Labelec import Labelec_Dataset as Labelec
+from core.datasets.Labelec import Labelec_Dataset as Labelec, Labelec_Preprocessed
 
 
 class LitLabelec(pl.LightningDataModule):
@@ -60,29 +60,98 @@ class LitLabelec(pl.LightningDataModule):
         return DataLoader(self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
     
 
+class LitLabelec_Preprocessed(pl.LightningDataModule):
+
+    def __init__(self, 
+                 data_dir, 
+                 transform=None, 
+                 test_transform=None,
+                 load_into_memory=False,
+                 batch_size=1,
+                 val_split=0.2,
+                 num_workers=8   
+            ):
+        
+        super().__init__()
+        self.data_dir = data_dir
+        self.transform = transform
+        self.test_transform = test_transform        
+        self.load_into_memory = load_into_memory
+        
+        self.save_hyperparameters() 
+
+    def setup(self, stage=None):
+        if stage == 'fit' or stage is None:
+            self.fit_ds = Labelec_Preprocessed(data_dir=self.data_dir, split='fit', transform=self.transform, load_into_memory=self.load_into_memory)
+            self.train_dataset, self.val_dataset = random_split(self.fit_ds, [1 - self.hparams.val_split, self.hparams.val_split])
+        elif stage == 'test' or stage == 'predict':
+            self.test_ds = Labelec_Preprocessed(data_dir=self.data_dir, split='test', transform=self.test_transform, load_into_memory=self.load_into_memory)
+        else:
+            raise ValueError(f"Invalid stage: {stage}")   
+
+    def train_dataloader(self):
+        return DataLoader(self.train_dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, pin_memory=True, shuffle=True)
+    
+    def val_dataloader(self):
+        return DataLoader(self.val_dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=True)
+    
+    def test_dataloader(self):
+        return DataLoader(self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=False)
+    
+    def predict_dataloader(self):
+        return DataLoader(self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
+    
+
 
 if __name__ == '__main__':
     from utils import constants as consts
+    import core.datasets.torch_transforms as tt
+    from torchvision.transforms import Compose
+    from tqdm import tqdm
+    import os
+    import torch
+
+    transform = Compose([
+        tt.EDP_Labels(),
+        # tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
+        # tt.Repeat_Points(100_000),
+        tt.Farthest_Point_Sampling(100_000),
+        tt.Normalize_PCD([0, 1]),
+        tt.To(torch.float32),
+    ])
 
     lit_labelec = LitLabelec(las_data_dir=consts.LABELEC_RGB_DIR, 
                              save_chunks=False, 
                              chunk_size=10_000_000, 
                              bins=5, 
-                             transform=None, 
-                             test_transform=None, 
+                             transform=transform, 
+                             test_transform=transform, 
                              load_into_memory=False, 
                              batch_size=16, 
                              val_split=0.2, 
                              num_workers=8
                         )
+
+    split = 'fit'
+
+    # save preprocessed data
+    # save preprocessed data
+    save_path = os.path.join(consts.LABELEC_RGB_DIR, f"Preprocessed/{split}")
+    os.makedirs(save_path, exist_ok=True)
+
     
-    lit_labelec.setup('fit')
+    lit_labelec.setup(stage=split)
+    batch_size  = 16
+    fit_loader = DataLoader(lit_labelec.fit_ds, batch_size=16, num_workers=8, pin_memory=True, shuffle=True)
 
-    train_loader = lit_labelec.train_dataloader()
+    for i, batch in tqdm(enumerate(fit_loader)):
+        
+        for j in range(len(batch)):
+            x, y = batch[j]
+            idx = batch_size * i + j
+            file_id = lit_labelec.fit_ds.chunk_file_paths[idx].split('/')[-1].replace('.laz', '')
+            torch.save((x, y), os.path.join(save_path, f"sample_{file_id}.pt"))
 
-    for batch in train_loader:
-        x, y = batch
 
-        print(x.shape, y.shape)
     
 

@@ -19,8 +19,7 @@ from tqdm import tqdm
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 import utils.pointcloud_processing as eda
-from core.datasets.torch_transforms import Farthest_Point_Sampling, Normalize_PCD, To, Voxelization, Inverse_Density_Sampling, SMOTE_3D_Upsampling, Add_Normal_Vector
-
+from core.datasets.torch_transforms import Farthest_Point_Sampling, Normalize_PCD, To, Voxelization, Inverse_Density_Sampling, SMOTE_3D_Upsampling, Add_Normal_Vector, Remove_Noise_DBSCAN
 import os
 
 def list_dir(directory):
@@ -1005,49 +1004,49 @@ def main():
     #                     )    
     
 
-    input("Press Enter to continue...")
+    # input("Press Enter to continue...")
 
     # ts40k = TS40K_FULL_Preprocessed(
     #     constants.TS40K_FULL_PREPROCESSED_IDIS_PATH,
     #     split='fit',
     # )
 
-    transform = Compose([
-                Normalize_PCD([0, 10]),
-                Add_Normal_Vector(),
-            ])
+    # transform = Compose([
+    #             Normalize_PCD([0, 1]),
+    #             Add_Normal_Vector(),
+    #         ])
 
-    for split in ['fit', 'test']:
-        for sample_type in ['tower_radius', '2_towers', 'no_tower']:
-            ts40k = TS40K_FULL(constants.TS40K_FULL_PATH, 
-                               split=split, 
-                               sample_types=[sample_type], 
-                               task='sem_seg', transform=transform, load_into_memory=False)
-            print(f"TS40K {split} {sample_type} Dataset has {len(ts40k)} samples")
+    # for split in ['fit', 'test']:
+    #     for sample_type in ['tower_radius', '2_towers', 'no_tower']:
+    #         ts40k = TS40K_FULL(constants.TS40K_FULL_PATH, 
+    #                            split=split, 
+    #                            sample_types=[sample_type], 
+    #                            task='sem_seg', transform=transform, load_into_memory=False)
+    #         print(f"TS40K {split} {sample_type} Dataset has {len(ts40k)} samples")
 
-            for i in tqdm(range(len(ts40k)), desc=f"Processing {split} {sample_type} samples..."):
-                sample_path = ts40k._get_file_path(i)
-                sample_dict = ts40k._get_dict(i)
+    #         for i in tqdm(range(len(ts40k)), desc=f"Processing {split} {sample_type} samples..."):
+    #             sample_path = ts40k._get_file_path(i)
+    #             sample_dict = ts40k._get_dict(i)
 
-                transformed_sample = ts40k[i][0]
+    #             transformed_sample = ts40k[i][0]
 
-                new_sample_path = sample_path.replace('TS40K-FULL', 'TS40K-FULL-Normals-Normalized')
+    #             new_sample_path = sample_path.replace('TS40K-FULL', 'TS40K-FULL-Normals-Normalized')
                 
-                if os.path.exists(new_sample_path): # skip already processed samples
-                    continue
-                os.makedirs(os.path.dirname(new_sample_path), exist_ok=True)
-                sample_dict['normal_vectors'] = transformed_sample[:, 3:]
-                sample_dict['input_pcd'] = transformed_sample[:, :3]
-                # print(transformed_sample[:, 3:].shape)
-                # print(torch.min(transformed_sample[:, :3], axis=0).values)
-                # print(torch.max(transformed_sample[:, :3], axis=0).values)
-                # input("Press Enter to continue...")
+    #             if os.path.exists(new_sample_path): # skip already processed samples
+    #                 continue
+    #             os.makedirs(os.path.dirname(new_sample_path), exist_ok=True)
+    #             sample_dict['normal_vectors'] = transformed_sample[:, 3:]
+    #             sample_dict['input_pcd'] = transformed_sample[:, :3]
+    #             # print(transformed_sample[:, 3:].shape)
+    #             # print(torch.min(transformed_sample[:, :3], axis=0).values)
+    #             # print(torch.max(transformed_sample[:, :3], axis=0).values)
+    #             # input("Press Enter to continue...")
 
-                for key in sample_dict.keys():
-                    if isinstance(sample_dict[key], torch.Tensor):
-                        sample_dict[key] = sample_dict[key].squeeze().to(torch.float16)
+    #             for key in sample_dict.keys():
+    #                 if isinstance(sample_dict[key], torch.Tensor):
+    #                     sample_dict[key] = sample_dict[key].squeeze().to(torch.float16)
 
-                torch.save(sample_dict, new_sample_path)
+    #             torch.save(sample_dict, new_sample_path)
 
     # for i in tqdm(range(len(ts40k)), desc="Visualizing samples..."):
     #     xyz, y = ts40k[i]
@@ -1058,46 +1057,46 @@ def main():
     #         # eliminate the file
     #         os.remove(file_path)
 
-    input("Press Enter to continue...")
+    # input("Press Enter to continue...")
 
    
     composed = Compose([
                         # Farthest_Point_Sampling(10000),
                         # Random_Point_Sampling(10000),
-                        Inverse_Density_Sampling(10000, 0.5),
+                        # Inverse_Density_Sampling(10000, 0.5),
                         Normalize_PCD(),
-                        To(torch.float32),
+                        Remove_Noise_DBSCAN(),
+                        # To(torch.float32),
                     ])
     
-    composed = None
-    
-    ts40k = TS40K_FULL(constants.TS40K_FULL_PATH, 
-                       split='fit', 
-                       sample_types=['tower_radius'], 
-                       task='sem_seg', transform=composed, load_into_memory=False)
+   
+    # ts40k = TS40K_FULL(constants.TS40K_FULL_PATH, 
+    #                    split='fit', 
+    #                    sample_types=['tower_radius'], 
+    #                    task='sem_seg', transform=composed, load_into_memory=False)
 
-    # ts40k = TS40K_FULL_Preprocessed(
-    #     constants.TS40K_FULL_PREPROCESSED_IDIS_PATH, 
-    #     split='fit', 
-    #     sample_types=['tower_radius', '2_towers'], 
-    #     transform=None, 
-    #     load_into_memory=False
-    # )
+    ts40k = TS40K_FULL_Preprocessed(
+        constants.TS40K_FULL_PREPROCESSED_PATH, 
+        split='fit', 
+        sample_types='all', 
+        transform=composed, 
+        load_into_memory=False
+    )
 
     class_freqs = torch.zeros(6)
 
-    # for i in tqdm(range(0, len(ts40k)), desc="Computing class frequencies..."):
-    #     _, y = ts40k[i]
-    #     y = y.squeeze().long()
-    #     class_freqs += torch.bincount(y, minlength=6)
+    for i in tqdm(range(0, len(ts40k)), desc="Computing class frequencies..."):
+        _, y = ts40k[i]
+        y = y.squeeze().long()
+        class_freqs += torch.bincount(y, minlength=6)
 
     # print(class_freqs)
-    # print class densities
+    # tensor([0.0382, 0.3490, 0.4521, 0.1543, 0.0036, 0.0028])
     # ALL DATASET DENSITIES: tensor([0.0167, 0.4656, 0.4590, 0.0494, 0.0022, 0.0072])
     # TOWERED SAMPLES DENSITIES: tensor([0.0255, 0.4056, 0.5244, 0.0248, 0.0073, 0.0124])
-    # print(class_freqs / torch.sum(class_freqs))
+    print(class_freqs / torch.sum(class_freqs))
     
-    for idx in range(len(ts40k)):   
+    for idx in range(len(ts40k)): 
         xyz, y = ts40k[idx]
         y = y.reshape(-1).numpy()
         xyz = xyz.squeeze().numpy()
@@ -1105,7 +1104,8 @@ def main():
         eda.color_pointcloud(pynt, y, use_preset_colors=True)
         eda.visualize_ply([pynt])
 
-        
+
+
 
 
 if __name__ == "__main__":

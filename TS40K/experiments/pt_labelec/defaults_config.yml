@@ -11,11 +11,11 @@ output_dir:
 # ------------------ #
 dataset:
   value: 'labelec'
-# preprocessed:
-#   value: True
-#   description: 'If True, uses the preprocessed the dataset'
+preprocessed:
+  value: True
+  description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: False
+  value: True
 add_normals:
   value: False
   description: 'If True, adds normals to the dataset'
@@ -32,7 +32,7 @@ num_data_channels:
 batch_size:
   value: 1
 ignore_index:
-  value: 0 # noise
+  value: -1 # noise
 num_workers: 
   value: 0
 val_split:
@@ -48,7 +48,7 @@ in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input''${experiment_path}/wandb/ptv2_resume' # v2
 model_version:
-  value: 'v2' # 'v1' or 'v2' or 'v3'
+  value: 'v1' # 'v1' or 'v2' or 'v3'
   description: 'Point Transformer version'
 # ------------------ #
 # training config
@@ -58,7 +58,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 50 # -1 for infinite
+  value: 150 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:

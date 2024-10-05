@@ -18,6 +18,9 @@ load_into_memory:
   value: True
 data_path:
   value: ''
+add_normals:
+  value: False
+  description: 'If True, adds normals to the dataset'
 num_classes:
   value: 6
 num_data_channels:

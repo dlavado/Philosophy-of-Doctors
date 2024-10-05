@@ -516,9 +516,8 @@ def euclidean_distance(x:np.ndarray, y:np.ndarray, axis=None):
 
 
 def dbscan(pcd, eps, min_points, visual=False):
-    with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Debug) as cm:
-        labels = np.array(pcd.cluster_dbscan(
-            eps=eps, min_points=min_points, print_progress=visual))
+    labels = np.array(pcd.cluster_dbscan(
+        eps=eps, min_points=min_points, print_progress=visual))
 
     if len(labels) == 0:
         return np.array([])
@@ -528,8 +527,37 @@ def dbscan(pcd, eps, min_points, visual=False):
         labels / (max_label if max_label > 0 else 1))
     colors[labels < 0] = [0, 0, 0, 0]  # -1 means noise
     return colors[:, :3]
-   
 
+
+def remove_noise(pcd:np.ndarray, eps=15, min_points=100) -> np.ndarray:
+    """
+    Removes the noise from the point cloud.\n
+
+    Parameters
+    ----------
+    `pcd` - (N, 3 + M) ndarray:
+        point cloud data with the xyz coords and M features
+    `eps` - int:
+        neigh distance for DBSCAN algorithm
+    `min_points` - int:
+        min number of neigh for DBSCAN algorithm
+
+    Returns
+    -------
+    `clean_pcd` - (K, 3 + M) ndarray:
+        point cloud data without the noise; K <= N
+    """
+
+    pcd_points = pcd[:, :3]
+    ply = np_to_ply(pcd_points)
+
+    labels = np.array(ply.cluster_dbscan(eps=eps, min_points=min_points, print_progress=False))
+
+    mask = labels != -1
+
+    clean_pcd = pcd[mask]
+    
+    return clean_pcd
 
 def extract_towers(pcd_towers:np.ndarray, eps=15, min_points=100) -> List[np.ndarray]:
     """
@@ -766,79 +794,6 @@ def crop_two_towers_samples(pcd:np.ndarray) -> List[np.ndarray]:
     return samples
 
 
-def match_original_with_processed_files(original_dir:str, processed_dir:str):
-    """
-    Matches the original files with the processed files.\n
-
-    Parameters
-    ----------
-    `original_dir` - str:
-        directory with the original files
-    `processed_dir` - str:
-        directory with the processed files
-
-    Returns
-    -------
-    `matched_pcds` - List[np.ndarray]:
-        list with the matched point clouds, i.e, equal xyz and additional features: rgb, classes
-    """
-    def array_to_structured(a):
-        """
-        Convert a 2D NumPy array to a structured array for row-wise comparison.
-        """
-        a = np.ascontiguousarray(a)
-        dtype = np.dtype((np.void, a.dtype.itemsize * a.shape[1]))
-        return a.view(dtype)
-
-    def find_intersection(arr1, arr2):
-        """
-        Find the intersection between two 2D NumPy arrays.
-        """
-        structured_arr1 = array_to_structured(arr1)
-        structured_arr2 = array_to_structured(arr2)
-        
-        # Find the intersection
-        intersect_structured, one_indices, _ = np.intersect1d(structured_arr1, structured_arr2, return_indices=True)
-        
-        # Convert back to the original 2D array format
-        if intersect_structured.size == 0:
-            return np.array([]), np.array([])  # No intersection
-        else:
-            return intersect_structured.view(arr1.dtype).reshape(-1, arr1.shape[1]), one_indices
-
-    matched_pcds = []
-    original_files = os.listdir(original_dir)
-    original_files = [os.path.join(original_dir, f) for f in original_files]
-    processed_files = os.listdir(processed_dir)
-    processed_files = [os.path.join(processed_dir, f) for f in processed_files if '.la' in f]
-    for processed in processed_files: # processed files are 39 and usually contain the classes
-        print(f"processing file {processed}...")
-        processed_las = lp.read(processed)
-        processed_pcd = las_to_numpy(processed_las, include_feats=['classification'])
-        processed_xyz = processed_pcd[:, :3]
-        processed_classes = processed_pcd[:, -1].astype(int)
-        # print(f"processed classes: {np.unique(processed_classes)}")
-
-        for original in original_files: # original files are 226 and usually contain the rgb channels
-            print(f"\n\nmatching file {original}...")
-            original_las = lp.read(original)
-            original_pcd = las_to_numpy(original_las, include_feats=['red', 'green', 'blue'])
-            original_rgb = original_pcd[:, 3:]
-            original_xyz = original_pcd[:, :3]
-
-            intersected_xyz, indices = find_intersection(original_xyz, processed_xyz)
-
-            if len(intersected_xyz) == 0:
-                print(f"no intersection between files")
-            else:
-                intersected_classes = processed_classes[indices]
-                matched_pcd = np.concatenate((intersected_xyz, original_rgb[indices], intersected_classes.reshape(-1, 1)), axis=1)
-                matched_pcds.append(matched_pcd)
-                print(f"files matched with {len(matched_pcd)} points")
-    
-    return matched_pcds
-   
-
 if __name__ == "__main__":
     import constants
 
@@ -852,142 +807,114 @@ if __name__ == "__main__":
         constants.LAS_RGB_ORIGINALS,
     ]
 
-    # def spatial_chunk_iterator(las:lp.LasReader, chunk_size:int, bins=5):
-        
-    #     chunk_per_bin = chunk_size // bins
 
-    #     for points in las.chunk_iterator(chunk_size):
-    #         # This will make points close in XY space more likely to be grouped together
-    #         sorted_indices = np.lexsort((points["Z"], points["Y"], points["X"]))  # Sort by X first, then by Y
-    #         sorted_points = points[sorted_indices]
+    ##############################
+    # REMOVE NOISE FROM POINT CLOUDS
+    ##############################
 
-    #         # Yield chunks of sorted points
-    #         for i in range(0, len(sorted_points), chunk_per_bin):
-    #             offset = min(i + chunk_per_bin, len(sorted_points))
-    #             yield sorted_points[i:offset]
 
-    def spatial_chunk_iterator(las: lp.LasReader, chunk_size: int, bins: int = 5):
-        chunk_per_bin = chunk_size // bins
 
-        for points in las.chunk_iterator(chunk_size):
-            x_coords, y_coords, z_coords = points.x, points.y, points.z
-            
-            # Calculate the continuity of points along X and Y:
-            # sort by coord; calc consecutive diff; more contiguous axes will have less var in consecutive diff;
-            x_var = np.var(np.diff(np.sort(x_coords)))
-            y_var = np.var(np.diff(np.sort(y_coords)))
 
-            # Choose the axis with the lower variance => more continuity
-            if x_var < y_var:
-                sorted_indices = np.lexsort((z_coords, y_coords, x_coords))
-            else:
-                sorted_indices = np.lexsort((z_coords, x_coords, y_coords))
-            sorted_points = points[sorted_indices]
+    ##############################
+    # DEVELOP CHUNKS FOR LABELEC DATASET
+    ##############################
+    # curr_las_dir = LAS_FILES[-3] # New data from Labelec
+    # curr_las_dir = os.path.join(curr_las_dir, 'fit/')
 
-            # Yield chunks of sorted points
-            for i in range(0, len(sorted_points), chunk_per_bin):
-                offset = min(i + chunk_per_bin, len(sorted_points))
-                yield sorted_points[i:offset]
+    # num_samples = {
+    #     "tower_radius": 0,
+    #     "two_towers": 0,
+    #     "ground_samples": 0,
+    # }
 
-    # input("Press enter to continue...")
+    # chunk_size = 20_000_000
 
-    curr_las_dir = LAS_FILES[-3] # New data from Labelec
-    curr_las_dir = os.path.join(curr_las_dir, 'fit/')
+    # for f in os.listdir(curr_las_dir):
+    #     f_path = os.path.join(curr_las_dir, f)
+    #     if os.path.isfile(f_path) and ('.las' in f_path or '.laz' in f_path):
+    #         print(f"processing file {f_path}...")
+    #         with lp.open(f_path) as las:
+    #             for points in spatial_chunk_iterator(las, chunk_size, 40):
+    #             # for points in las.chunk_iterator(chunk_size):
+    #                 pcd = las_to_numpy(points, include_feats=['classification', 'rgb'])
+    #                 print(pcd.shape)
+    #                 normals = estimate_normals(pcd)
+    #                 print(normals.shape)
+    #                 classes = pcd[:, -1].astype(int)
+    #                 classes = np.array([DICT_NEW_LABELS[c] for c in classes])
+    #                 # pcd[:, -1] = classes
+    #                 rgb = pcd[:, 3:-1]
+    #                 rgb = rgb / 256 # normalize the rgb values
+    #                 rgb = rgb / 255 # normalize the rgb values
+    #                 pcd[:, 3:-1] = rgb
+    #                 uq_classes, uq_count = np.unique(classes, return_counts=True)
+    #                 print(uq_classes)
+    #                 for i, c in enumerate(uq_classes):
+    #                     print(f"class {DICT_OBJ_LABELS_NAMES[c]} has {uq_count[i]/np.sum(uq_count)} ratio")
+    #                 print(np.min(rgb, axis=0), np.max(rgb, axis=0))
 
-    num_samples = {
-        "tower_radius": 0,
-        "two_towers": 0,
-        "ground_samples": 0,
-    }
-
-    chunk_size = 20_000_000
-
-    for f in os.listdir(curr_las_dir):
-        f_path = os.path.join(curr_las_dir, f)
-        if os.path.isfile(f_path) and ('.las' in f_path or '.laz' in f_path):
-            print(f"processing file {f_path}...")
-            with lp.open(f_path) as las:
-                for points in spatial_chunk_iterator(las, chunk_size, 40):
-                # for points in las.chunk_iterator(chunk_size):
-                    pcd = las_to_numpy(points, include_feats=['classification', 'rgb'])
-                    print(pcd.shape)
-                    normals = estimate_normals(pcd)
-                    print(normals.shape)
-                    classes = pcd[:, -1].astype(int)
-                    classes = np.array([DICT_NEW_LABELS[c] for c in classes])
-                    # pcd[:, -1] = classes
-                    rgb = pcd[:, 3:-1]
-                    rgb = rgb / 256 # normalize the rgb values
-                    rgb = rgb / 255 # normalize the rgb values
-                    pcd[:, 3:-1] = rgb
-                    uq_classes, uq_count = np.unique(classes, return_counts=True)
-                    print(uq_classes)
-                    for i, c in enumerate(uq_classes):
-                        print(f"class {DICT_OBJ_LABELS_NAMES[c]} has {uq_count[i]/np.sum(uq_count)} ratio")
-                    print(np.min(rgb, axis=0), np.max(rgb, axis=0))
-
-                    plot_pointcloud(pcd[:, :3], classes, None, window_name=f"chunk", use_preset_colors=True)
-                    # plot_pointcloud(pcd[:, :3], None, rgb, window_name=f"chunk rgb")
+    #                 plot_pointcloud(pcd[:, :3], classes, None, window_name=f"chunk", use_preset_colors=True)
+    #                 # plot_pointcloud(pcd[:, :3], None, rgb, window_name=f"chunk rgb")
                     
                     
-                    # tower_radius = crop_tower_samples(pcd, radius=30)
-                    # two_towers = crop_two_towers_samples(pcd)
-                    # ground_samples = crop_ground_samples(pcd, step_per_cloud=50)
+    #                 # tower_radius = crop_tower_samples(pcd, radius=30)
+    #                 # two_towers = crop_two_towers_samples(pcd)
+    #                 # ground_samples = crop_ground_samples(pcd, step_per_cloud=50)
                     
-                    # print(f"num of towers: {len(tower_radius)}")
-                    # print(f"num of two towers: {len(two_towers)}")
-                    # print(f"num of ground samples: {len(ground_samples)}")
-                    # num_samples["tower_radius"] += len(tower_radius)
-                    # num_samples["two_towers"] += len(two_towers)
-                    # num_samples["ground_samples"] += len(ground_samples)
+    #                 # print(f"num of towers: {len(tower_radius)}")
+    #                 # print(f"num of two towers: {len(two_towers)}")
+    #                 # print(f"num of ground samples: {len(ground_samples)}")
+    #                 # num_samples["tower_radius"] += len(tower_radius)
+    #                 # num_samples["two_towers"] += len(two_towers)
+    #                 # num_samples["ground_samples"] += len(ground_samples)
 
-                    # for i, tower in enumerate(ground_samples):
-                    #     print(f"tower {i} has {tower.shape} shape")
-                    #     tower_class = tower[:, -1].astype(int)
-                    #     tower_class = np.array([DICT_NEW_LABELS[c] for c in tower_class])
-                    #     plot_pointcloud(tower[:, :3], tower_class, None, window_name=f"tower {i} classification", use_preset_colors=True)
-                    #     # print(np.min(tower[:, 3:-1], axis=0), np.max(tower[:, 3:-1], axis=0))
-                    #     plot_pointcloud(tower[:, :3], None, rgb=tower[:, 3:-1], window_name=f"tower {i} rgb")
+    #                 # for i, tower in enumerate(ground_samples):
+    #                 #     print(f"tower {i} has {tower.shape} shape")
+    #                 #     tower_class = tower[:, -1].astype(int)
+    #                 #     tower_class = np.array([DICT_NEW_LABELS[c] for c in tower_class])
+    #                 #     plot_pointcloud(tower[:, :3], tower_class, None, window_name=f"tower {i} classification", use_preset_colors=True)
+    #                 #     # print(np.min(tower[:, 3:-1], axis=0), np.max(tower[:, 3:-1], axis=0))
+    #                 #     plot_pointcloud(tower[:, :3], None, rgb=tower[:, 3:-1], window_name=f"tower {i} rgb")
 
                     
 
-            print(f"{num_samples}")
-            input("Press enter to continue...") 
-            print(f_path)
-            las = lp.read(f_path)
-            dim_names = las.point_format.dimension_names
-            dim_names = list(dim_names)
-            print(dim_names)
+    #         print(f"{num_samples}")
+    #         input("Press enter to continue...") 
+    #         print(f_path)
+    #         las = lp.read(f_path)
+    #         dim_names = las.point_format.dimension_names
+    #         dim_names = list(dim_names)
+    #         print(dim_names)
         
 
-            pcd, header = las_to_numpy(las, include_feats=['classification', 'rgb'], header=True)
+    #         pcd, header = las_to_numpy(las, include_feats=['classification', 'rgb'], header=True)
 
-            print(header)
-            print(pcd.shape)
+    #         print(header)
+    #         print(pcd.shape)
 
-            # tower_radius = crop_tower_samples(pcd, radius=15)
+    #         # tower_radius = crop_tower_samples(pcd, radius=15)
 
-            # print(f"num of towers: {len(tower_radius)}")
-            # for i, tower in enumerate(tower_radius):
-            #     print(f"tower {i} has {len(tower)} points")
-            #     plot_pointcloud(tower[:, :3], tower[:, -1], window_name=f"tower {i}")
+    #         # print(f"num of towers: {len(tower_radius)}")
+    #         # for i, tower in enumerate(tower_radius):
+    #         #     print(f"tower {i} has {len(tower)} points")
+    #         #     plot_pointcloud(tower[:, :3], tower[:, -1], window_name=f"tower {i}")
                 
-            xyz = pcd[:, :3]
-            xyz = (xyz - np.min(xyz, axis=0)) / (np.max(xyz, axis=0) - np.min(xyz, axis=0))
-            classes = pcd[:, -1].astype(int)
-            classes = np.array([DICT_NEW_LABELS[c] for c in classes])
-            print(np.unique(classes))
+    #         xyz = pcd[:, :3]
+    #         xyz = (xyz - np.min(xyz, axis=0)) / (np.max(xyz, axis=0) - np.min(xyz, axis=0))
+    #         classes = pcd[:, -1].astype(int)
+    #         classes = np.array([DICT_NEW_LABELS[c] for c in classes])
+    #         print(np.unique(classes))
             
-            red, green, blue = pcd[:, header.index('red')], pcd[:, header.index('green')], pcd[:, header.index('blue')]
-            rgb = np.array([red, green, blue]).T
-            rgb = (rgb / 256) / 255
-            print(np.min(rgb, axis=0), np.max(rgb, axis=0))
-            print(np.mean(rgb, axis=0), np.std(rgb, axis=0))
-            # input("Press enter to continue...")
-            ply = np_to_ply(xyz)
-            if np.std(rgb, axis=0)[0] > 0.1:
-                color_pointcloud(ply, None, colors=rgb)
-                visualize_ply([ply])
-            # color_pointcloud(ply, classes, use_preset_colors=True)
-            # visualize_ply([ply])
+    #         red, green, blue = pcd[:, header.index('red')], pcd[:, header.index('green')], pcd[:, header.index('blue')]
+    #         rgb = np.array([red, green, blue]).T
+    #         rgb = (rgb / 256) / 255
+    #         print(np.min(rgb, axis=0), np.max(rgb, axis=0))
+    #         print(np.mean(rgb, axis=0), np.std(rgb, axis=0))
+    #         # input("Press enter to continue...")
+    #         ply = np_to_ply(xyz)
+    #         if np.std(rgb, axis=0)[0] > 0.1:
+    #             color_pointcloud(ply, None, colors=rgb)
+    #             visualize_ply([ply])
+    #         # color_pointcloud(ply, classes, use_preset_colors=True)
+    #         # visualize_ply([ply])
     

@@ -190,25 +190,134 @@ class Labelec_Dataset(Dataset):
     
 
 
+class Labelec_Preprocessed(Dataset):
+    """
+    Labelec Preprocessed Dataset class for PyTorch;
+
+    The preprocesssed data follows the following transformations:
+    - Normalize_PCD([0, 1]) : normalize the point cloud to [0, 1]
+    - Farthest_Point_Sampling(10_000) : sample fps_points from the point cloud with a total of 10K points
+    - To(torch.float32) : cast the point cloud to float32
+
+    This results in a datasets with similar structure to the original Labelec dataset, but with the preprocessed data.
+
+    Parameters
+    ----------
+    `data_dir` - str :
+        directory where the dataset is stored in .pt format
+
+    `split` - str :
+        split of the dataset to use. Options: 'fit', 'test'
+
+    `transform` - (None, torch.Transform) :
+        transformation to apply to the point clouds
+
+    `load_into_memory` - bool :
+        whether to load the entire dataset into memory
+    """
+    def __init__(self,
+                data_dir,
+                split = 'fit',
+                transform = None,
+                load_into_memory = False,
+            ) -> None:
+        super().__init__()
+
+        self.split = split
+        self.transform = transform
+
+        self.data_dir = os.path.join(data_dir, split)
+        self.data_file_paths = [
+            os.path.join(self.data_dir, file_name) for file_name in os.listdir(self.data_dir)
+        ]
+
+        self.load_into_memory = False
+        if load_into_memory:
+            self._load_data_into_memory()
+            self.load_into_memory = True
+
+    def __len__(self):
+        return len(self.data_file_paths)
+
+    def __str__(self) -> str:
+        return f"Labelec {self.split} Dataset in {self.data_dir} with {len(self)} samples"
+    
+    def _load_data_into_memory(self):
+        self.data = []
+        for i in tqdm(range(len(self)), desc="Loading data into memory..."):
+            self.data.append(self.__getitem__(i))
+
+    def __getitem__(self, index):
+        # print(f"Loading chunk {index}...")
+        
+        if self.load_into_memory:
+            return self.data[index]
+
+        # upload las file
+        data_file_path = self.data_file_paths[index]
+        sample = torch.load(data_file_path)
+
+        if self.transform:
+            sample = self.transform(sample)
+        
+        return sample
+
 if __name__ == '__main__':
     from utils import constants as consts
     import core.datasets.torch_transforms as tt
     from torchvision.transforms import Compose
+    from tqdm import tqdm
 
     transform = Compose([
-        tt.EDP_Labels(),
-        # tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
-        tt.Repeat_Points(100_000),
-        # tt.Farthest_Point_Sampling(1_000),
-        tt.Normalize_PCD([0, 1]),
-        tt.To(torch.float32),
+        tt.Merge_Label({2:3, 1:3}), # merge low vegetation and ground with medium vegetation
     ])
 
     LABELEC_DIR = consts.LABELEC_RGB_DIR
 
+    split = 'fit'
+
+    labelec = Labelec_Preprocessed(
+        data_dir=consts.LABELEC_RGB_PREPROCESSED,
+        split=split,
+        transform=transform,
+        load_into_memory=False
+    )
+
+    # class_freqs = torch.zeros(6)
+    # # CLASS DENSITY: tensor([0.0541, 0.0006, 0.3098, 0.6208, 0.0061, 0.0085])
+    # for i in tqdm(range(len(labelec)), desc="Calculating class frequencies..."):
+    #     _, y = labelec[i]
+    #     class_freqs += torch.bincount(y.long(), minlength=6)
+
+    # print(class_freqs / torch.sum(class_freqs))
+
+    for i in range(len(labelec)):
+        x, y = labelec[i]
+        print(x.shape, y.shape)
+
+        print(torch.unique(y))
+        print(torch.min(x, dim=0).values, torch.max(x, dim=0).values)
+        print(torch.mean(x, dim=0), torch.std(x, dim=0))
+
+
+        eda.plot_pointcloud(x.numpy()[:, :3], y.numpy(), window_name="Labelec Preprocessed", use_preset_colors=True)
+
+    input("Continue?")
+
+    transform = Compose([
+        tt.EDP_Labels(),
+        # tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
+        # tt.Repeat_Points(100_000),
+        tt.Farthest_Point_Sampling(10_000),
+        tt.Normalize_PCD([0, 1]),
+        tt.To(torch.float32),
+    ])
+
+    split = 'test'
+
     labelec = Labelec_Dataset(
         las_data_dir=LABELEC_DIR,
-        split='test',
+        split=split,
         save_chunks=False,
         chunk_size=20_000_000,
         bins=200,
@@ -216,20 +325,33 @@ if __name__ == '__main__':
         load_into_memory=False
     )
 
-    for i in range(len(labelec)):
+    # save preprocessed data
+    save_path = os.path.join(LABELEC_DIR, f"Preprocessed/{split}")
+    os.makedirs(save_path, exist_ok=True)
+
+    for i in tqdm(range(len(labelec))):
         x, y = labelec[i]
-        print(x.shape, y.shape)
+        file_id = labelec.chunk_file_paths[i].split('/')[-1].replace('.laz', '')
+        save_file_path = os.path.join(save_path, f"sample_{file_id}.pt")
+        if not os.path.exists(save_file_path):
+            torch.save((x, y), save_file_path)
+        else:
+            print(f"File {save_file_path} already exists!")
 
-        if torch.isnan(x).any():
-            ValueError("NANs in x")
-        if torch.isnan(y).any():
-            ValueError("NANs in y")
+    # for i in range(len(labelec)):
+    #     x, y = labelec[i]
+    #     print(x.shape, y.shape)
 
-        print(torch.unique(y))
-        print(torch.min(x, dim=0).values, torch.max(x, dim=0).values)
-        print(torch.mean(x, dim=0), torch.std(x, dim=0))
+    #     if torch.isnan(x).any():
+    #         ValueError("NANs in x")
+    #     if torch.isnan(y).any():
+    #         ValueError("NANs in y")
+
+    #     print(torch.unique(y))
+    #     print(torch.min(x, dim=0).values, torch.max(x, dim=0).values)
+    #     print(torch.mean(x, dim=0), torch.std(x, dim=0))
 
 
-    rgb = x[:, 3:]
-    print(x[:10, :])
-    print(torch.unique(y))
+    # rgb = x[:, 3:]
+    # print(x[:10, :])
+    # print(torch.unique(y))

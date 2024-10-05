@@ -36,7 +36,7 @@ import utils.pointcloud_processing as eda
 import core.lit_modules.lit_callbacks as lit_callbacks
 from core.lit_modules.lit_scenenet import LitSceneNet_multiclass
 from core.lit_modules.lit_ts40k import LitTS40K_FULL, LitTS40K_FULL_Preprocessed
-from core.lit_modules.lit_labelec import LitLabelec
+from core.lit_modules.lit_labelec import LitLabelec, LitLabelec_Preprocessed
 from core.criterions.geneo_loss import GENEO_Loss
 import core.datasets.torch_transforms as tt
 
@@ -328,26 +328,22 @@ def init_ts40k(data_path, preprocessed=False):
                             tt.Voxelization_withPCD(keep_labels='all', vxg_size=vxg_size, vox_size=vox_size)
                         ])
         else:
-            transform = None
-            # transform = Compose([
-            #         tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
-            # ])
+            # transform = Compose([])
+            transform = Compose([
+                    tt.Remove_Label(1), # GROUND
+                    tt.Repeat_Points(10_000), # repeat points to 10k so that we can batchfy the data
+            ])
 
         if wandb.config.add_normals:
             transform.transforms.append(tt.Add_Normal_Vector())
 
-        # test_transform = Compose([
-        #     tt.Normalize_PCD(),
-        #     tt.To(torch.float32),
-        # ])
-        test_transform = None
-
+    
         return LitTS40K_FULL_Preprocessed(
                         data_path,
                         wandb.config.batch_size,
                         sample_types=sample_types,
                         transform=transform,
-                        transform_test=test_transform,
+                        transform_test=transform,
                         num_workers=wandb.config.num_workers,
                         val_split=wandb.config.val_split,
                         load_into_memory=wandb.config.load_into_memory,
@@ -382,16 +378,34 @@ def init_ts40k(data_path, preprocessed=False):
                            val_split=wandb.config.val_split,
                            load_into_memory=wandb.config.load_into_memory,
                         )
-    
     return data_module
 
 
-def init_labelec(data_path):
+def init_labelec(data_path, preprocessed=False):
+
+
+    if preprocessed:
+        transform = Compose([
+             tt.Merge_Label({2:3, 1:3}), # merge low vegetation and ground with medium vegetation
+        ])
+
+        if wandb.config.add_normals:
+            transform.transforms.append(tt.Add_Normal_Vector())
+
+        return LitLabelec_Preprocessed(
+            data_path,
+            transform=transform,
+            test_transform=transform,
+            load_into_memory=wandb.config.load_into_memory,
+            batch_size=wandb.config.batch_size,
+            val_split=wandb.config.val_split,
+            num_workers=wandb.config.num_workers,
+        )
 
     transform = Compose([
         tt.EDP_Labels(),
-        # tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
-        tt.Repeat_Points(100_000),
+        # tt.Merge_Label({2:3, 1:3}), # merge low vegetation and ground with medium vegetation
+        # tt.Repeat_Points(100_000),
         tt.Farthest_Point_Sampling(10_000),
         tt.Normalize_PCD([0, 1]),
         tt.To(torch.float32),
@@ -400,7 +414,6 @@ def init_labelec(data_path):
     if wandb.config.add_normals:
         transform.transforms.append(tt.Add_Normal_Vector())
 
-    # no fps
     test_transform = Compose([
         tt.EDP_Labels(),
         # tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
@@ -411,7 +424,8 @@ def init_labelec(data_path):
     if wandb.config.add_normals:
         test_transform.transforms.append(tt.Add_Normal_Vector())
 
-    data_module = LitLabelec(
+
+    return LitLabelec(
         data_path,
         save_chunks=False,
         transform=transform,
@@ -422,9 +436,6 @@ def init_labelec(data_path):
         val_split=wandb.config.val_split,
         num_workers=wandb.config.num_workers,
     )
-
-    return data_module
-
  
 
 #####################################################################
@@ -497,16 +508,19 @@ def main():
 
     callbacks = init_callbacks(ckpt_dir)
 
-
     # ------------------------
     # 1 INIT BASE CRITERION
     # ------------------------
     if wandb.config.class_weights:
         alpha, epsilon = 3, 0.1
-        class_densities = torch.tensor([0.0702, 0.3287, 0.4226, 0.1495, 0.0046, 0.0244], dtype=torch.float32)
+        if wandb.config.dataset == 'labelec':
+            class_densities = torch.tensor([0.0541, 0.0006, 0.3098, 0.6208, 0.0061, 0.0085], dtype=torch.float32)
+        elif wandb.config.dataset == 'ts40k':
+            class_densities = torch.tensor([0.0702, 0.3287, 0.4226, 0.1495, 0.0046, 0.0244], dtype=torch.float32)
         class_weights = torch.max(1 - alpha*class_densities, torch.full_like(class_densities, epsilon))
         # class_weights = 1 / class_densities
-        class_weights[0] = 0.0 # ignore noise class
+        if wandb.config.ignore_index > -1:
+            class_weights[wandb.config.ignore_index] = 0.0 # ignore noise class
         # class_weights = class_weights / class_weights.mean()
     else:
         class_weights = None
@@ -534,17 +548,21 @@ def main():
 
     dataset_name = wandb.config.dataset       
     if dataset_name == 'ts40k':
-        data_path = TS40K_FULL_PATH
         if wandb.config.preprocessed:
             data_path = TS40K_FULL_PREPROCESSED_PATH
-            if idis_mode:
-                data_path = TS40K_FULL_PREPROCESSED_IDIS_PATH
-            elif smote_mode:
-                data_path = TS40K_FULL_PREPROCESSED_SMOTE_PATH
+        else:
+            data_path = TS40K_FULL_PATH
+        # if idis_mode:
+        #     data_path = TS40K_FULL_PREPROCESSED_IDIS_PATH
+        # elif smote_mode:
+        #     data_path = TS40K_FULL_PREPROCESSED_SMOTE_PATH
         data_module = init_ts40k(data_path, wandb.config.preprocessed)
     elif dataset_name == 'labelec':
-        data_path = LABELEC_RGB_DIR
-        data_module = init_labelec(data_path)
+        if wandb.config.preprocessed:
+            data_path  = LABELEC_RGB_PREPROCESSED
+        else:
+            data_path = LABELEC_RGB_DIR
+        data_module = init_labelec(data_path, wandb.config.preprocessed)
     else:
         raise ValueError(f"Dataset {dataset_name} not supported.")
     
@@ -560,7 +578,7 @@ def main():
 
     # WandbLogger
     wandb_logger = WandbLogger(project=f"{project_name}",
-                               log_model=True, 
+                               log_model='all', 
                                name=wandb.run.name, 
                                config=wandb.config
                             )
@@ -619,47 +637,47 @@ def main():
 
     # test_preds = torch.cat(test_preds, dim=0)
     # torch.save(test_preds, os.path.join(ckpt_dir, 'test_preds.pt'))
-    input("Press Enter to continue...")
-    from tqdm import tqdm
-    batch_size = wandb.config.batch_size
-    model_name = wandb.config.model
-    if model_name == 'pt_transformer':
-        model_name = f"pt_transformer_{wandb.config.model_version}"
+    # input("Press Enter to continue...")
+    # from tqdm import tqdm
+    # batch_size = wandb.config.batch_size
+    # model_name = wandb.config.model
+    # if model_name == 'pt_transformer':
+    #     model_name = f"pt_transformer_{wandb.config.model_version}"
 
-    if torch.no_grad():
-        model = model.to(device)
-        for stage in ['fit', 'test']:
-            data_module.setup(stage=stage)
+    # if torch.no_grad():
+    #     model = model.to(device)
+    #     for stage in ['fit', 'test']:
+    #         data_module.setup(stage=stage)
 
-            dataset = data_module.fit_ds if stage == 'fit' else data_module.test_ds
-            dataloader = data_module._fit_dataloader() if stage == 'fit' else data_module.test_dataloader()
+    #         dataset = data_module.fit_ds if stage == 'fit' else data_module.test_ds
+    #         dataloader = data_module._fit_dataloader() if stage == 'fit' else data_module.test_dataloader()
 
-            for i, batch in tqdm(enumerate(dataloader), desc=f"Predicting {stage} data..."):
-                x, _ = batch
-                batch = (batch[0].to(device), batch[1].to(device))
-                preds = model.evaluate(batch, stage=stage, metric=None, prog_bar=False, logger=False)[1]
+    #         for i, batch in tqdm(enumerate(dataloader), desc=f"Predicting {stage} data..."):
+    #             x, _ = batch
+    #             batch = (batch[0].to(device), batch[1].to(device))
+    #             preds = model.evaluate(batch, stage=stage, metric=None, prog_bar=False, logger=False)[1]
 
-                preds = preds.reshape(x.shape[0], x.shape[1])
+    #             preds = preds.reshape(x.shape[0], x.shape[1])
 
-                assert x.shape[:2] == preds.shape
-                # get dataset index
-                for j in range(x.shape[0]):
-                    idx = batch_size * i + j
+    #             assert x.shape[:2] == preds.shape
+    #             # get dataset index
+    #             for j in range(x.shape[0]):
+    #                 idx = batch_size * i + j
 
-                    dataset_x, _ = dataset[idx]
-                    assert dataset_x.squeeze().shape == x[j].squeeze().shape
+    #                 dataset_x, _ = dataset[idx]
+    #                 assert dataset_x.squeeze().shape == x[j].squeeze().shape
 
-                    file_path = dataset._get_file_path(idx)
-                    file_name =     (file_path) 
-                    preds_file_path = file_path.replace('TS40K-FULL', 'TS40K-FULL-Preds')
-                    preds_file_path = preds_file_path.replace(file_name, f'{file_name.split(".")[0]}/{model_name}.pt')
+    #                 file_path = dataset._get_file_path(idx)
+    #                 file_name =     (file_path) 
+    #                 preds_file_path = file_path.replace('TS40K-FULL', 'TS40K-FULL-Preds')
+    #                 preds_file_path = preds_file_path.replace(file_name, f'{file_name.split(".")[0]}/{model_name}.pt')
 
-                    if torch.randint(0, 10, (1,)).item() >= 9:
-                        print(f"{preds[j].shape}")
-                        print(f"Saving predictions to {preds_file_path}")
+    #                 if torch.randint(0, 10, (1,)).item() >= 9:
+    #                     print(f"{preds[j].shape}")
+    #                     print(f"Saving predictions to {preds_file_path}")
 
-                    os.makedirs(os.path.dirname(preds_file_path), exist_ok=True)
-                    torch.save(preds[j], preds_file_path)
+    #                 os.makedirs(os.path.dirname(preds_file_path), exist_ok=True)
+    #                 torch.save(preds[j], preds_file_path)
 
 
         
@@ -720,7 +738,8 @@ if __name__ == '__main__':
                 name = f'{model_name}_{dataset_name}_{datetime.now().strftime("%Y%m%d-%H%M%S")}',
                 config=sweep_config,
                 mode=main_parser.wandb_mode,
-        )  
+        )
+
 
     if wandb.config.add_normals:
         wandb.config.update({'num_data_channels': wandb.config.num_data_channels + 3}, allow_val_change=True) # override data path

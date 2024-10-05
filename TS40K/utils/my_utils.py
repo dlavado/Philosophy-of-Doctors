@@ -7,7 +7,7 @@ import random
 import pytorch_lightning as pl
 import sys
 
-from torchmetrics import MetricCollection, JaccardIndex, F1Score, Accuracy, Precision, Recall, ConfusionMatrix
+from torchmetrics import MetricCollection, JaccardIndex, F1Score, Accuracy, Precision, Recall, ConfusionMatrix, FBetaScore
 import wandb
 
 sys.path.insert(0, '..')
@@ -105,6 +105,7 @@ def init_metrics(task='multiclass', tau=0.5, num_classes=2, ignore_index=-1):
         # JaccardIndex(**params, average=None),
         # ConfusionMatrix(**params, normalize='true'),
         F1Score(**params, average='macro'),
+        FBetaScore(**params, average=None, beta=2.0), # F2 Score, prioritizes recall
         Precision(**params, average=None),
         Recall(**params, average=None),
         Accuracy(**params, average='micro'),
