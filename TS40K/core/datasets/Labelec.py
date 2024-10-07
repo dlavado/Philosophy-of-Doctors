@@ -291,16 +291,16 @@ if __name__ == '__main__':
 
     # print(class_freqs / torch.sum(class_freqs))
 
-    for i in range(len(labelec)):
-        x, y = labelec[i]
-        print(x.shape, y.shape)
+    # for i in range(len(labelec)):
+    #     x, y = labelec[i]
+    #     print(x.shape, y.shape)
 
-        print(torch.unique(y))
-        print(torch.min(x, dim=0).values, torch.max(x, dim=0).values)
-        print(torch.mean(x, dim=0), torch.std(x, dim=0))
+    #     print(torch.unique(y))
+    #     print(torch.min(x, dim=0).values, torch.max(x, dim=0).values)
+    #     print(torch.mean(x, dim=0), torch.std(x, dim=0))
 
 
-        eda.plot_pointcloud(x.numpy()[:, :3], y.numpy(), window_name="Labelec Preprocessed", use_preset_colors=True)
+    #     eda.plot_pointcloud(x.numpy()[:, :3], y.numpy(), window_name="Labelec Preprocessed", use_preset_colors=True)
 
     input("Continue?")
 
@@ -331,6 +331,7 @@ if __name__ == '__main__':
 
     for i in tqdm(range(len(labelec))):
         x, y = labelec[i]
+        print(x.shape, y.shape)
         file_id = labelec.chunk_file_paths[i].split('/')[-1].replace('.laz', '')
         save_file_path = os.path.join(save_path, f"sample_{file_id}.pt")
         if not os.path.exists(save_file_path):

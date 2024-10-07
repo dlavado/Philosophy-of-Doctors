@@ -15,9 +15,9 @@ preprocessed:
   value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: True
-add_normals:
   value: False
+add_normals:
+  value: True
   description: 'If True, adds normals to the dataset'
 data_path:
   value: ''
@@ -29,7 +29,7 @@ num_data_channels:
 batch_size:
   value: 2
 ignore_index:
-  value: 0 # noise
+  value: -1 # noise
 num_workers: 
   value: 0
 val_split:
@@ -60,7 +60,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 100 # -1 for infinite
+  value: 1 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -91,7 +91,7 @@ precision: # 16 or 32 FPU precision
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: True
+  value: False
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'
@@ -105,7 +105,7 @@ save_onnx:
 # Checkpoint config
 # ------------------ #
 resume_from_checkpoint:
-  value: True
+  value: False
 checkpoint_dir:
   value: '${experiment_path}/wandb/ptv2_resume' # v2
   # value: '${experiment_path}/wandb/ptv1_resume/files/checkpoints/'

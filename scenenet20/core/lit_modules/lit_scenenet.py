@@ -9,7 +9,7 @@ from torchmetrics import MetricCollection
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
-from core.models.GENEONets.SCENE_Net import SceneNet_multiclass, SceneNet_multiclass_CNN
+from core.models.GENEONets.GIBLi import SceneNet_multiclass, SceneNet_multiclass_CNN
 from core.lit_modules.lit_model_wrappers import LitWrapperModel
 from core.criterions.elastic_net_reg import ElasticNetRegularization
 from utils.my_utils import pointcloud_to_wandb

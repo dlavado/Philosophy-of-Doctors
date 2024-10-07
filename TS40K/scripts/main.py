@@ -328,15 +328,16 @@ def init_ts40k(data_path, preprocessed=False):
                             tt.Voxelization_withPCD(keep_labels='all', vxg_size=vxg_size, vox_size=vox_size)
                         ])
         else:
-            # transform = Compose([])
-            transform = Compose([
-                    tt.Remove_Label(1), # GROUND
-                    tt.Repeat_Points(10_000), # repeat points to 10k so that we can batchfy the data
-            ])
+            transform = []
+            # transform = [
+            #         tt.Remove_Label(1), # GROUND
+            #         tt.Repeat_Points(10_000), # repeat points to 10k so that we can batchfy the data
+            # ]
 
         if wandb.config.add_normals:
-            transform.transforms.append(tt.Add_Normal_Vector())
+            transform.append(tt.Add_Normal_Vector())
 
+        transform = Compose(transform)
     
         return LitTS40K_FULL_Preprocessed(
                         data_path,
@@ -578,7 +579,7 @@ def main():
 
     # WandbLogger
     wandb_logger = WandbLogger(project=f"{project_name}",
-                               log_model='all', 
+                               log_model=True, 
                                name=wandb.run.name, 
                                config=wandb.config
                             )
@@ -608,8 +609,16 @@ def main():
 
         for ckpt in trainer.callbacks:
             if isinstance(ckpt, pl_callbacks.ModelCheckpoint):
-                print(f"{ckpt.monitor} checkpoint : score {ckpt.best_model_score}")
-            
+                checkpoint_path = ckpt.best_model_path
+        
+                if checkpoint_path: 
+                    print(f"{ckpt.monitor} checkpoint : score {ckpt.best_model_score}")
+
+                    # Initialize artifact to log checkpoint
+                    artifact = wandb.Artifact(name=f"{model_name}_{ckpt.monitor}", type="model")
+                    artifact.add_file(checkpoint_path) 
+                    wandb.log_artifact(artifact)
+                    print(f"Checkpoint logged to Wandb: {checkpoint_path}")
             
     # ------------------------
     # 6 TEST

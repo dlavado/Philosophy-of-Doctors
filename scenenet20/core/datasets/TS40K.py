@@ -19,7 +19,7 @@ from tqdm import tqdm
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 import utils.pointcloud_processing as eda
-from core.datasets.torch_transforms import Normalize_PCD, To, Voxelization, Inverse_Density_Sampling, SMOTE_3D_Upsampling
+from core.datasets.torch_transforms import Normalize_PCD, To, Inverse_Density_Sampling
 from core.sampling.FPS import Farthest_Point_Sampling
 
 import os

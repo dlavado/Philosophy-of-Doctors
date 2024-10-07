@@ -27,7 +27,7 @@ num_data_channels:
   value: 3
   description: 'Number of channels in the dataset'
 batch_size:
-  value: 8
+  value: 4
 ignore_index:
   value: -1 # noise
 num_workers: 
@@ -45,7 +45,7 @@ min_points:
 # model config
 # ------------------ #
 model:
-  value: 'pointnet'
+  value: 'pointnet2'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'
@@ -102,7 +102,7 @@ save_onnx:
 # Checkpoint config
 # ------------------ #
 resume_from_checkpoint:
-  value: True
+  value: False
 checkpoint_dir:
   value: '${experiment_path}/pointnet/'
   # value: '${experiment_path}/pointnet++/'

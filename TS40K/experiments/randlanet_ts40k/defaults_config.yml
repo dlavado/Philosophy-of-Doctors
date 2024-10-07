@@ -29,7 +29,7 @@ num_data_channels:
 batch_size:
   value: 8
 ignore_index:
-  value: 0 # noise
+  value: -1 # noise
 num_workers: 
   value: 0
 val_split:
@@ -89,8 +89,8 @@ class_weights:
 fast_dev_run:
   value: True
 precision: # 16 or 32 FPU precision
-  value: 16
-  description: 'FPU precision'
+  value: 32
+  description: 'FPU Precision'
 auto_lr_find:
   value: False
 auto_scale_batch_size:
