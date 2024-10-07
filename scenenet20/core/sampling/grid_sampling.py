@@ -20,7 +20,6 @@ def grid_sampling(points, grid_size=(0.05, 0.05, 0.05), feat_mapping='max'):
 
     feat_mapping - str
         Mapping function to apply to the points in each voxel. Can be either {'mean', 'max', 'min', 'sum', 'mode'}
-
     
     Returns
     -------

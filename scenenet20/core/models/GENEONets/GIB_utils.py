@@ -45,6 +45,8 @@ def to_tensor(value):
  
     raise ValueError("Input value must be a torch.Tensor")
 
+
+
 ###############################################################
 #                          GIB Layer                          #
 ###############################################################
@@ -64,7 +66,6 @@ class GIB_Operator(nn.Module):
             self.random_init()
 
         self.gib = self.gib_class(kernel_reach=self.kernel_reach, **self.gib_params)
-
     
     def random_init(self):
         config = self.gib_class.gib_random_config(self.kernel_reach)

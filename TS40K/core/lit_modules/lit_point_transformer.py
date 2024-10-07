@@ -86,7 +86,7 @@ class Lit_PointTransformer(LitWrapperModel):
         `batch` - torch.Tensor with shape (B*N, 1)
         """
 
-        coords = inpt[:, :, :3].contiguous()
+        coords = inpt[..., :3].contiguous()
         coords = coords.view(-1, 3)
         if inpt.shape[-1] > 3:
             # feat = inpt[:, :, 3:].contiguous()
@@ -101,6 +101,7 @@ class Lit_PointTransformer(LitWrapperModel):
 
         # batch e.g. [0, 0, 0, 1, 1, 1, 2, 2, 2, ...] with shape (B*N, 1)
         batch = torch.cat([torch.full((inpt.shape[1],), i, device=inpt.device) for i in range(inpt.shape[0])], dim=0)
+        # batch = torch.arange(inpt.shape[0], device=inpt.device).repeat_interleave(inpt.shape[1])
 
         return {"coord": coords.to(torch.float32),
                 "feat": feat.to(torch.float32),

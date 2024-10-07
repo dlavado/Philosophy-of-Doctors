@@ -116,6 +116,7 @@ def find_nearest_neighbors(q_points: torch.Tensor, s_points: torch.Tensor, k: in
     return neighbors
 
 
+
 if __name__ == '__main__':
     import sys
     sys.path.append('../')
@@ -154,7 +155,7 @@ if __name__ == '__main__':
 
     # clusters = dbscan_cluster(query_points.unsqueeze(0), points.unsqueeze(0), eps, min_points, k)
 
-    clusters = find_nearest_neighbors(query_points.unsqueeze(0), points.unsqueeze(0), k)
+    clusters = find_nearest_neighbors(query_points.unsqueeze(0), points.unsqueeze(0), k) # (B, NUM_Q_POINTS, k)
 
     print(clusters.shape)
 

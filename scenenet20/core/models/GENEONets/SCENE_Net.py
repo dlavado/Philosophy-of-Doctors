@@ -12,7 +12,7 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 
-from core.models.GENEONets.GENEO_utils import GIB_Layer
+from core.models.GENEONets.GIB_utils import GIB_Layer
 
 
 class GeometricInductiveBiasModel(nn.Module):
