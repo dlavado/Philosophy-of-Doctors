@@ -160,11 +160,11 @@ class GIB_Layer(nn.Module):
             for i in range(self.gib_dict[key]):
                 self.gibs[f'{key}_{i}'] = GIB_Operator(g_class, kernel_reach=kernel_reach).to(self.device)
 
+
         # --- Initializing Convex Coefficients ---
         self.lambdas = torch.randn((len(self.gibs), num_observers), device=self.device) # shape (num_gibs, num_observers)
         self.maintain_convexity() # make sure the coefficients are convex
         self.lambdas = to_parameter(self.lambdas)
-
 
     def maintain_convexity(self):
         self.lambdas = torch.softmax(self.lambdas, dim=0)
@@ -189,7 +189,6 @@ class GIB_Layer(nn.Module):
         # for each query point, compute the convex combination of the outputs of the GIBs
         return q_outputs @ self.lambdas # shape (M, num_gibs) @ (num_gibs, num_observers) = (M, num_observers)
     
-
     
     def forward(self, points:torch.Tensor, query_idxs:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
         """

@@ -118,7 +118,7 @@ class LitKPConv(LitWrapperModel):
         metrics.reset()
 
 
-from core.models.GENEONets.SCENE_Net import SceneNet_PreBackbone
+from core.models.GENEONets.GIBLi import SceneNet_PreBackbone
 
 class LitKPConv_wSCENENet(LitKPConv):
     

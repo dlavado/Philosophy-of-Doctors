@@ -102,7 +102,7 @@ class LitPointNet(LitWrapperModel):
     
     
 
-from core.models.GENEONets.SCENE_Net import SceneNet_PreBackbone
+from core.models.GENEONets.GIBLi import SceneNet_PreBackbone
     
 class LitPointNet_wSCENENet(LitPointNet):
 

@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader, random_split
 
 
-from core.datasets.TS40K import build_data_samples, TS40K_FULL
+from core.datasets.TS40K import build_data_samples, TS40K_FULL, TS40K_FULL_Preprocessed
 
 
 class LitTS40K_FULL(pl.LightningDataModule):
@@ -40,6 +40,7 @@ class LitTS40K_FULL(pl.LightningDataModule):
                  sample_types='all', 
                  task="sem_seg",
                  transform=None, 
+                 transform_test=None,
                  num_workers=8, 
                  val_split=0.1, 
                  min_points=None, 
@@ -50,6 +51,7 @@ class LitTS40K_FULL(pl.LightningDataModule):
         self.sample_types = sample_types
         self.task = task
         self.transform = transform
+        self.transform_test = transform_test
         self.min_points = min_points
         self.load_into_memory = load_into_memory
         self.save_hyperparameters()
@@ -60,14 +62,13 @@ class LitTS40K_FULL(pl.LightningDataModule):
     def setup(self, stage:str=None):
         # build dataset
         if stage == 'fit':
-            fit_ds = TS40K_FULL(self.data_dir, split="fit", task=self.task, sample_types=self.sample_types, transform=self.transform, min_points=self.min_points, load_into_memory=self.load_into_memory)
-            self.train_ds, self.val_ds = random_split(fit_ds, [1 - self.hparams.val_split, self.hparams.val_split])
-            del fit_ds
+            self.fit_ds = TS40K_FULL(self.data_dir, split="fit", task=self.task, sample_types=self.sample_types, transform=self.transform, load_into_memory=self.load_into_memory)
+            self.train_ds, self.val_ds = random_split(self.fit_ds, [1 - self.hparams.val_split, self.hparams.val_split])
         if stage == 'test':
-            self.test_ds = TS40K_FULL(self.data_dir, split="test", task=self.task, sample_types=self.sample_types, transform=self.transform, min_points=self.min_points, load_into_memory=self.load_into_memory)
+            self.test_ds = TS40K_FULL(self.data_dir, split="test", task=self.task, sample_types=self.sample_types, transform=self.transform_test, load_into_memory=self.load_into_memory)
 
         if stage == 'predict':
-            self.predict_ds = TS40K_FULL(self.data_dir, split="test", task=self.task, sample_types=self.sample_types, transform=self.transform, min_points=self.min_points, load_into_memory=self.load_into_memory)
+            self.predict_ds = TS40K_FULL(self.data_dir, split="test", task=self.task, sample_types=self.sample_types, transform=self.transform_test, load_into_memory=self.load_into_memory)
         
     def train_dataloader(self):
         return DataLoader(self.train_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, pin_memory=True, shuffle=True)
@@ -76,10 +77,13 @@ class LitTS40K_FULL(pl.LightningDataModule):
         return DataLoader(self.val_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=True)
 
     def test_dataloader(self):
-        return DataLoader(self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
+        return DataLoader(self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=False)
     
     def predict_dataloader(self):
         return DataLoader(self.predict_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
+    
+    def _fit_dataloader(self):
+        return DataLoader(self.fit_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, pin_memory=True, shuffle=False)
     
     @staticmethod
     def add_model_specific_args(parent_parser):
@@ -91,23 +95,35 @@ class LitTS40K_FULL(pl.LightningDataModule):
         return parent_parser
     
 
-# class LitTS40K_Preprocessed(LitTS40K):
 
-#     def __init__(self, data_dir, batch_size, num_workers=8, val_split=0.1, test_split=0.4):
-#         super().__init__(data_dir, batch_size, None, num_workers, val_split, test_split, None)
+class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
+
+    def __init__(self, data_dir, batch_size, sample_types='all', transform=None, transform_test=None, num_workers=8, val_split=0.1, load_into_memory=False, use_full_test_set=True):
+
+        super().__init__(data_dir, batch_size, sample_types, None, transform, transform_test, num_workers, val_split, None, load_into_memory)
+
+        self.use_full_test_set = use_full_test_set
 
 
-#     def setup(self, stage:str=None):
-#         # build dataset
-#         if stage == 'fit':
-#             fit_ds = TS40K_Preprocessed(self.data_dir, split="fit", load_into_memory=self.load_into_memory)
-#             self.train_ds, self.val_ds = random_split(fit_ds, 
-#                                                       [len(fit_ds) - int(len(fit_ds) * self.hparams.val_split), int(len(fit_ds) * self.hparams.val_split)])
-#             del fit_ds
-#         if stage == 'test':
-#             self.test_ds = TS40K_Preprocessed(self.data_dir, split="test", load_into_memory=self.load_into_memory)
+    def setup(self, stage:str=None):
+        # build dataset
+        if stage == 'fit':
+            self.fit_ds = TS40K_FULL_Preprocessed(self.data_dir, split="fit", sample_types=self.sample_types, transform=self.transform, load_into_memory=self.load_into_memory)
+            self.train_ds, self.val_ds = random_split(self.fit_ds, [1 - self.hparams.val_split, self.hparams.val_split])
+        if stage == 'test':
+            self.test_ds = TS40K_FULL_Preprocessed(self.data_dir, split="test", sample_types=self.sample_types, transform=self.transform_test, load_into_memory=self.load_into_memory, use_full_test_set=self.use_full_test_set)
 
-#         if stage == 'predict':
-#             self.predict_ds = TS40K_Preprocessed(self.data_dir, split="test", load_into_memory=self.load_into_memory)
-        
+        if stage == 'predict':
+            self.predict_ds = TS40K_FULL_Preprocessed(self.data_dir, split="test", sample_types=self.sample_types, transform=self.transform_test, load_into_memory=self.load_into_memory)
+
+    def test_dataloader(self):
+        if self.use_full_test_set:
+            batch_size = 1 # point clouds do not have the same number of points; thus they cannot be stacked.
+        else:
+            batch_size = self.hparams.batch_size
+
+        return DataLoader(self.test_ds, batch_size=batch_size, num_workers=self.hparams.num_workers, shuffle=False)
+
+
+      
     

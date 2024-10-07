@@ -38,6 +38,7 @@ class LitWrapperModel(pl.LightningModule):
 
         self.save_hyperparameters()
 
+        self.test_preds = [] # code for rebuttal
 
         if metric_initializer is not None:
             self.train_metrics:MetricCollection = metric_initializer()
@@ -53,6 +54,14 @@ class LitWrapperModel(pl.LightningModule):
     
     def prediction(self, model_output:torch.Tensor) -> torch.Tensor:
         return model_output
+    
+    def get_prediction_scores(self, model_output:torch.Tensor) -> torch.Tensor:
+        """
+        Returns the softmax scores of the model output.
+        """
+        # (batch, num_points, num_classes) -> (batch, num_points)
+        scores = torch.softmax(model_output, dim=-1) # get the softmax scores
+        return scores
 
     def evaluate(self, batch, stage=None, metric=None, prog_bar=True, logger=True):
         x, y = batch
@@ -78,7 +87,15 @@ class LitWrapperModel(pl.LightningModule):
         loss, preds, y = self.evaluate(batch, "train", self.train_metrics)
         state = {"loss": loss, "preds": preds}
        
-        return state                  
+        return state  
+
+    # def on_before_backward(self, loss: torch.Tensor) -> None:
+    #     print(f'\n{"="*10} Model Values & Gradients {"="*10}')
+    #     print(f'L1/L2 Norms of the gradient: {torch.norm(loss, 1)}, {torch.norm(loss, 2)}')
+    #     # for name, param in self.model.named_parameters():
+    #     #     if 'geneo' in name:
+    #     #         print(f'\t{name} -- value: {param.data.item():.5f} grad: {param.grad}')
+    #     return super().on_before_backward(loss)                
     
     def on_train_epoch_end(self) -> None:
         if self.train_metrics is not None:
@@ -97,8 +114,12 @@ class LitWrapperModel(pl.LightningModule):
     
     def test_step(self, batch, batch_idx):
         loss, preds, y = self.evaluate(batch, "test", self.test_metrics)
-        state = {"test_loss": loss}
-     
+        state = {"test_loss": loss,
+                 "preds": preds,
+                }
+    
+        self.test_preds.append(preds) # code for rebuttal
+
         return state
 
     def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> Any:
@@ -110,7 +131,7 @@ class LitWrapperModel(pl.LightningModule):
     
     def on_test_epoch_end(self) -> None:
         if self.test_metrics is not None: # On epoch metric logging
-            self._epoch_end_metric_logging(self.test_metrics, 'test')
+            self._epoch_end_metric_logging(self.test_metrics, 'test', True)
 
     def get_model(self):
         return self.model

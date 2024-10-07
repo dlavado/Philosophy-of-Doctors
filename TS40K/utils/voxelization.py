@@ -1,5 +1,5 @@
 
- # %%
+
 from pathlib import Path
 import sys
 from typing import Tuple, Union
@@ -78,17 +78,18 @@ def plot_voxelgrid(grid:Union[np.ndarray, torch.Tensor], color_mode='density', t
         None
     else:
         colored pointcloud in (x, y, z, r, g, b) format
-
     """
 
     if isinstance(grid, torch.Tensor):
-        grid = grid.numpy()
+        grid = grid.cpu().numpy()
 
     z, x, y = grid.nonzero()
 
     xyz = np.empty((len(z), 4))
     idx = 0
     for i, j, k in zip(x, y, z):
+        if np.abs(grid[k, i, j]) < 0.01: # if close to zero, do not include
+            continue
         xyz[idx] = [int(i), int(j), int(k), grid[k, i, j]]
         idx += 1
 
@@ -96,21 +97,20 @@ def plot_voxelgrid(grid:Union[np.ndarray, torch.Tensor], color_mode='density', t
         return
     
     uq_classes = np.unique(xyz[:, -1])
+    # print(f"Unique classes: {uq_classes}")
     class_colors = np.empty((len(uq_classes), 3))
 
-    if color_mode == 'density': #colored according to 'coolwarm' scheme
-        
+    if color_mode == 'density': # colored according to 'coolwarm' scheme
         for i, c in enumerate(uq_classes):
         # [-1, 0[ - blue; ~0 white; ]0, 1] - red
             if c < 0:
                 class_colors[i] = [1+c, 1+c, 1]
             else:
                 class_colors[i] = [1, 1-c, 1-c]
-    
     # meant to be used only when `grid` contains values \in [0, 1]
     elif color_mode == 'ranges': #colored according to the ranges of values in `grid`
         import matplotlib.cm as cm
-        r = 10 if 'r' not in kwargs else kwargs['r']
+        r = 10
         step = (1 / r) / 2
         lin = np.linspace(0, 1, r) 
         # color for each range
@@ -132,18 +132,19 @@ def plot_voxelgrid(grid:Union[np.ndarray, torch.Tensor], color_mode='density', t
             print('Ranges Colors:')
             for i in range(r-1):
                 print(f"[{lin[i]:.3f}, {lin[i+1]:.3f}[ : {get_colour_name(color_ranges[i][:-1])[1]}")
-
     else:
         ValueError(f"color_mode must be in ['coolwarm', 'ranges']; got {color_mode}")
+    
+    # class_colors = class_colors * (class_colors > 0) # remove negative color values
 
-   
+    colors = np.array([class_colors[np.where(uq_classes == c)[0][0]] for c in xyz[:, -1]])
     pcd = eda.np_to_ply(xyz[:, :-1])
-    xyz_colors = eda.color_pointcloud(pcd, xyz[:, -1], colors=class_colors)
+    xyz_colors = eda.color_pointcloud(pcd, xyz[:, -1], colors=colors)
 
     if not plot:
         return np.concatenate((xyz[:, :-1], xyz_colors*255), axis=1) # 255 to convert color to int8
 
-    eda.visualize_ply([pcd], window_name=title)
+    eda.visualize_ply([pcd], window_name=title) # visualize the point cloud
 
 
 
@@ -411,6 +412,93 @@ def torch_voxelize_input_pcd(xyz:torch.Tensor, labels:torch.Tensor, keep_labels=
 
 
 
+def torch_voxelize_pcd_gt(xyz:torch.Tensor, labels:torch.Tensor, keep_labels='all', voxelgrid_dims=(64, 64, 64), voxel_dims=None):
+    """
+    Voxelizes the point cloud xyz and applies a histogram function on each voxel as a density function.
+
+    Parameters
+    ----------
+    `xyz` - torch.Tensor:
+        point cloud in (N, 3) format.
+
+    `labels` - torch.Tensor:
+        point labels in (1, N) format.
+
+    `keep_labels` - str or list:
+        labels to be kept in the voxelization process.
+
+    `voxelgrid_dims` - tuple int:
+        Dimensions of the voxel grid to be applied to the point cloud
+
+    `voxel_dims` - tuple int:
+        Dimensions of the voxels that compose the voxel_grid that will encase the point cloud
+        if voxel_dims is not None, it overrides voxelgrid_dims;
+
+    Returns
+    -------
+    `inp` - torch.Tensor with voxel_dims shape    
+        voxelized data with histogram density functions
+
+    `gt` - torch.Tensor with voxel_dims shape
+        voxelized labels with semantic labels (empty spaces are labeled with -1)
+    """
+
+    # switch z axis with x axis in xyz input
+    xyz = torch.concatenate([xyz[:, [2]], xyz[:, :2]], dim=1)
+
+    # Calculate voxel size
+    if voxel_dims is not None:
+        voxel_size = torch.tensor(voxel_dims, device=xyz.device)
+        voxelgrid_dims = torch.floor((xyz.max(0)[0] - xyz.min(0)[0]) / voxel_size).to(torch.long) + 1 #+1 to make it so that the voxel_indices fall within
+    elif voxelgrid_dims is not None:
+        voxelgrid_dims = torch.tensor(voxelgrid_dims, device=xyz.device)
+        voxel_size = (xyz.max(0)[0] - xyz.min(0)[0]) / (voxelgrid_dims - 1.1) # so that the voxel_size calculated fit the voxel indices
+    else:
+        raise ValueError("Either voxel_dims or voxelgrid_dims must be specified")
+
+    # Calculate voxel indices for each point
+    voxel_indices = ((xyz - xyz.min(0)[0]) / voxel_size).to(torch.long) # (N, 3)
+    grid_shape = voxelgrid_dims.long()
+
+    # Compute the indices for each point
+    z_indices, x_indices, y_indices = voxel_indices[:, 0], voxel_indices[:, 1], voxel_indices[:, 2]
+
+    # Compute the number of points in each voxel
+    voxel_grid = torch.zeros(grid_shape.tolist(), dtype=torch.float32, device=xyz.device)
+    voxel_grid[z_indices, x_indices, y_indices] += 1
+
+    # Filter labels if specified
+    if keep_labels != 'all':
+        mask = torch.tensor([label in keep_labels for label in labels], dtype=torch.bool)
+        labels = labels[mask]
+
+    # Compute the labels for each voxel
+    labels_grid = torch.full(grid_shape.tolist(), -1, dtype=torch.long, device=xyz.device) # empty voxels are labeled with -1
+    # a voxel takes the label os the most frequent label in the voxel
+    for z, x, y in zip(z_indices, x_indices, y_indices): # for each point
+        if labels_grid[z, x, y] == -1:
+            voxel_labels = labels[(z_indices == z) & (x_indices == x) & (y_indices == y)]  # select labels within the voxel
+        if voxel_labels.numel() > 0:  # if there are labels within the voxel
+            mode_label = voxel_labels.mode()[0]  # calculate mode
+            labels_grid[z, x, y] = mode_label  # assign mode to the voxel
+        else:
+            labels_grid[z, x, y] = -1  # assign -1 if the voxel is empty
+    
+    # print(torch.unique(labels_grid))
+
+    # xyzl = torch_voxel_to_pointcloud(labels_grid)
+    # xyzl = xyzl[xyzl[:, -1] != -1].numpy()
+    # print(xyzl.shape)
+    # print(np.unique(xyzl[:, -1]))
+    # eda.plot_pointcloud(xyzl[:, :3], xyzl[:, -1], window_name='Original Point Cloud', use_preset_colors=False)
+
+    # plot_voxelgrid(labels_grid / torch.max(labels_grid), color_mode='ranges', title='Voxelized Point Cloud')
+    
+
+    return voxel_grid, labels_grid
+
+
+
 def vxg_to_xyz(vxg:torch.Tensor, origin = None, voxel_size = None) -> None:
     """
     Converts voxel-grid to a raw point cloud.\\
@@ -449,17 +537,28 @@ def vxg_to_xyz(vxg:torch.Tensor, origin = None, voxel_size = None) -> None:
 def voxel_to_pointcloud(voxelgrid:np.ndarray, point_locations:np.ndarray):
     """
     Converts a voxelgrid to a pointcloud given the point locations inside the voxelgrid.
-    
     """
+
+    if point_locations is None:
+        # transform voxel grid to point cloud
+        xyz = np.argwhere(voxelgrid > -1)
+        xyz = np.concatenate((xyz, voxelgrid[voxelgrid > -1].reshape(-1, 1)), axis=1)
+        return xyz
+    
     voxel_values = np.array([voxelgrid[tuple(point)] for point in point_locations])
 
     return np.concatenate((point_locations, voxel_values.reshape(-1, 1)), axis=1)
 
 
-def torch_voxel_to_pointcloud(voxelgrid:torch.Tensor, point_locations:torch.Tensor):
+def torch_voxel_to_pointcloud(voxelgrid:torch.Tensor, point_locations:torch.Tensor=None):
+
+    if point_locations is None:
+        # transform voxel grid to point cloud
+        xyz = torch.argwhere(voxelgrid > -1)
+        xyz = torch.cat((xyz, voxelgrid[voxelgrid > -1].view(-1, 1)), dim=1) # (N, 4)
+        return xyz
 
     voxel_values = torch.tensor([voxelgrid[tuple(point)] for point in point_locations])
-
     return torch.cat((point_locations, voxel_values.reshape(-1, 1)), dim=1)
 
 
@@ -496,6 +595,9 @@ def vox_to_pts(vox:torch.Tensor, pt_loc:torch.Tensor, include_locs:bool=False) -
         pt_cloud.append(vox[i, :, pt_loc[i, :, 0].to(torch.int32), pt_loc[i, :, 1].to(torch.int32), pt_loc[i, :, 2].to(torch.int32)]) # (C, P, 1)
     
     pt_cloud = torch.stack(pt_cloud, dim=0) # (batch, C, P)
+
+    # print(pt_loc.shape)
+    # print(pt_cloud.shape)
    
     pt_cloud = pt_cloud.permute(0, 2, 1) # (batch, P, C)
 
@@ -508,69 +610,7 @@ def vox_to_pts(vox:torch.Tensor, pt_loc:torch.Tensor, include_locs:bool=False) -
 
 
 if __name__ == "__main__":
-    from tqdm import tqdm
-
-    dataset_path = '/media/didi/TOSHIBA EXT/TS40K-NEW/fit'
-
-    npy_files:np.ndarray = np.array([file for file in os.listdir(dataset_path)
-                        if os.path.isfile(os.path.join(dataset_path, file)) and '.npy' in file])
-    
-
-    for i in tqdm(range(1000)):
-
-        npy_path = os.path.join(dataset_path, npy_files[np.random.randint(0, len(npy_files))])
-            
-        npy = np.load(npy_path)
-        sample = (npy[:, 0:-1], npy[:, -1])
-
-        xyz = torch.from_numpy(sample[0]).to(torch.float32)
-        labels = torch.from_numpy(sample[1]).to(torch.long)
-        vox_input, labels, pt_loc = torch_voxelize_input_pcd(xyz, labels, voxelgrid_dims=(64, 64, 64), voxel_dims=(0.1, 0.1, 0.1))
-
-    # plot_voxelgrid(vox_input, color_mode='ranges', title='Input')
-
-    print(vox_input.shape)
-    print(torch.unique(vox_input))
-
-   
-    ply = eda.np_to_ply(pt_loc.numpy())
-   
-    print("hi")
-    pt_vox = vox_to_pts(vox_input.unsqueeze(0).unsqueeze(0), pt_loc.unsqueeze(0))
-    print(torch.unique(pt_vox))
-    eda.color_pointcloud(ply, classes=pt_vox.numpy())  #colors=np.zeros_like(pt_loc.numpy()))
-    eda.visualize_ply([ply])
-
-
-    labels = torch.tensor([eda.DICT_NEW_LABELS[label.item()] if label.item() >= 0 else label.item() for label in labels.squeeze()]).reshape(labels.shape)
-    eda.color_pointcloud(ply, classes=labels.numpy(), use_preset_colors=True)
-    eda.visualize_ply([ply])
-
- 
-    input("Finished Plot...")
-
-    tower_files = eda.get_tower_files(['/media/didi/TOSHIBA EXT/Labelec_LAS'], True)
-
-    pcd_xyz, classes = eda.las_to_numpy(lp.read(tower_files[0]))
-
-    pcd_tower, _ = eda.select_object(pcd_xyz, classes, [eda.POWER_LINE_SUPPORT_TOWER])
-    towers = eda.extract_towers(pcd_tower, visual=False)
-    crop_tower_xyz, crop_tower_classes = eda.crop_tower_radius(pcd_xyz, classes, towers[0])
-
-    # %%
-    crop_tower_ply = eda.np_to_ply(crop_tower_xyz)
-    eda.color_pointcloud(crop_tower_ply, crop_tower_classes)
-    eda.visualize_ply([crop_tower_ply])
-
-    # %%
-
-    downsample_xyz, downsample_classes = eda.downsampling_relative_height(crop_tower_xyz, crop_tower_classes)
-    down_tower_ply = eda.np_to_ply(downsample_xyz)
-    eda.color_pointcloud(down_tower_ply, downsample_classes)
-    eda.visualize_ply([down_tower_ply])
-
     
     
-# %%
-
+    pass
 

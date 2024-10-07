@@ -1,0 +1,6 @@
+loguru
+tqdm
+numpy
+easydict
+tensorboard
+ipdb

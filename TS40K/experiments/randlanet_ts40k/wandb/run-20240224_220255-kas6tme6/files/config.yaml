@@ -1,0 +1,175 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    cli_version: 0.14.0
+    framework: lightning
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    python_version: 3.9.2
+    start_time: 1708812175.232831
+    t:
+      1:
+      - 1
+      - 5
+      - 9
+      - 41
+      - 53
+      - 55
+      2:
+      - 1
+      - 5
+      - 9
+      - 41
+      - 53
+      - 55
+      3:
+      - 13
+      - 16
+      - 23
+      4: 3.9.2
+      5: 0.14.0
+      8:
+      - 5
+accelerator:
+  desc: null
+  value: gpu
+accumulate_grad_batches:
+  desc: null
+  value: 1
+auto_lr_find:
+  desc: null
+  value: false
+auto_scale_batch_size:
+  desc: null
+  value: true
+batch_size:
+  desc: null
+  value: 32
+checkpoint_dir:
+  desc: null
+  value: ${experiment_path}/checkpoints
+checkpoint_every_n_epochs:
+  desc: null
+  value: 0
+checkpoint_every_n_steps:
+  desc: null
+  value: 1
+class_weights:
+  desc: null
+  value: true
+criterion:
+  desc: null
+  value: null
+data_dir:
+  desc: null
+  value: /home/d.lavado/TS40K-Dataset/TS40K-FULL-Preprocessed/
+data_path:
+  desc: null
+  value: /home/d.lavado/TS40K-Dataset/TS40K-FULL-Preprocessed/
+dataset:
+  desc: null
+  value: ts40k
+decimation:
+  desc: null
+  value: 4
+devices:
+  desc: null
+  value: -1
+early_stop_metric:
+  desc: null
+  value: val_MulticlassJaccardIndex
+fast_dev_run:
+  desc: null
+  value: true
+fps_points:
+  desc: null
+  value: 10000
+ignore_index:
+  desc: null
+  value: 0
+in_channels:
+  desc: null
+  value: 3
+learning_rate:
+  desc: null
+  value: 0.0001
+load_into_memory:
+  desc: null
+  value: true
+max_epochs:
+  desc: null
+  value: 100
+metric_initializer:
+  desc: null
+  value: init_metrics
+min_points:
+  desc: null
+  value: null
+model:
+  desc: null
+  value: null
+num_classes:
+  desc: null
+  value: 6
+num_data_channels:
+  desc: null
+  value: 3
+num_neighbors:
+  desc: null
+  value: 16
+num_nodes:
+  desc: null
+  value: 1
+num_workers:
+  desc: null
+  value: 0
+optimizer:
+  desc: null
+  value: adam
+optimizer_name:
+  desc: null
+  value: adam
+output_dir:
+  desc: null
+  value: ${experiment_path}/outputs
+precision:
+  desc: null
+  value: 16
+preprocessed:
+  desc: null
+  value: true
+profiler:
+  desc: null
+  value: false
+project:
+  desc: null
+  value: TS40K
+resume_checkpoint_name:
+  desc: null
+  value: MulticlassJaccardIndex
+resume_from_checkpoint:
+  desc: null
+  value: false
+sample_types:
+  desc: null
+  value: all
+save_onnx:
+  desc: null
+  value: false
+strategy:
+  desc: null
+  value: auto
+task:
+  desc: null
+  value: null
+test_split:
+  desc: null
+  value: 0.3
+transform:
+  desc: null
+  value: null
+val_split:
+  desc: null
+  value: 0.1
