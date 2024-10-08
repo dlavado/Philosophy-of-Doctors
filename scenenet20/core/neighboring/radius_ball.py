@@ -11,6 +11,33 @@ from core.neighboring.conversions import batch_to_pack, lengths_to_batchvector, 
 from core.neighboring.knn import torch_knn
 
 
+class RadiusBall_Neighboring:
+
+    def __init__(self, radius, k, loop=False, pad_value=-1) -> None:
+        self.radius = radius
+        self.k = k
+        self.loop = loop
+        self.pad_value = pad_value
+
+    def __call__(self, x:torch.Tensor, q_points:torch.Tensor) -> torch.Tensor:
+        """
+        Parameters
+        ----------
+        x - torch.Tensor
+            input tensor of shape (B, N, 3)
+
+        q_points - torch.Tensor
+            query points of shape (B, Q, 3)
+
+        Returns
+        -------
+        graph - torch.Tensor
+            support points of shape (B, Q, k)
+        """
+        return k_radius_ball(q_points, x, self.radius, self.k, self.loop, self.pad_value)
+        
+
+
 def naive_radius_search(q_points, s_points, radius, neighbor_limit):
     """Radius search in naive implementation.
 

@@ -2,7 +2,20 @@
 
 import torch
 import torch_scatter
+from typing import Tuple
 
+
+class Grid_Sampling:
+
+    def __init__(self, grid_size: Tuple[float, float, float], feat_mapping='max') -> None:
+        self.grid_size = grid_size
+        self.feat_mapping = feat_mapping
+
+
+    def __call__(self, x:torch.Tensor) -> torch.Tensor:
+        return grid_sampling(x, self.grid_size, self.feat_mapping)
+    
+    
 
 def grid_sampling(points, grid_size=(0.05, 0.05, 0.05), feat_mapping='max'):
     """

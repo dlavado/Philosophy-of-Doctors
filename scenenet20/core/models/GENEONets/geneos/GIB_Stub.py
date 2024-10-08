@@ -86,7 +86,7 @@ class GIB_Stub(torch.nn.Module):
 
 
     @abstractmethod
-    def forward(self, points:torch.Tensor, query_idxs:torch.Tensor, supports_idxs:torch.Tensor) -> torch.Tensor:
+    def forward(self, points:torch.Tensor, q_points:torch.Tensor, supports_idxs:torch.Tensor) -> torch.Tensor:
         """
         Computes a Cylinder GIB on the query points given the support points.
 
@@ -95,8 +95,8 @@ class GIB_Stub(torch.nn.Module):
         `points` - torch.Tensor:
             Tensor of shape (N, 3) representing the point cloud.
 
-        `query_idxs` - torch.Tensor[int]:
-            Tensor of shape (M,) representing the indices of the query points in `points`. With M <= N.
+        `q_points` - torch.Tensor:
+            Tensor of shape (M, 3) representing the query points.
 
         `supports_idxs` - torch.Tensor[int]:
             Tensor of shape (M, K) representing the indices of the support points for each query point. With K <= N.

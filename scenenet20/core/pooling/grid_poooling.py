@@ -2,7 +2,40 @@ import torch
 import torch_cluster
 import torch_scatter
 
-from typing import Union
+from typing import Union, Tuple
+
+
+class GridPooling_Module(torch.nn.Module):
+
+    def __init__(self, grid_size: Tuple[float, float, float], feat_mapping:Union[str,dict]='max') -> None:
+        super(GridPooling_Module, self).__init__()
+        self.grid_pooling = GridPooling(grid_size, feat_mapping)
+    
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        return self.grid_pooling(x)
+
+
+class GridPooling:
+    def __init__(self, grid_size: Tuple[float, float, float], feat_mapping:Union[str,dict]='max') -> None:
+        self.grid_size = grid_size
+        self.feat_mapping = feat_mapping
+    
+    def __call__(self, x:torch.Tensor) -> torch.Tensor:
+        """
+        Aggregates points within each voxel of a grid using a specified function.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Tensor of shape (N, 3 + C) where N is the number of points and C is the number of additional channels.
+        
+        Returns
+        -------
+        aggregated_points : torch.Tensor
+            Tensor of shape (M, 3 + C) where M is the number of unique voxels.
+        """
+        return grid_pooling(x, self.grid_size, None, self.feat_mapping)
+        
 
 
 def _compute_grid_size(points: torch.Tensor, num_voxels: torch.Tensor) -> torch.Tensor:
@@ -66,7 +99,7 @@ def grid_pooling(points: torch.Tensor, voxel_size:Union[None, torch.Tensor]=None
         voxel_size = _compute_grid_size(pos, voxelgrid_size)
         print(f"voxel_size: {voxel_size}")
 
-    # Get cluster assignments
+    # Get cluster assignments; cluster.shape = (N,)
     cluster = torch_cluster.grid_cluster(pos, size=voxel_size)
 
     # Define aggregation functions
@@ -95,7 +128,6 @@ def grid_pooling(points: torch.Tensor, voxel_size:Union[None, torch.Tensor]=None
                 agg_feat = agg_feat[0]
             aggregated_points = torch.cat([aggregated_points, agg_feat.view(-1, 1)], dim=1)
     else: # feat_mapping is a str; Apply the same aggregation function to all features
-        
         if feat_mapping not in agg_funcs:
             raise ValueError(f"Invalid feat_mapping '{feat_mapping}'. Choose from {list(agg_funcs.keys())}.") 
 

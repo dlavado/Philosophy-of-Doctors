@@ -92,11 +92,11 @@ class Cylinder(GIB_Stub):
         return integral
     
 
-    def forward(self, points:torch.Tensor, query_idxs:torch.Tensor, supports_idxs:torch.Tensor) -> torch.Tensor:
+    def forward(self, points:torch.Tensor, q_points:torch.Tensor, supports_idxs:torch.Tensor) -> torch.Tensor:
 
-        q_output = torch.zeros(len(query_idxs), dtype=points.dtype, device=points.device)
-        for i, q in enumerate(query_idxs):
-            center = points[q] # 1x3
+        q_output = torch.zeros(len(q_points), dtype=points.dtype, device=points.device)
+        for i, center in enumerate(q_points):
+            # center = points[q] # 1x3
             support = supports_idxs[i]
             support = support[support != -1]
             support_points = points[support] #Kx3
@@ -115,7 +115,7 @@ class Cylinder(GIB_Stub):
 if __name__ == "__main__":
     from core.neighboring.radius_ball import k_radius_ball
     from core.neighboring.knn import torch_knn
-    from core.pooling.farthest_point import farthest_point_pooling
+    from core.pooling.fps_pooling import farthest_point_pooling
     
     # generate some points, query points, and neighbors. For the neighbors, I want to test two scenarios: 
     # 1) where the neighbors are at radius distance from the query points

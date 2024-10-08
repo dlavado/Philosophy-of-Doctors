@@ -86,7 +86,7 @@ class GIB_Operator(nn.Module):
         self.gib_params = nn.ParameterDict(self.gib_params)
 
 
-    def forward(self, points:torch.Tensor, query_idxs:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
+    def forward(self, points:torch.Tensor, q_coords:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
         """
         Computes the output of the GIB on the query points given the support points.
 
@@ -95,8 +95,8 @@ class GIB_Operator(nn.Module):
         `points` - torch.Tensor:
             Tensor of shape (N, 3) representing the point cloud.
 
-        `query_idxs` - torch.Tensor[int]:
-            Tensor of shape (M,) representing the indices of the query points in `points`. With M <= N.
+        `q_coords` - torch.Tensor:
+            Tensor of shape (M, 3) representing the query points.
 
         `supports_idxs` - torch.Tensor[int]:
             Tensor of shape (M, K) representing the indices of the support points for each query point. With K <= N.
@@ -106,7 +106,7 @@ class GIB_Operator(nn.Module):
         `q_output` - torch.Tensor:
             Tensor of shape (M,) representing the output of the GIB on the query points.
         """
-        return self.gib(points, query_idxs, support_idxs)
+        return self.gib(points, q_coords, support_idxs)
 
 
 ###############################################################
@@ -177,11 +177,11 @@ class GIB_Layer(nn.Module):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
     
 
-    def _compute_gib_outputs(self, points:torch.Tensor, query_idxs:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
+    def _compute_gib_outputs(self, points:torch.Tensor, q_coords:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
 
-        q_outputs = torch.zeros((len(query_idxs), len(self.gibs)), dtype=points.dtype, device=points.device)
+        q_outputs = torch.zeros((len(q_coords), len(self.gibs)), dtype=points.dtype, device=points.device)
         for i, gib_key in enumerate(self.gibs):
-            q_outputs[:, i] = self.gibs[gib_key](points, query_idxs, support_idxs)
+            q_outputs[:, i] = self.gibs[gib_key](points, q_coords, support_idxs)
 
         return q_outputs
     
@@ -191,7 +191,7 @@ class GIB_Layer(nn.Module):
         return q_outputs @ self.lambdas # shape (M, num_gibs) @ (num_gibs, num_observers) = (M, num_observers)
     
     
-    def forward(self, points:torch.Tensor, query_idxs:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
+    def forward(self, points:torch.Tensor, q_coords:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
         """
         Computes the output of the GIB-Layer on the query points given the support points.
 
@@ -200,8 +200,8 @@ class GIB_Layer(nn.Module):
         `points` - torch.Tensor:
             Tensor of shape (N, 3) representing the point cloud.
 
-        `query_idxs` - torch.Tensor[int]:
-            Tensor of shape (M,) representing the indices of the query points in `points`. With M <= N.
+        `q_coords` - torch.Tensor:
+            Tensor of shape (M, 3) representing the query points; M <= N.
 
         `supports_idxs` - torch.Tensor[int]:
             Tensor of shape (M, K) representing the indices of the support points for each query point. With K <= N.
@@ -211,7 +211,7 @@ class GIB_Layer(nn.Module):
         `q_outputs` - torch.Tensor:
             Tensor of shape (M, num_observers) representing the output of the GIB-Layer on the query points.
         """
-        q_outputs = self._compute_gib_outputs(points, query_idxs, support_idxs) # shape (M, num_gibs)
+        q_outputs = self._compute_gib_outputs(points, q_coords, support_idxs) # shape (M, num_gibs)
         q_outputs = self._compute_observers(q_outputs) # shape (M, num_observers)
         return q_outputs
     
@@ -220,7 +220,7 @@ class GIB_Layer(nn.Module):
 if __name__ == "__main__":
     from core.neighboring.radius_ball import k_radius_ball
     from core.neighboring.knn import torch_knn
-    from core.pooling.farthest_point import farthest_point_pooling
+    from core.pooling.fps_pooling import farthest_point_pooling
     
     # # generate some points, query points, and neighbors. For the neighbors, I want to test two scenarios: 
     # # 1) where the neighbors are at radius distance from the query points

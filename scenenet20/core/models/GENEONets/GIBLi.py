@@ -13,6 +13,9 @@ sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 
 from core.models.GENEONets.GIB_utils import GIB_Layer
+from core.pooling.fps_pooling import FPSPooling_Module
+from core.pooling.grid_poooling import GridPooling_Module
+from core.neighboring.neighbors import Neighboring_Method
 
 
 
@@ -40,25 +43,38 @@ class PointBatchNorm(nn.Module):
         elif input.dim() == 2:
             return self.norm(input)
         else:
-            raise NotImplementedError
+            raise NotImplementedError("Input dimension not supported")
         
-class Sampling_and_Neighboring:
 
-    def __init__(self,
-                 sampling_strategy:str, 
+class Neighboring(nn.Module):
+
+    def __init__(self, 
                  neighborhood_strategy:str, 
+                 num_neighbors:int, 
+                 **kwargs
                 ) -> None:
-        # TODO
-        self.sampling = sampling_strategy
-        self.neighbor = neighborhood_strategy
-
-    def __call__(self, x:torch.Tensor) -> torch.Any:
-
-        q_points = self.sampling(x)
-        s_points = self.neighbor(x, q_points)
-
-        return q_points, s_points
         
+        super(Neighboring, self).__init__()
+
+        self.neighbor = Neighboring_Method(neighborhood_strategy, num_neighbors, **kwargs)
+
+    def forward(self, x, q_points) -> torch.Tensor:
+        """
+        Parameters
+        ----------
+        x : torch.Tensor
+            input tensor of shape (B, N, 3)
+
+        q_points : torch.Tensor
+            query points of shape (B, Q, 3)
+
+        Returns
+        -------
+        s_points_idxs : torch.Tensor
+            support points of shape (B, Q, k)
+        """
+        return self.neighbor(x, q_points)
+
 
 #################################################################
 # GIBLi Blocks
@@ -78,14 +94,14 @@ class GIB_Block(nn.Module):
         self.act = nn.ReLU(inplace=True)
 
 
-    def forward(self, coords, q_points, s_points, feats) -> torch.Tensor:
+    def forward(self, coords, q_points, s_idxs, feats) -> torch.Tensor:
 
-        gib_out = self.gib(coords, q_points, s_points)
-        gib_out = self.act(self.gib_norm(gib_out))
+        gib_out = self.gib(coords, q_points, s_idxs) # (B, Q, num_observers)
+        gib_out = self.act(self.gib_norm(gib_out)) # (B, Q, num_observers)
 
-        mlp_out = torch.cat([feats, gib_out], dim=-1)
-        mlp_out = self.mlp(mlp_out)
-        mlp_out = self.act(self.mlp_norm(mlp_out))
+        mlp_out = torch.cat([feats, gib_out], dim=-1) # (B, Q, C + num_observers)
+        mlp_out = self.mlp(mlp_out) # (B, Q, C + num_observers)
+        mlp_out = self.act(self.mlp_norm(mlp_out)) # (B, Q, C + num_observers)
 
         return mlp_out
     
@@ -98,36 +114,107 @@ class GIB_Sequence(nn.Module):
                  feat_channels, 
                  num_observers, 
                  kernel_size,
-                 samp_neigh:Sampling_and_Neighboring
                 ) -> None:
         
         super(GIB_Sequence, self).__init__()
 
-        self.samp_neigh = samp_neigh
-
         self.gib_blocks = nn.ModuleList()
         for _ in range(num_layers):
             gib_block = GIB_Block(gib_dict, feat_channels, num_observers, kernel_size)
+            feat_channels = feat_channels + num_observers
             self.gib_blocks.append(gib_block)
-
         
 
-    def forward(self, x:torch.Tensor) -> torch.Tensor:
+    def forward(self, x, q_coords, s_idxs) -> torch.Tensor:
 
-        coords = x[..., :3] # (B, N, 3)
-        if x.shape[-1] == 3:
-            feats = coords
-        else:
-            feats = x[..., 3:]  # (B, N, C)
-
-        q_coords, s_coords = self.samp_neigh(coords)
+        coords, feats = x[..., :3], x[..., 3:]
 
         for gib_block in self.gib_blocks:
-            feats = gib_block(coords, q_coords, s_coords, feats)
+            feats = gib_block(coords, q_coords, s_idxs, feats)
 
-        return q_coords, feats
+        # feats shape: (B, Q, feat_channels + num_observers*num_layers) 
+
+        return feats
+    
+
+class GIB_Down(nn.Module):
+
+    def __init__(self, 
+                 num_layers, 
+                 gib_dict, 
+                 feat_channels, 
+                 num_observers, 
+                 kernel_size,
+                 pooling_strategy:str,
+                 pooling_kwargs,
+                 neighborhood_strategy:str,
+                 num_neighbors:int,
+                 neighborhood_kwargs,
+                ) -> None:
+        
+        super(GIB_Down, self).__init__()
+
+        self.gib = GIB_Sequence(num_layers, gib_dict, feat_channels, num_observers, kernel_size)
+
+        self.neighbor = Neighboring(neighborhood_strategy, num_neighbors, **neighborhood_kwargs)
+
+        if pooling_strategy == 'fps':
+            self.pooling = FPSPooling_Module(neighborhood_strategy, num_neighbors, neighborhood_kwargs, **pooling_kwargs)
+        elif pooling_strategy == 'grid':
+            self.pooling = GridPooling_Module(**pooling_kwargs)
+        else:
+            raise NotImplementedError(f"Pooling strategy {pooling_strategy} not implemented.")
+
+    def forward(self, x) -> torch.Tensor:
+
+        x_pooled = self.pooling(x) # (B, N//pooling_factor, C)
+        s_points_idxs = self.neighbor(x, x_pooled) # (B, N//pooling_factor, k)
+
+        return x_pooled, self.gib(x, x_pooled, s_points_idxs) # (B, N//pooling_factor, C + num_observers*num_layers)
 
 
+class Unpool_wSkip(nn.Module):
+
+    def __init__(self,  
+                in_channels,
+                skip_channels,
+                out_channels,
+                bias=True,
+                skip=True,
+                backend="map") -> None:
+    
+        super(Unpool_wSkip, self).__init__()
+
+        self.in_channels = in_channels
+        self.skip_channels = skip_channels
+        self.out_channels = out_channels
+        self.skip = skip
+        self.backend = backend
+        assert self.backend in ["map", "interp"]
+
+        self.proj = nn.Sequential(
+            nn.Linear(in_channels, out_channels, bias=bias),
+            PointBatchNorm(out_channels),
+            nn.ReLU(inplace=True),
+        )
+        self.proj_skip = nn.Sequential(
+            nn.Linear(skip_channels, out_channels, bias=bias),
+            PointBatchNorm(out_channels),
+            nn.ReLU(inplace=True),
+        )
+
+
+    def forward(self, x, x_skip, mapping) -> torch.Tensor:
+            x_coords, x_feats = x[..., :3], x[..., 3:]
+            x_skip_coords, x_skip_feats = x_skip[..., :3], x_skip[..., 3:]
+
+            if self.backend == "map":
+                feat = self.proj(x_feats)[mapping]
+
+            elif self.backend == "interp":
+                pass
+            if self.skip:
+                feat += self.proj_skip(x_skip_feats)
 
 
 

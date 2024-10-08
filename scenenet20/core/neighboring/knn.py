@@ -3,39 +3,29 @@ from torch import Tensor
 from typing import Tuple
 
 
-class KNN:
+class KNN_Neighboring:
     def __init__(self, k:int) -> None:
-        """
-        k-Nearest Neighbors operator.
-
-        Parameters
-        ----------
-        `k` - int:
-            number of neighbors to consider.
-        """
-        super(KNN, self).__init__()
-
         self.k = k
 
-    def forward(self, q_points: Tensor, s_points: Tensor) -> Tuple[Tensor, Tensor]:
+    def __call__(self, x:Tensor, q_points:Tensor) -> torch.Tensor:
         """
-        kNN operator.
-
         Parameters
         ----------
-        `q_points` - torch.Tensor
-            query points of shape (B, N, C)
-        `s_points` - torch.Tensor
-            support points of shape (B, M, C)
+
+        x - torch.Tensor
+            input tensor of shape (B, N, 3)
+
+        q_points - torch.Tensor
+            query points of shape (B, Q, 3)
 
         Returns
         -------
-        knn_distance - torch.Tensor
-            distances to the k nearest neighbors of shape (B, N, k)
-        knn_indices - torch.Tensor
-            indices in `s_points` of the k nearest neighbors of shape (B, N, k)
+        s_points - torch.Tensor
+            support points of shape (B, Q, k)
         """
-        return torch_knn(q_points, s_points, self.k)
+        
+        return torch_knn(q_points, x, self.k)[1]
+
 
 def torch_knn(q_points: Tensor, s_points: Tensor, k: int) -> Tuple[Tensor, Tensor]:
     """

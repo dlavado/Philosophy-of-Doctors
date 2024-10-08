@@ -2,6 +2,34 @@
 
 import torch
 
+class DBSCAN_Neighboring:
+
+    def __init__(self, eps, min_points, k) -> None:
+        self.eps = eps
+        self.min_points = min_points
+        self.k = k
+
+
+    def __call__(self, x:torch.Tensor, q_points:torch.Tensor) -> torch.Tensor:
+        """
+        Parameters
+        ----------
+        x - torch.Tensor
+            input tensor of shape (B, N, 3)
+
+        q_points - torch.Tensor
+            query points of shape (B, Q, 3)
+
+        Returns
+        -------
+        s_points - torch.Tensor
+            support points of shape (B, Q, k)
+        """
+        s_points = dbscan_cluster(q_points, x, self.eps, self.min_points, self.k)
+        return s_points
+
+
+
 def dbscan_cluster(q_points: torch.Tensor, s_points: torch.Tensor, eps: float, min_points: int, k: int):
     """
     Clusters points using DBSCAN algorithm in PyTorch and returns the k nearest neighbors.
