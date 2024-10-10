@@ -318,7 +318,7 @@ if __name__ == '__main__':
     labelec = Labelec_Dataset(
         las_data_dir=LABELEC_DIR,
         split=split,
-        save_chunks=False,
+        save_chunks=True,
         chunk_size=20_000_000,
         bins=200,
         transform=transform,
@@ -334,10 +334,11 @@ if __name__ == '__main__':
         print(x.shape, y.shape)
         file_id = labelec.chunk_file_paths[i].split('/')[-1].replace('.laz', '')
         save_file_path = os.path.join(save_path, f"sample_{file_id}.pt")
-        if not os.path.exists(save_file_path):
-            torch.save((x, y), save_file_path)
-        else:
-            print(f"File {save_file_path} already exists!")
+        torch.save((x, y), save_file_path)
+        # if not os.path.exists(save_file_path):
+        #     torch.save((x, y), save_file_path)
+        # else:
+        #     print(f"File {save_file_path} already exists!")
 
     # for i in range(len(labelec)):
     #     x, y = labelec[i]

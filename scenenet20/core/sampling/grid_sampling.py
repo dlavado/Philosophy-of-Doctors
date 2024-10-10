@@ -7,8 +7,8 @@ from typing import Tuple
 
 class Grid_Sampling:
 
-    def __init__(self, grid_size: Tuple[float, float, float], feat_mapping='max') -> None:
-        self.grid_size = grid_size
+    def __init__(self, voxel_size: Tuple[float, float, float], feat_mapping='max') -> None:
+        self.grid_size = voxel_size
         self.feat_mapping = feat_mapping
 
 
