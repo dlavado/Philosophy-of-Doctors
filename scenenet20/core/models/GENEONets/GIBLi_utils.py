@@ -4,49 +4,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import sys
-
-
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
-
-
 from core.neighboring.neighbors import Neighboring_Method
 from core.sampling.query_points_strat import Query_Points
-from core.pooling.grid_poooling import grid_pooling_batch, _cluster_to_spoints
 
-
-
-###############################################################
-#                          GIB Utils                          #
-###############################################################
-
-def to_parameter(value):
-    """
-    Converts the input value to a torch.nn.Parameter.
-    """
-    if isinstance(value, torch.Tensor):
-        return torch.nn.Parameter(value, requires_grad=True)
-    elif isinstance(value, int) or isinstance(value, float):
-        return torch.nn.Parameter(torch.tensor(value, dtype=torch.float), requires_grad=True)
-    
-    raise ValueError("Input value must be a torch.Tensor")
-    
-def to_tensor(value):
-    """
-    Converts the input value to a torch.Tensor.
-    """
-    import numpy as np
-    if isinstance(value, torch.Tensor):
-        return value
-    elif isinstance(value, int) or isinstance(value, float):
-        return torch.tensor(value, dtype=torch.float)
-    elif isinstance(value, np.ndarray):
-        return torch.from_numpy(value).float()
-    elif isinstance(value, list) or isinstance(value, tuple):
-        return torch.tensor(value, dtype=torch.float)
- 
-    raise ValueError("Input value must be a torch.Tensor")
 
 
 class PointBatchNorm(nn.Module):
@@ -85,25 +48,22 @@ class Neighboring(nn.Module):
 
         self.neighbor = Neighboring_Method(neighborhood_strategy, num_neighbors, **kwargs)
 
-    def forward(self, x, q_points) -> torch.Tensor:
+    def forward(self, q_points, support) -> torch.Tensor:
         """
         Parameters
         ----------
-        x : torch.Tensor
-            input tensor of shape (B, N, 3)
-
         q_points : torch.Tensor
             query points of shape (B, Q, 3)
 
+        support : torch.Tensor
+            input tensor of shape (B, N, 3)
+
         Returns
         -------
-        s_points_idxs : torch.Tensor
-            support points of shape (B, Q, k)
+        neighbor_idxs : torch.Tensor
+            neighbor indices of shape (B, Q, k)
         """
-        return self.neighbor(x, q_points)
-
-
-
+        return self.neighbor(q_points, support)
 
 
 
@@ -111,6 +71,61 @@ class Neighboring(nn.Module):
 # Build Graph Pyramid for GIBLi
 ###############################################################
 
+
+class BuildGraphPyramid(nn.Module):
+    
+        def __init__(self, 
+                    num_layers:int,
+                    graph_strategy:str,
+                    sampling_ratio:float,
+                    num_neighbors:List[int],
+                    neighborhood_strategy:str,
+                    neighborhood_kwargs:Dict,
+                    neighborhood_kwarg_update:Dict,
+                    **kwargs
+                    ) -> None:
+            
+            super(BuildGraphPyramid, self).__init__()
+    
+            self.num_layers = num_layers
+            self.graph_strategy = graph_strategy
+            self.sampling_ratio = sampling_ratio
+            self.num_neighbors = num_neighbors
+            self.neighborhood_strategy = neighborhood_strategy
+            self.neighborhood_kwargs = neighborhood_kwargs
+            self.neighborhood_kwarg_update = neighborhood_kwarg_update
+
+            if graph_strategy == 'grid':
+                self.voxel_size = kwargs['voxel_size']
+
+
+        def forward(self, points:torch.Tensor) -> Dict:
+            if self.graph_strategy == 'fps':
+                return build_fps_graph_pyramid(
+                    points, 
+                    self.num_layers, 
+                    self.sampling_ratio, 
+                    self.num_neighbors, 
+                    self.neighborhood_strategy, 
+                    self.neighborhood_kwargs, 
+                    self.neighborhood_kwarg_update
+                )
+            elif self.graph_strategy == 'grid':
+                return build_grid_graph_pyramid(
+                    points, 
+                    self.num_layers, 
+                    self.voxel_size,
+                    self.sampling_ratio,
+                    self.num_neighbors, 
+                    self.neighborhood_strategy, 
+                    self.neighborhood_kwargs, 
+                    self.neighborhood_kwarg_update
+                )
+            else:
+                raise ValueError("Query Strategy not supported")
+               
+    
+      
 @torch.no_grad()
 def build_fps_graph_pyramid(
     points: torch.Tensor,
@@ -118,10 +133,9 @@ def build_fps_graph_pyramid(
     sampling_ratio: float,
     num_neighbors: List[int],
     neighborhood_strategy: str,
-    neighborhood_kwargs: Dict,
-    neighborhood_kwarg_update: Dict,
+    neighborhood_kwargs: Dict = None,
+    neighborhood_kwarg_update: Dict = None,
     )-> Dict:
-
     """
     Build a Graph Pyramid using Farthest Point Sampling (FPS)
 
@@ -139,7 +153,7 @@ def build_fps_graph_pyramid(
 
     `num_neighbors` : List[int]
         the number of neighbors to consider at each layer;
-        thus, len(num_neighbors) = num_layers - 1
+        thus, len(num_neighbors) = num_layers
 
     `neighborhood_strategy` : str \in {'knn', 'dbscan', 'radius_ball'}
         the strategy to use for selecting neighbors
@@ -173,42 +187,49 @@ def build_fps_graph_pyramid(
 
     points_list = []
     neighbors_idxs_list = []
-    subsampling_idxs_list = []
-    upsampling_idxs_list = []
+    subsampling_list = []
+    upsampling_list = []
 
-    points_list.append(points[..., :3])
-    num_q_points = int(points.shape[0] * sampling_ratio)
-    for _ in range(num_layers):
-        points = Query_Points('fps', num_q_points=num_q_points)(points)
-        points_list.append(points) # (B, Q, 3)
+    points = points[..., :3]
+    num_q_points = points.shape[1] if points.ndim == 3 else points.shape[0]
+    points_list.append(points)
+
+    for _ in range(num_layers - 1):
         num_q_points = int(num_q_points * sampling_ratio)
-
+        points = Query_Points('fps', num_points=num_q_points)(points)
+        points_list.append(points) # (B, Q, 3)
+        print(points.shape)
 
     for i in range(num_layers):
         curr_points = points_list[i]
 
         neighborhood_finder = Neighboring(neighborhood_strategy, num_neighbors[i], **neighborhood_kwargs)
+
+        neighbor_idxs = neighborhood_finder(curr_points, curr_points) # (B, Q[i], k[i]); where Q is the num of q_points and k is the num of neighbors at ith layer
+        neighbors_idxs_list.append(neighbor_idxs)
+        print(f"Layer {i}: {neighbor_idxs.shape=}")
+
         upsample_kwargs = {}
         for key, value in neighborhood_kwargs.items():
             if key in neighborhood_kwarg_update:
                 upsample_kwargs[key] = value * neighborhood_kwarg_update[key]
-        
-        upsample_neighborhood_finder = Neighboring(neighborhood_strategy, num_neighbors[i+1], **upsample_kwargs)
-
-        s_points_idxs = neighborhood_finder(curr_points, curr_points) # (B, Q[i], k[i]); where Q is the num of q_points and k is the num of neighbors at ith layer
-        neighbors_idxs_list.append(s_points_idxs)
-
+        # print(upsample_kwargs)
 
         if i < num_layers - 1:
             next_points = points_list[i+1] # (B, Q[i+1], 3)
 
-            sub_points_idxs = neighborhood_finder(curr_points, next_points) # (B, Q[i+1], k[i])
-            subsampling_idxs_list.append(sub_points_idxs)
+            upsample_neighborhood_finder = Neighboring(neighborhood_strategy, num_neighbors[i+1], **upsample_kwargs)
 
+            # I want the neighbor_idxs of the current layer wrt the next layer. This way, the features for the next layer can just be aggregated from these indices
+            sub_points_idxs = neighborhood_finder(next_points, curr_points) # (B, Q[i+1], k[i]); the indices are from points[i]
+            subsampling_list.append(sub_points_idxs)
 
-            up_points_idxs = upsample_neighborhood_finder(next_points, curr_points) # (B, Q[i], k[i+1])
-            upsampling_idxs_list.append(up_points_idxs)
+            # up_points_idxs are the indices of the next_layer (i+1) wrt the current layer (i); 
+            # Thus, for each point in the current layer (i), we find the k[i+1] nearest neighbors in the next layer (i+1) in order to to interpolate the features of the latter;
+            up_points_idxs = upsample_neighborhood_finder(curr_points, next_points) # (B, Q[i], k[i+1]); the indices are from points[i+1]
+            upsampling_list.append(up_points_idxs)
 
+            print(f"Layer {i}: {sub_points_idxs.shape=}, {up_points_idxs.shape=}")
         
         neighborhood_kwargs = upsample_kwargs
 
@@ -216,95 +237,18 @@ def build_fps_graph_pyramid(
     return {
         'points_list': points_list,
         'neighbors_idxs_list': neighbors_idxs_list,
-        'subsampling_idxs_list': subsampling_idxs_list,
-        'upsampling_idxs_list': upsampling_idxs_list
+        'subsampling_list': subsampling_list,
+        'upsampling_list': upsampling_list
     }
             
 
 
-
-
-def build_full_grid_graph_pyramid(
+@torch.no_grad()
+def build_grid_graph_pyramid(
     points: torch.Tensor,
     num_layers: int,
     voxel_size: float,
-    )-> Dict:
-    """
-    Build a Graph Pyramid using Grid Sampling
-
-    Parameters
-    ----------
-    `points` : torch.Tensor
-        input tensor of shape (B, N, 3)
-
-    `num_layers` : int
-        number of layers in the graph pyramid, i.e., in the GIBLi model
-
-    `num_neighbors` : List[int]
-        the number of neighbors to consider at each layer;
-        thus, len(num_neighbors) = num_layers - 1
-
-    Returns
-    -------
-    `graph_pyramid` : Dict
-        a dictionary containing the following
-        - `points_list` : List[torch.Tensor]
-            a list of tensors containing the points at each layer, each with shape (B, Q, 3), where Q is updated according to the sampling ratio
-        - `neighbors_idxs_list` : List[torch.Tensor]
-            a list of tensors containing the indices of the neighbors at each layer, each with shape (B, Q, k), where k is the number of neighbors at each layer
-        - `subsampling_idxs_list` : List[torch.Tensor]
-            a list of tensors containing the indices of the subsampled points at each layer, each with shape (B, Q, k), where k is the number of neighbors
-        - `upsampling_idxs_list` : List[torch.Tensor]
-            a list of tensors containing the indices of the upsampled points at each layer, each with shape (B, Q, k), where k is the number of neighbors
-    """
-
-
-    points_list:List[torch.Tensor] = []
-    neighbors_idxs_list:List[torch.Tensor] = []
-    subsampling_idxs_list:List[torch.Tensor] = []
-    upsampling_idxs_list:List[torch.Tensor] = []
-
-    points = points[..., :3]
-    og_voxel_size = voxel_size
-
-    points_list.append(points)
-
-    for _ in range(num_layers):
-        points, clusters = grid_pooling_batch(points, voxel_size, None) # clusters is in format (B, N), where N is the number of points;
-        points_list.append(points)
-
-        # convert clusters shape to (B, Q, C), where Q is the number of centroids and C is the max number of points in each centroid; pad with -1
-        s_points_idxs = _cluster_to_spoints(clusters)
-        neighbors_idxs_list.append(s_points_idxs)
-
-        voxel_size *= 2 # double the voxel size for the next layer
-
-    
-    for i in range(num_layers):
-        if i < num_layers - 1:
-
-            subsampling_idxs_list.append(neighbors_idxs_list[i+1])
-
-            rev_i = num_layers - i - 1
-            upsampling_idxs_list.append(neighbors_idxs_list[rev_i])
-
-
-    # final upsampling layer
-    #TODO
-
-    return {
-        'points_list': points_list,
-        'neighbors_idxs_list': neighbors_idxs_list,
-        'subsampling_idxs_list': subsampling_idxs_list,
-        'upsampling_idxs_list': upsampling_idxs_list
-    }
-
-
-
-def build_neighbor_grid_graph_pyramid(
-    points: torch.Tensor,
-    num_layers: int,
-    voxel_size: float,
+    voxel_factor:int,
     num_neighbors: List[int],
     neighborhood_strategy: str,
     neighborhood_kwargs: Dict,
@@ -363,39 +307,39 @@ def build_neighbor_grid_graph_pyramid(
     points = points[..., :3]
 
     points_list.append(points)
-
-    for _ in range(num_layers):
+    for _ in range(num_layers - 1):
         points = Query_Points('grid', voxel_size=voxel_size)(points)
         points_list.append(points)
 
-        voxel_size *= 2 # double the voxel size for the next layer
-
+        voxel_size *= voxel_factor
+        print(f"{points.shape=}")
     
     for i in range(num_layers):
         curr_points = points_list[i]
 
         neighborhood_finder = Neighboring(neighborhood_strategy, num_neighbors[i], **neighborhood_kwargs)
         upsample_kwargs = {}
-        for key, value in neighborhood_kwargs.items():
-            if key in neighborhood_kwarg_update:
-                upsample_kwargs[key] = value * neighborhood_kwarg_update[key]
-        
-        upsample_neighborhood_finder = Neighboring(neighborhood_strategy, num_neighbors[i+1], **upsample_kwargs)
 
         s_points_idxs = neighborhood_finder(curr_points, curr_points)
         neighbors_idxs_list.append(s_points_idxs)
+        print(f"Layer {i}: {s_points_idxs.shape=}")
 
+        for key, value in neighborhood_kwargs.items():
+            if key in neighborhood_kwarg_update:
+                upsample_kwargs[key] = value * neighborhood_kwarg_update[key]
 
         if i < num_layers - 1:
+            upsample_neighborhood_finder = Neighboring(neighborhood_strategy, num_neighbors[i+1], **upsample_kwargs)
+
             next_points = points_list[i+1] # (B, Q[i+1], 3)
 
-            sub_points_idxs = neighborhood_finder(curr_points, next_points) # (B, Q[i+1], k[i])
+            sub_points_idxs = neighborhood_finder(next_points, curr_points) # (B, Q[i+1], k[i])
             subsampling_idxs_list.append(sub_points_idxs)
 
-
-            up_points_idxs = upsample_neighborhood_finder(next_points, curr_points) # (B, Q[i], k[i+1])
+            up_points_idxs = upsample_neighborhood_finder(curr_points, next_points) # (B, Q[i], k[i+1])
             upsampling_idxs_list.append(up_points_idxs)
 
+            print(f"Layer {i}: {sub_points_idxs.shape=}, {up_points_idxs.shape=}")
         
         neighborhood_kwargs = upsample_kwargs
 
@@ -408,15 +352,68 @@ def build_neighbor_grid_graph_pyramid(
     }
 
 
+ 
+
+if __name__ == '__main__':
+    import sys
+    sys.path.append('../')
+    sys.path.append('../../')
+    from utils import constants
+    from utils import pointcloud_processing as eda
+    from core.datasets.TS40K import TS40K_FULL_Preprocessed, TS40K_FULL
 
 
+    ts40k = TS40K_FULL_Preprocessed(
+        constants.TS40K_FULL_PREPROCESSED_PATH, 
+        split='fit', 
+        sample_types=['tower_radius', '2_towers'], 
+        transform=None, 
+        load_into_memory=False
+    )
 
-    
+    NUM_LAYERS = 5
+    SAMPLING_RATIO = 0.5
+    NUM_NEIGHBORS = [10, 20, 30, 40, 50]
+    # NEIGHBORHOOD_STRATEGY = 'radius_ball'
+    # NEIGHBORHOOD_KWARGS = {'radius': 0.1}
+    # NEIGHBORHOOD_KWARG_UPDATE = {'radius': 2.0}
+    # NEIGHBORHOOD_STRATEGY = 'dbscan'
+    # NEIGHBORHOOD_KWARGS = {'eps': 0.1, 'min_points': 10}
+    # NEIGHBORHOOD_KWARG_UPDATE = {'eps': 2.0, 'min_points': 2}
+    NEIGHBORHOOD_STRATEGY = 'knn'
+    NEIGHBORHOOD_KWARGS = {}
+    NEIGHBORHOOD_KWARG_UPDATE = {}
 
 
+    points, labels = ts40k[0]
+    points = points.unsqueeze(0)
 
+    print(points.shape)
 
+    # graph_pyramid = build_fps_graph_pyramid(
+    #     points, 
+    #     NUM_LAYERS, 
+    #     SAMPLING_RATIO, 
+    #     NUM_NEIGHBORS, 
+    #     NEIGHBORHOOD_STRATEGY, 
+    #     NEIGHBORHOOD_KWARGS, 
+    #     NEIGHBORHOOD_KWARG_UPDATE
+    # )
+    VOXEL_SIZE = torch.tensor((0.05, 0.05, 0.05))
+    VOXEL_FACTOR = 1.2
+    graph_pyramid = build_grid_graph_pyramid(
+        points, 
+        NUM_LAYERS, 
+        VOXEL_SIZE,
+        VOXEL_FACTOR,
+        NUM_NEIGHBORS, 
+        NEIGHBORHOOD_STRATEGY, 
+        NEIGHBORHOOD_KWARGS, 
+        NEIGHBORHOOD_KWARG_UPDATE
+    )
 
+    for key, value in graph_pyramid.items():
+        print(key, len(value), value[0].shape) 
 
 
 

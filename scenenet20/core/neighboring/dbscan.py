@@ -10,23 +10,23 @@ class DBSCAN_Neighboring:
         self.k = k
 
 
-    def __call__(self, x:torch.Tensor, q_points:torch.Tensor) -> torch.Tensor:
+    def __call__(self, q_points:torch.Tensor, support:torch.Tensor) -> torch.Tensor:
         """
         Parameters
         ----------
-        x - torch.Tensor
-            input tensor of shape (B, N, 3)
-
         q_points - torch.Tensor
             query points of shape (B, Q, 3)
+
+        support - torch.Tensor
+            input tensor of shape (B, N, 3)
 
         Returns
         -------
         s_points - torch.Tensor
             support points of shape (B, Q, k)
         """
-        s_points = dbscan_cluster(q_points, x, self.eps, self.min_points, self.k)
-        return s_points
+        neighbors = dbscan_cluster(q_points, support, self.eps, self.min_points, self.k)
+        return neighbors
 
 
 

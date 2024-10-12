@@ -590,7 +590,7 @@ def main():
         detect_anomaly=False,
         max_epochs=wandb.config.max_epochs,
         accelerator=wandb.config.accelerator,
-        devices=wandb.config.devices,
+        devices='auto',#wandb.config.devices,
         num_nodes=wandb.config.num_nodes,
         strategy=wandb.config.strategy,
         profiler=wandb.config.profiler if wandb.config.profiler else None,

@@ -38,7 +38,7 @@ class KPFCNN(nn.Module):
         self.encoder1_1 = KPConvBlock(input_dim, first_dim, kernel_size, first_radius, first_sigma)
         self.encoder1_2 = KPResidualBlock(first_dim, first_dim * 2, kernel_size, first_radius, first_sigma)
 
-        self.encoder2_1 = KPResidualBlock(
+        self.encoder2_1 = KPResidualBlock(\
             first_dim * 2, first_dim * 2, kernel_size, first_radius, first_sigma, strided=True
         )
         self.encoder2_2 = KPResidualBlock(first_dim * 2, first_dim * 4, kernel_size, first_radius * 2, first_sigma * 2)

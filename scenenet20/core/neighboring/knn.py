@@ -7,7 +7,7 @@ class KNN_Neighboring:
     def __init__(self, k:int) -> None:
         self.k = k
 
-    def __call__(self, x:Tensor, q_points:Tensor) -> torch.Tensor:
+    def __call__(self, q_points:Tensor, x:Tensor) -> torch.Tensor:
         """
         Parameters
         ----------

@@ -17,7 +17,7 @@ class Query_Points:
 
         The Options for sampling_strategy are:
         - `grid` - Grid Pooling, with `grid_size` as the hyperparameter to be passed in kwargs.
-        - `fps` - Farthest Point Sampling, with `num_q_points` as the hyperparameter to be passed in kwargs.
+        - `fps` - Farthest Point Sampling, with `num_points` as the hyperparameter to be passed in kwargs.
         """
         if sampling_strategy == 'grid':
             self.sampling = GridPooling(**kwargs)

@@ -13,28 +13,28 @@ from core.neighboring.knn import torch_knn
 
 class RadiusBall_Neighboring:
 
-    def __init__(self, radius, k, loop=False, pad_value=-1) -> None:
+    def __init__(self, radius, k, loop=True, pad_value=-1) -> None:
         self.radius = radius
         self.k = k
         self.loop = loop
         self.pad_value = pad_value
 
-    def __call__(self, x:torch.Tensor, q_points:torch.Tensor) -> torch.Tensor:
+    def __call__(self, q_points:torch.Tensor, support:torch.Tensor) -> torch.Tensor:
         """
         Parameters
         ----------
-        x - torch.Tensor
-            input tensor of shape (B, N, 3)
-
         q_points - torch.Tensor
             query points of shape (B, Q, 3)
+
+        support - torch.Tensor
+            input tensor of shape (B, N, 3)
 
         Returns
         -------
         graph - torch.Tensor
             support points of shape (B, Q, k)
         """
-        return k_radius_ball(q_points, x, self.radius, self.k, self.loop, self.pad_value)
+        return k_radius_ball(q_points, support, self.radius, self.k, self.loop, self.pad_value)
         
 
 
@@ -101,37 +101,52 @@ def radius_search(q_points, s_points, radius, neighbor_limit, batch_q=None, batc
         s, q = s[mask], q[mask]
     
     pairs = torch.stack([s, q], dim=0) # (2, N*num_neighbors)
-
     return pairs
 
 
-def pairs_to_tensor(pairs:torch.Tensor, pad_value=-1):
+def pairs_to_tensor(pairs:torch.Tensor, pad_value=-1, num_points=None):
     """
     Convert pairs of indices to a tensor.
 
     Parameters
     ----------
-    pairs : Tensor
-        Pairs of indices (2, N*neighbor_limit).
+    `pairs` : Tensor
+        Pairs of indices in pack_mode (2, B\*N\*neighbor_limit).
 
-    pad_value : int, optional
+    `pad_value` : int, optional
         Value to pad the tensor when the number of neighbors is less than neighbor_limit.
+
+    `num_points` : int, optional
+        Number of query points. 
+        If None, it is inferred from the pairs tensor. However, functionality is not guaranteed.
 
     Returns
     -------
-    graph : Tensor
-        Tensor of shape (B, N, neighbor_limit) with the indices of the neighbors.
+    `graph` : Tensor
+        Tensor of shape (B\*N, neighbor_limit) with the indices of the neighbors in pack_mode.
     """
-    # num of neigbours for each query point
-    _, counts = torch.unique(pairs[1], return_counts=True) # (N,)
+    # num of neighbors for each query point
+    q_points, counts = torch.unique(pairs[1], return_counts=True) # (N,), 
+    neighbor_limit = counts.max().item()
 
-    max_neighbors = counts.max().item()
+    if num_points is None:
+        num_points = q_points.shape[0]
+    else:
+        q_points = torch.arange(num_points, device=pairs.device) # some query points may not have neighbors
 
-    graph = torch.full((len(counts), max_neighbors), pad_value, dtype=torch.long, device=pairs.device)
+    graph = torch.full((num_points, neighbor_limit), pad_value, dtype=torch.long, device=pairs.device)
 
-    # naive implementation
-    for i in range(len(counts)):
-        graph[i, 0:counts[i]] = pairs[0][pairs[1] == i]
+    masks = pairs[1].unsqueeze(1) == q_points.unsqueeze(0) # (N, B*N*neighbor_limit)
+    neighbors = torch.where(masks)[0] # (B*N*neighbor_limit)
+
+    num_neighbors = masks.sum(dim=0)  # (B*N*neighbor_limit)
+
+    # tensor with the possible indices of the neighbors
+    index_tensor = torch.arange(neighbor_limit, device=pairs.device).unsqueeze(0).expand(len(q_points), -1) # (N, neighbor_limit)
+
+    # this masks the indices of the neighbors that are not valid
+    mask = index_tensor < num_neighbors.unsqueeze(1)
+    graph[mask] = neighbors
 
     return graph
 
@@ -171,16 +186,17 @@ def k_radius_ball(q_points:torch.Tensor, s_points:torch.Tensor, radius:float, ne
         s_points = s_points.unsqueeze(0)
         keepdim = True
 
-    q_points, q_lengths = batch_to_pack(q_points) # (N, 3), (B)
-    s_points, s_lengths = batch_to_pack(s_points) # (M, 3), (B)
+    num_points = q_points.shape[1] # N
+
+    q_points, q_lengths = batch_to_pack(q_points) # (N*B, 3), (B)
+    s_points, s_lengths = batch_to_pack(s_points) # (M*B, 3), (B)
     q_batch_vector = lengths_to_batchvector(q_lengths) # (N), batch_vector is the indices of the items in the batch
     s_batch_vector = lengths_to_batchvector(s_lengths) # (M)
 
-    pairs = radius_search(q_points, s_points, radius, neighbor_limit, q_batch_vector, s_batch_vector, loop)
-    graph = pairs_to_tensor(pairs, pad_value)
-
-    graph, _ = pack_to_batch(graph, q_lengths)
-
+    pairs = radius_search(q_points, s_points, radius, neighbor_limit, q_batch_vector, s_batch_vector, loop) # (2, N*neighbor_limit)
+    graph = pairs_to_tensor(pairs, pad_value, num_points=num_points) # (N*B, neighbor_limit)
+    graph, _ = pack_to_batch(graph, q_lengths) # (B, N, neighbor_limit)
+     
     if keepdim:
         graph = graph.squeeze(0)
 
@@ -230,8 +246,8 @@ if __name__ == "__main__":
         [1.0, 1.0, 1.0]
     ], device='cuda')
 
-    # points = points.reshape(2, 10, 3)
-    # query_points = query_points.reshape(2, 5, 3)
+    points = points.reshape(2, 10, 3)
+    query_points = query_points.reshape(2, 5, 3)
     radius = 0.2
     neighbor_limit = 5
 

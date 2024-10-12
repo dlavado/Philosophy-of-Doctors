@@ -47,24 +47,24 @@ class Neighboring_Method:
             raise NotImplementedError(f"Neighborhood strategy {neighborhood_strategy} not implemented.")
         
 
-    def __call__(self, x:torch.Tensor, q_points:torch.Tensor) -> torch.Tensor:
+    def __call__(self, q_points:torch.Tensor, support:torch.Tensor) -> torch.Tensor:
         """
         Parameters
         ----------
-        x - torch.Tensor
-            input tensor of shape (B, N, 3)
-
         q_points - torch.Tensor
             query points of shape (B, Q, 3)
 
+        support - torch.Tensor
+            input tensor of shape (B, N, 3)
+
         Returns
         -------
-        s_points_idxs - torch.Tensor
-            support points of shape (B, Q, k)
+        neighbor_idxs - torch.Tensor
+            neighbor indices of shape (B, Q, k)
         """
 
-        s_points_idxs = self.neighbor(x, q_points)
-        return s_points_idxs
+        neigh_idxs = self.neighbor(q_points, support)
+        return neigh_idxs
 
         
 
