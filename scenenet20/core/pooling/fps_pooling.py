@@ -41,40 +41,6 @@ class FPSPooling:
         self.feat_mapping = feat_mapping
         self.agg_coords = False
     
-
-    def fps_sampling(self, x:torch.Tensor) -> torch.Tensor:
-        """
-        Parameters
-        ----------
-        x - torch.Tensor
-            input tensor of shape (B, N, F)
-
-        Returns
-        -------
-        q_points - torch.Tensor
-            query points of shape (B, N/pooling_factor, 3)
-        """
-        from torch_cluster import fps
-
-        pointcloud = x[..., :3]
-
-        if pointcloud.ndim == 3: # if the input is a batch of point clouds
-            B, _, F = pointcloud.shape
-            batch_vector = torch.arange(pointcloud.shape[0], device=pointcloud.device).repeat_interleave(pointcloud.shape[1])
-            pointcloud = pointcloud.view(-1, pointcloud.shape[-1]) # shape = (B*N, 3 + F)
-        else:
-            B = None
-            batch_vector = None
-
-        fps_indices = fps(pointcloud, batch=batch_vector, ratio=1/self.pooling_factor, random_start=True)
-        q_points = pointcloud[fps_indices]
-
-        if B is not None:
-            q_points = q_points.view(B, -1, q_points.shape[-1])
-
-        return q_points
-    
-
     def __call__(self, x:torch.Tensor) -> torch.Tensor:
         """
         Parameters
@@ -87,12 +53,11 @@ class FPSPooling:
         pooled_points - torch.Tensor
             pooled points of shape (N/pooling_factor, 3 + F)
         """
-        q_points = self.fps_sampling(x) # (q_points, 3)
+        q_points = fps_sampling(x, pooling_factor=self.pooling_factor) # (q_points, 3)
 
         s_point_idxs = self.neighbor(x[..., :3], q_points) # (q_points, num_neighbors)
         s_point_feats = x[s_point_idxs, 3:] # (q_points, num_neighbors, F)
         print(q_points.shape, s_point_idxs.shape, s_point_feats.shape)
-        
         
         # aggregate features of support points at each query point; pooled_points shape = (q_points, F)
         if self.feat_mapping == 'max':
@@ -111,7 +76,44 @@ class FPSPooling:
 
         return torch.cat([q_points, pooled_points], dim=-1)
     
+def fps_sampling(x:torch.Tensor, pooling_factor=None, num_points=None) -> torch.Tensor:
+        """
+        Parameters
+        ----------
+        x - torch.Tensor
+            input tensor of shape (B, N, F)
 
+        Returns
+        -------
+        q_points - torch.Tensor
+            query points of shape (B, N/pooling_factor, 3)
+        """
+        from torch_cluster import fps
+        assert pooling_factor is not None or num_points is not None, "Either pooling_factor or num_points must be provided."
+
+        pointcloud = x[..., :3]
+
+        if pointcloud.ndim == 3: # if the input is a batch of point clouds
+            B, N, F = pointcloud.shape
+            batch_vector = torch.arange(pointcloud.shape[0], device=pointcloud.device).repeat_interleave(pointcloud.shape[1])
+            pointcloud = pointcloud.view(-1, pointcloud.shape[-1]) # shape = (B*N, 3 + F)
+        else:
+            B = None
+            N = pointcloud.shape[0]
+            batch_vector = None
+
+        if pooling_factor is None:
+            ratio = num_points / N
+        else:
+            ratio = 1 / pooling_factor
+
+        fps_indices = fps(pointcloud, batch=batch_vector, ratio=ratio, random_start=True)
+        q_points = pointcloud[fps_indices]
+
+        if B is not None:
+            q_points = q_points.view(B, -1, q_points.shape[-1])
+
+        return q_points
 
 
 if __name__ == "__main__":

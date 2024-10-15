@@ -27,7 +27,8 @@ class Farthest_Point_Sampling:
         if pointcloud.ndim == 3: # if the input is a batch of point clouds
             B, _, F = pointcloud.shape
             batch_vector = torch.arange(pointcloud.shape[0], device=pointcloud.device).repeat_interleave(pointcloud.shape[1])
-            pointcloud = pointcloud.view(-1, pointcloud.shape[-1]) # shape = (B*N, 3 + F)
+            pointcloud = pointcloud.reshape(-1, pointcloud.shape[-1]) # shape = (B*N, 3 + F)
+            self.num_points = self.num_points * B
         else:
             B = None
             batch_vector = None
@@ -36,7 +37,7 @@ class Farthest_Point_Sampling:
         q_points = pointcloud[fps_indices]
 
         if B is not None:
-            q_points = q_points.view(B, -1, q_points.shape[-1])
+            q_points = q_points.reshape(B, -1, q_points.shape[-1])
             # fps_indices = fps_indices.view(B, -1)
 
         return q_points

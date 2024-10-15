@@ -17,7 +17,7 @@ preprocessed:
 load_into_memory:
   value: True
 add_normals:
-  value: False
+  value: True
   description: 'If True, adds normals to the dataset'
 data_path:
   value: ''
@@ -30,7 +30,7 @@ num_data_channels:
   value: 6 # 3 for coords and 3 for rgb
   description: 'Number of channels in the dataset'
 batch_size:
-  value: 4
+  value: 16
 ignore_index:
   value: -1 # noise
 num_workers: 
@@ -58,7 +58,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 1 # -1 for infinite
+  value: 450 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:

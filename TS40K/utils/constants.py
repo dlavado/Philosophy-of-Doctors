@@ -7,11 +7,14 @@ import torch
 def get_project_root() -> Path:
     return Path(__file__).parent.parent
 
-def get_experiment_path(model, dataset) -> Path:
+def get_experiment_dir(model, dataset) -> Path:
     return os.path.join(get_project_root(), 'experiments', f"{model}_{dataset}")
 
+def get_checkpoint_dir(model, dataset) -> Path:
+    return os.path.join(get_experiment_dir(model, dataset), 'checkpoints')
+
 def get_experiment_config_path(model, dataset) -> Path:
-    return os.path.join(get_experiment_path(model, dataset), 'defaults_config.yml')
+    return os.path.join(get_experiment_dir(model, dataset), 'defaults_config.yml')
 
 
 ROOT_PROJECT = get_project_root()

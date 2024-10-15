@@ -138,11 +138,29 @@ class GIB_Layer(nn.Module):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
     
 
-    def _compute_gib_outputs(self, points:torch.Tensor, q_coords:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
+    def _compute_gib_outputs(self, points:torch.Tensor, q_points:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
 
-        q_outputs = torch.zeros((len(q_coords), len(self.gibs)), dtype=points.dtype, device=points.device)
+        if points.dim() == 2:
+            points = points.unsqueeze(0)
+            q_points = q_points.unsqueeze(0)
+            support_idxs = support_idxs.unsqueeze(0)
+            batched = False
+        else:
+            batched = True
+
+        print(f"{points.shape=}, {q_points.shape=}, {support_idxs.shape=}")
+
+
+        q_outputs = torch.zeros((points.shape[0], q_points.shape[1], len(self.gibs)), dtype=points.dtype, device=points.device) # shape (B, M, num_gibs)
+        # print(f"{q_outputs.shape=}")
         for i, gib_key in enumerate(self.gibs):
-            q_outputs[:, i] = self.gibs[gib_key](points, q_coords, support_idxs)
+            gib_output = self.gibs[gib_key](points, q_points, support_idxs) # shape: ([B], M)
+            # print(f"{gib_output.shape=}")
+            q_outputs[:, :, i] = gib_output
+            
+
+        if not batched:
+            q_outputs = q_outputs.squeeze(0)
 
         return q_outputs
     
@@ -176,6 +194,37 @@ class GIB_Layer(nn.Module):
         q_outputs = self._compute_observers(q_outputs) # shape (M, num_observers)
         return q_outputs
     
+
+    def forward_batch(self, points:torch.Tensor, q_coords:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
+        """
+        Computes the output of the GIB-Layer on the query points given the support points.
+
+        Parameters
+        ----------
+        `points` - torch.Tensor:
+            Tensor of shape (B, N, 3) representing the batch of point clouds.
+
+        `q_coords` - torch.Tensor:
+            Tensor of shape (B, M, 3) representing the batch of query points; M <= N.
+
+        `supports_idxs` - torch.Tensor[int]:
+            Tensor of shape (B, M, K) representing the indices of the support points for each query point. With K <= N.
+
+        Returns
+        -------
+        `q_outputs` - torch.Tensor:
+            Tensor of shape (B, M, num_observers) representing the output of the GIB-Layer on the query points.
+        """
+        B, M, _ = q_coords.shape
+        q_outputs = torch.zeros((B, M, len(self.gibs)), dtype=points.dtype, device=points.device)
+        
+        for i, gib_key in enumerate(self.gibs):
+            for b in range(B):
+                q_outputs[b, :, i] = self.gibs[gib_key](points[b], q_coords[b], support_idxs[b])
+
+        q_outputs = q_outputs @ self.lambdas
+        return q_outputs
+    
     
 
 ###############################################################
@@ -204,6 +253,7 @@ class GIB_Block(nn.Module):
         gib_out = self.gib(coords, q_points, neighbor_idxs) # (B, Q, num_observers)
         gib_out = self.act(self.gib_norm(gib_out)) # (B, Q, num_observers)
 
+        print(f"{feats.shape=}, {gib_out.shape=}")
         mlp_out = torch.cat([feats, gib_out], dim=-1) # (B, Q, out_channels)
         mlp_out = self.mlp(mlp_out) # (B, Q, out_channels)
         mlp_out = self.act(self.mlp_norm(mlp_out)) # (B, Q, out_channels)
@@ -269,7 +319,7 @@ class Unpool_wSkip(nn.Module):
                 out_channels,
                 bias=True,
                 skip=True,
-                backend="map") -> None:
+                backend="max") -> None:
     
         super(Unpool_wSkip, self).__init__()
 
@@ -288,17 +338,19 @@ class Unpool_wSkip(nn.Module):
             nn.ReLU(inplace=True),
         )
 
-
-    def forward(self, curr_points, skip_points, upsampling_idxs) -> torch.Tensor:
+    def forward(self, curr_points: Tuple[torch.Tensor, torch.Tensor], skip_points: Tuple[torch.Tensor, torch.Tensor], upsampling_idxs: torch.Tensor) -> torch.Tensor:
         """
         Parameters
         ----------
+        `curr_points` - Tuple[torch.Tensor, torch.Tensor]:
+            Tuple containing two tensors:
+                - coords: Tensor of shape (B, M, 3) representing the input coordinates of the current layer
+                - feats: Tensor of shape (B, M, C) representing the input features of the current layer
 
-        `curr_points` - torch.Tensor:
-            Tensor of shape (B, M, 3 + C) representing the input coords + features of the current layer
-
-        `skip_points` - torch.Tensor:
-            Tensor of shape (B, N, 3 + C) representing the input coords + features of the skip connection
+        `skip_points` - Tuple[torch.Tensor, torch.Tensor]:
+            Tuple containing two tensors:
+                - coords: Tensor of shape (B, N, 3) representing the input coordinates of the skip connection
+                - feats: Tensor of shape (B, N, C) representing the input features of the skip connection
 
         `upsampling_idxs` - torch.Tensor[int]:
             Tensor of shape (B, N, K) representing the indices of the curr_points that are neighbors of the skip_points
@@ -310,8 +362,11 @@ class Unpool_wSkip(nn.Module):
         """
 
         # Extract the coordinates and features from the input points
-        curr_feat = curr_points[:, :, :3]
-        skip_coords, skip_feat = skip_points[:, :, :3], skip_points[:, :, 3:]
+        curr_coords, curr_feat = curr_points
+        skip_coords, skip_feat = skip_points
+
+        curr_points = torch.cat([curr_coords, curr_feat], dim=-1) # (B, M, 3 + C)
+        skip_points = torch.cat([skip_coords, skip_feat], dim=-1) # (B, N, 3 + C)
 
         if self.backend == 'interp':
             inter_feats = interpolation(curr_points, skip_points, upsampling_idxs)

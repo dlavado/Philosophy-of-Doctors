@@ -142,7 +142,7 @@ def pairs_to_tensor(pairs:torch.Tensor, pad_value=-1, num_points=None):
     num_neighbors = masks.sum(dim=0)  # (B*N*neighbor_limit)
 
     # tensor with the possible indices of the neighbors
-    index_tensor = torch.arange(neighbor_limit, device=pairs.device).unsqueeze(0).expand(len(q_points), -1) # (N, neighbor_limit)
+    index_tensor = torch.arange(neighbor_limit, device=pairs.device).unsqueeze(0).expand(-1, neighbor_limit) # (N, neighbor_limit)
 
     # this masks the indices of the neighbors that are not valid
     mask = index_tensor < num_neighbors.unsqueeze(1)
@@ -180,21 +180,25 @@ def k_radius_ball(q_points:torch.Tensor, s_points:torch.Tensor, radius:float, ne
     graph : Tensor
         Tensor of shape (B, N, neighbor_limit) with the indices of the neighbors.
     """
-    keepdim = False
+    
     if q_points.dim() == 2:
         q_points = q_points.unsqueeze(0)
         s_points = s_points.unsqueeze(0)
         keepdim = True
+    else:
+        keepdim = False
 
     num_points = q_points.shape[1] # N
+    batch_size = q_points.shape[0] # B
 
     q_points, q_lengths = batch_to_pack(q_points) # (N*B, 3), (B)
     s_points, s_lengths = batch_to_pack(s_points) # (M*B, 3), (B)
     q_batch_vector = lengths_to_batchvector(q_lengths) # (N), batch_vector is the indices of the items in the batch
     s_batch_vector = lengths_to_batchvector(s_lengths) # (M)
 
-    pairs = radius_search(q_points, s_points, radius, neighbor_limit, q_batch_vector, s_batch_vector, loop) # (2, N*neighbor_limit)
-    graph = pairs_to_tensor(pairs, pad_value, num_points=num_points) # (N*B, neighbor_limit)
+    pairs = radius_search(q_points, s_points, radius, neighbor_limit, q_batch_vector, s_batch_vector, loop) # (2, B*N*neighbor_limit)
+    print(pairs.shape)
+    graph = pairs_to_tensor(pairs, pad_value, num_points=num_points*batch_size) # (N*B, neighbor_limit)
     graph, _ = pack_to_batch(graph, q_lengths) # (B, N, neighbor_limit)
      
     if keepdim:

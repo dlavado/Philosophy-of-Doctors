@@ -54,7 +54,7 @@ class LitLabelec(pl.LightningDataModule):
         return DataLoader(self.val_dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=True)
     
     def test_dataloader(self):
-        return DataLoader(self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=False)
+        return DataLoader(self.val_dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=False)
     
     def predict_dataloader(self):
         return DataLoader(self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)
@@ -96,7 +96,7 @@ class LitLabelec_Preprocessed(pl.LightningDataModule):
         return DataLoader(self.val_dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=True)
     
     def test_dataloader(self):
-        return DataLoader(self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=False)
+        return DataLoader(self.val_dataset, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=False)
     
     def predict_dataloader(self):
         return DataLoader(self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers)

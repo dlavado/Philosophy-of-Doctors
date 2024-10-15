@@ -174,6 +174,46 @@ class GIB_Stub(torch.nn.Module):
 
         return config
     
+
+    def _retrieve_support_points(self, points: torch.Tensor, supports_idxs: torch.Tensor) -> torch.Tensor:
+        """
+        Retrieves the support points from the input tensor given the support indices.
+
+        Parameters
+        ----------
+
+        `points` - torch.Tensor:
+            Tensor of shape (B, N, 3) representing the point cloud.
+
+        `supports_idxs` - torch.Tensor:
+            Tensor of shape (B, M, K) representing the indices of the support points for each query point.
+
+        Returns
+        -------
+        `support_points` - torch.Tensor:
+            Tensor of shape (B, M, K, 3) representing the support points.
+        """
+        B, M, K = supports_idxs.shape
+
+        flat_supports_idxs = supports_idxs.reshape(B, -1) # (B, M*K)
+
+        # Gather the points (B, M*K, 3)
+        # the expanded tensor lets us gather the points at the indices in flat_supports_idxs
+        gathered_support_points = torch.gather(points, 1, flat_supports_idxs.unsqueeze(-1).expand(-1, -1, 3))
+
+        # Reshape back to (B, M, K, 3)
+        support_points = gathered_support_points.reshape(B, M, K, 3)
+        return support_points
+    
+
+    def _plot_integral(self, gaussian_x:torch.Tensor):
+        print(f"{gaussian_x.shape=}")
+        import matplotlib.pyplot as plt
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        mc = self.montecarlo_points.detach().cpu().numpy()
+        ax.scatter(mc[:, 0], mc[:, 1], mc[:, 2], c=gaussian_x.detach().cpu().numpy(), cmap='magma')
+        plt.show()  
     
    
     def rotate(self, points:torch.Tensor) -> torch.Tensor:
@@ -186,12 +226,12 @@ class GIB_Stub(torch.nn.Module):
             Tensor of shape (3,) containing rotation angles for the x, y, and z axes.
             These are nromalized in the range [-1, 1] and represent angles_normalized = angles / pi.
 
-        points - torch.Tensor:
+        `points` - torch.Tensor:
             Tensor of shape (N, 3) representing the 3D points to rotate.
             
         Returns
         -------
-        points - torch.Tensor:
+        `points` - torch.Tensor:
             Tensor of shape (N, 3) containing the rotated
         """
         if self.angles is None:

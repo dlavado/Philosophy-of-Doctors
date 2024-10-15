@@ -28,7 +28,7 @@ from pytorch_lightning.loggers import WandbLogger
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 
-from utils.constants import *
+import utils.constants as C
 import utils.my_utils as su
 import utils.pointcloud_processing as eda
 
@@ -95,7 +95,7 @@ def init_callbacks(ckpt_dir):
                 save_last=False,
                 every_n_epochs=wandb.config.checkpoint_every_n_epochs,
                 every_n_train_steps=wandb.config.checkpoint_every_n_steps,
-                verbose=False,
+                verbose=True,
             )
         )
 
@@ -108,7 +108,7 @@ def init_callbacks(ckpt_dir):
             mode="min",
             every_n_epochs=wandb.config.checkpoint_every_n_epochs,
             every_n_train_steps=wandb.config.checkpoint_every_n_steps,
-            verbose=False,
+            verbose=True,
         )
     )
 
@@ -499,7 +499,9 @@ def main():
     # 0 INIT CALLBACKS
     # ------------------------
 
-    if not wandb.config.resume_from_checkpoint:
+    # if wandb is disbabled, use local directory
+    if main_parser.wandb_mode != 'disabled' and not wandb.config.resume_from_checkpoint:
+        # if wandb is enabled, use wandb directory
         ckpt_dir = os.path.join(wandb.run.dir, "checkpoints") 
     else:
         ckpt_dir = wandb.config.checkpoint_dir
@@ -550,9 +552,9 @@ def main():
     dataset_name = wandb.config.dataset       
     if dataset_name == 'ts40k':
         if wandb.config.preprocessed:
-            data_path = TS40K_FULL_PREPROCESSED_PATH
+            data_path = C.TS40K_FULL_PREPROCESSED_PATH
         else:
-            data_path = TS40K_FULL_PATH
+            data_path = C.TS40K_FULL_PATH
         # if idis_mode:
         #     data_path = TS40K_FULL_PREPROCESSED_IDIS_PATH
         # elif smote_mode:
@@ -560,9 +562,9 @@ def main():
         data_module = init_ts40k(data_path, wandb.config.preprocessed)
     elif dataset_name == 'labelec':
         if wandb.config.preprocessed:
-            data_path  = LABELEC_RGB_PREPROCESSED
+            data_path  = C.LABELEC_RGB_PREPROCESSED
         else:
-            data_path = LABELEC_RGB_DIR
+            data_path = C.LABELEC_RGB_DIR
         data_module = init_labelec(data_path, wandb.config.preprocessed)
     else:
         raise ValueError(f"Dataset {dataset_name} not supported.")
@@ -616,7 +618,7 @@ def main():
 
                     # Initialize artifact to log checkpoint
                     artifact = wandb.Artifact(name=f"{model_name}_{ckpt.monitor}", type="model")
-                    artifact.add_file(checkpoint_path) 
+                    artifact.add_file(checkpoint_path, name=f"{model_name}_{ckpt.monitor}.ckpt") 
                     wandb.log_artifact(artifact)
                     print(f"Checkpoint logged to Wandb: {checkpoint_path}")
             
@@ -718,7 +720,7 @@ if __name__ == '__main__':
     smote_mode = main_parser.smote
 
     # config_path = get_experiment_config_path(model_name, dataset_name)
-    experiment_path = get_experiment_path(model_name, dataset_name)
+    experiment_path = C.get_experiment_dir(model_name, dataset_name)
 
     os.environ["WANDB_DIR"] = os.path.abspath(os.path.join(experiment_path, 'wandb'))
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
@@ -752,6 +754,10 @@ if __name__ == '__main__':
 
     if wandb.config.add_normals:
         wandb.config.update({'num_data_channels': wandb.config.num_data_channels + 3}, allow_val_change=True) # override data path
+
+    if main_parser.wandb_mode == 'disabled':
+        ckpt_dir = C.get_checkpoint_dir(model_name, dataset_name)
+        wandb.config.update({'checkpoint_dir': ckpt_dir}, allow_val_change=True)
       
     # print(f"wandb.config.num_data_channels: {wandb.config.num_data_channels}")
     main()

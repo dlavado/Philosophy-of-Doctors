@@ -92,16 +92,16 @@ class LitKPConv(LitWrapperModel):
         # flat targets
         y = y.reshape(-1).to(torch.long)
         
-        print("scores: ", scores.shape, "targets: ", y.shape)
-        print(torch.max(scores), torch.min(scores))
+        # print("scores: ", scores.shape, "targets: ", y.shape)
+        # print(torch.max(scores), torch.min(scores))
 
         loss = self.criterion(scores, y)
         preds = self.prediction(scores)
 
-        print(f"{loss=}")
-        print(f"{preds.shape=}")
-        print(f"{torch.unique(y)=}")
-        print(f"{torch.unique(preds)=}")
+        # print(f"{loss=}")
+        # print(f"{preds.shape=}")
+        # print(f"{torch.unique(y)=}")
+        # print(f"{torch.unique(preds)=}")
 
         if stage:
             on_step = stage == "train" 

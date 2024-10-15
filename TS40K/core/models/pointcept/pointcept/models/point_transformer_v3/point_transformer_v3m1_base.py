@@ -701,6 +701,7 @@ class PointTransformerV3(PointModule):
         self.head = nn.Linear(dec_channels[0], num_classes)
 
     def forward(self, data_dict):
+        data_dict['grid_size'] = 0.01
         point = Point(data_dict)
         point.serialization(order=self.order, shuffle_orders=self.shuffle_orders)
         point.sparsify()
@@ -709,10 +710,10 @@ class PointTransformerV3(PointModule):
         point = self.enc(point)
         if not self.cls_mode:
             point = self.dec(point)
-        # else:
-        #     point.feat = torch_scatter.segment_csr(
-        #         src=point.feat,
-        #         indptr=nn.functional.pad(point.offset, (1, 0)),
-        #         reduce="mean",
-        #     )
+        else:
+            point.feat = torch_scatter.segment_csr(
+                src=point.feat,
+                indptr=nn.functional.pad(point.offset, (1, 0)),
+                reduce="mean",
+            )
         return self.head(torch.nn.GELU()(point.feat))

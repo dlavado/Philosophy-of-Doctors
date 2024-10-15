@@ -199,7 +199,7 @@ if __name__ == "__main__":
     smote_mode = main_parser.smote
 
     # config_path = get_experiment_config_path(model_name, dataset_name)
-    experiment_path = consts.get_experiment_path(model_name, dataset_name)
+    experiment_path = consts.get_experiment_dir(model_name, dataset_name)
 
     os.environ["WANDB_DIR"] = os.path.abspath(os.path.join(experiment_path, 'wandb'))
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1' # idk man

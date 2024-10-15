@@ -14,7 +14,7 @@ def build_rotarion_matrix(angles:torch.Tensor) -> torch.Tensor:
     ----------
     `angles` - torch.Tensor:
         Tensor of shape (3,) containing rotation angles for the x, y, and z axes.
-        These are nromalized in the range [-1, 1] and represent angles_normalized = angles / pi.
+        These are normalized in the range [-1, 1] and represent angles_normalized = angles / pi.
     """
 
     angles = angles * 180 # convert to degrees
@@ -24,11 +24,11 @@ def build_rotarion_matrix(angles:torch.Tensor) -> torch.Tensor:
     cos_ty, sin_ty = torch.cos(t_y), torch.sin(t_y)
     cos_tz, sin_tz = torch.cos(t_z), torch.sin(t_z)
 
-    R = torch.tensor([
-        [cos_ty * cos_tz, cos_tz * sin_tx * sin_ty - cos_tx * sin_tz, cos_tx * cos_tz * sin_ty + sin_tx * sin_tz],
-        [cos_ty * sin_tz, cos_tx * cos_tz + sin_tx * sin_ty * sin_tz, -cos_tz * sin_tx + cos_tx * sin_ty * sin_tz],
-        [-sin_ty, cos_ty * sin_tx, cos_tx * cos_ty]
-    ], device=angles.device)
+    R = torch.stack([
+        torch.stack([cos_ty * cos_tz, cos_tz * sin_tx * sin_ty - cos_tx * sin_tz, cos_tx * cos_tz * sin_ty + sin_tx * sin_tz]),
+        torch.stack([cos_ty * sin_tz, cos_tx * cos_tz + sin_tx * sin_ty * sin_tz, -cos_tz * sin_tx + cos_tx * sin_ty * sin_tz]),
+        torch.stack([-sin_ty, cos_ty * sin_tx, cos_tx * cos_ty])
+    ])
 
     return R
 

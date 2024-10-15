@@ -274,7 +274,7 @@ if __name__ == '__main__':
 
     LABELEC_DIR = consts.LABELEC_RGB_DIR
 
-    split = 'fit'
+    split = 'test'
 
     labelec = Labelec_Preprocessed(
         data_dir=consts.LABELEC_RGB_PREPROCESSED,
@@ -283,13 +283,13 @@ if __name__ == '__main__':
         load_into_memory=False
     )
 
-    # class_freqs = torch.zeros(6)
+    class_freqs = torch.zeros(6)
     # # CLASS DENSITY: tensor([0.0541, 0.0006, 0.3098, 0.6208, 0.0061, 0.0085])
-    # for i in tqdm(range(len(labelec)), desc="Calculating class frequencies..."):
-    #     _, y = labelec[i]
-    #     class_freqs += torch.bincount(y.long(), minlength=6)
+    for i in tqdm(range(len(labelec)), desc="Calculating class frequencies..."):
+        _, y = labelec[i]
+        class_freqs += torch.bincount(y.long(), minlength=6)
 
-    # print(class_freqs / torch.sum(class_freqs))
+    print(class_freqs / torch.sum(class_freqs))
 
     # for i in range(len(labelec)):
     #     x, y = labelec[i]

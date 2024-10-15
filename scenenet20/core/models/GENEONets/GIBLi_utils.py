@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Union
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -77,8 +77,8 @@ class BuildGraphPyramid(nn.Module):
         def __init__(self, 
                     num_layers:int,
                     graph_strategy:str,
-                    sampling_ratio:float,
-                    num_neighbors:List[int],
+                    sampling_factor:float,
+                    num_neighbors:Union[int, List[int]],
                     neighborhood_strategy:str,
                     neighborhood_kwargs:Dict,
                     neighborhood_kwarg_update:Dict,
@@ -89,8 +89,11 @@ class BuildGraphPyramid(nn.Module):
     
             self.num_layers = num_layers
             self.graph_strategy = graph_strategy
-            self.sampling_ratio = sampling_ratio
-            self.num_neighbors = num_neighbors
+            self.sampling_factor = sampling_factor
+            if isinstance(num_neighbors, int):
+                self.num_neighbors = [num_neighbors] * num_layers
+            else:
+                self.num_neighbors = num_neighbors
             self.neighborhood_strategy = neighborhood_strategy
             self.neighborhood_kwargs = neighborhood_kwargs
             self.neighborhood_kwarg_update = neighborhood_kwarg_update
@@ -104,7 +107,7 @@ class BuildGraphPyramid(nn.Module):
                 return build_fps_graph_pyramid(
                     points, 
                     self.num_layers, 
-                    self.sampling_ratio, 
+                    1 / self.sampling_factor, 
                     self.num_neighbors, 
                     self.neighborhood_strategy, 
                     self.neighborhood_kwargs, 
@@ -115,7 +118,7 @@ class BuildGraphPyramid(nn.Module):
                     points, 
                     self.num_layers, 
                     self.voxel_size,
-                    self.sampling_ratio,
+                    self.sampling_factor,
                     self.num_neighbors, 
                     self.neighborhood_strategy, 
                     self.neighborhood_kwargs, 
@@ -237,8 +240,8 @@ def build_fps_graph_pyramid(
     return {
         'points_list': points_list,
         'neighbors_idxs_list': neighbors_idxs_list,
-        'subsampling_list': subsampling_list,
-        'upsampling_list': upsampling_list
+        'subsampling_idxs_list': subsampling_list,
+        'upsampling_idxs_list': upsampling_list
     }
             
 
