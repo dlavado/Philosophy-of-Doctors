@@ -1,7 +1,7 @@
 from torch import Tensor
 
 
-def index_select(inputs: Tensor, indices: Tensor, dim: int) -> Tensor:
+def     index_select(inputs: Tensor, indices: Tensor, dim: int) -> Tensor:
     """Advanced indices select.
 
     Returns a tensor `output` which indexes the `inputs` tensor along dimension `dim` using the entries in `indices`

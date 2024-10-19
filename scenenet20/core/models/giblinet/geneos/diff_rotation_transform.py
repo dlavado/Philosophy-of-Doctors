@@ -52,8 +52,9 @@ def rotate_points(angles:torch.Tensor, points:torch.Tensor) -> torch.Tensor:
         Tensor of shape (N, 3) containing the rotated
     """
 
-    R = build_rotarion_matrix(angles)
-    return torch.matmul(points, R.T)
+    R = build_rotarion_matrix(angles).contiguous()
+    # print(f"{R.device=} {points.device=}")
+    return torch.matmul(points.contiguous(), R.T)
 
 if __name__ == '__main__':
     pass

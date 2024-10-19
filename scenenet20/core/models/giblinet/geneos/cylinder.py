@@ -7,7 +7,7 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 sys.path.insert(3, '../../../..')
-from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub, GIB_PARAMS, NON_TRAINABLE
+from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIB_PARAMS, NON_TRAINABLE
 
 
 

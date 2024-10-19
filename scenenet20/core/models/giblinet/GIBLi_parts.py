@@ -7,10 +7,11 @@ import sys
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 
-from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub, NON_TRAINABLE, GIB_PARAMS, to_parameter, to_tensor
-from core.models.GENEONets.geneos import cylinder, disk, cone, ellipsoid
-from core.models.GENEONets.GIBLi_utils import PointBatchNorm
+from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, NON_TRAINABLE, GIB_PARAMS, to_parameter, to_tensor
+from core.models.giblinet.geneos import cylinder, disk, cone, ellipsoid
+from core.models.giblinet.GIBLi_utils import PointBatchNorm
 from core.unpooling.nearest_interpolation import interpolation
+from core.pooling.pooling import local_pooling
 
 ###############################################################
 #                          GIB Layer                          #
@@ -103,7 +104,7 @@ class GIB_Layer(nn.Module):
         else:
             self.gib_dict = gib_dict
 
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.num_observers = num_observers
 
         self.gibs:Mapping[str, GIB_Operator] = nn.ModuleDict()
@@ -120,11 +121,11 @@ class GIB_Layer(nn.Module):
                 g_class = ellipsoid.Ellipsoid
 
             for i in range(self.gib_dict[key]):
-                self.gibs[f'{key}_{i}'] = GIB_Operator(g_class, kernel_reach=kernel_reach).to(self.device)
+                self.gibs[f'{key}_{i}'] = GIB_Operator(g_class, kernel_reach=kernel_reach)#.to(self.device)
 
 
         # --- Initializing Convex Coefficients ---
-        self.lambdas = torch.randn((len(self.gibs), num_observers), device=self.device) # shape (num_gibs, num_observers)
+        self.lambdas = torch.randn((len(self.gibs), num_observers)) # shape (num_gibs, num_observers)
         self.maintain_convexity() # make sure the coefficients are convex
         self.lambdas = to_parameter(self.lambdas)
 
@@ -138,23 +139,22 @@ class GIB_Layer(nn.Module):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
     
 
-    def _compute_gib_outputs(self, points:torch.Tensor, q_points:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
+    def _compute_gib_outputs(self, coords:torch.Tensor, q_points:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
 
-        if points.dim() == 2:
-            points = points.unsqueeze(0)
+        if coords.dim() == 2:
+            coords = coords.unsqueeze(0)
             q_points = q_points.unsqueeze(0)
             support_idxs = support_idxs.unsqueeze(0)
             batched = False
         else:
             batched = True
 
-        print(f"{points.shape=}, {q_points.shape=}, {support_idxs.shape=}")
 
-
-        q_outputs = torch.zeros((points.shape[0], q_points.shape[1], len(self.gibs)), dtype=points.dtype, device=points.device) # shape (B, M, num_gibs)
+        q_outputs = torch.zeros((coords.shape[0], q_points.shape[1], len(self.gibs)), dtype=coords.dtype, device=coords.device) # shape (B, M, num_gibs)
         # print(f"{q_outputs.shape=}")
         for i, gib_key in enumerate(self.gibs):
-            gib_output = self.gibs[gib_key](points, q_points, support_idxs) # shape: ([B], M)
+            
+            gib_output = self.gibs[gib_key](coords.contiguous(), q_points.contiguous(), support_idxs.contiguous()) # shape: ([B], M)
             # print(f"{gib_output.shape=}")
             q_outputs[:, :, i] = gib_output
             
@@ -233,11 +233,12 @@ class GIB_Layer(nn.Module):
 
 class GIB_Block(nn.Module):
 
-    def __init__(self, gib_dict, feat_channels, num_observers, kernel_size, out_channels=None) -> None:
+    def __init__(self, gib_dict, feat_channels, num_observers, kernel_size, out_channels=None, strided=False) -> None:
         super(GIB_Block, self).__init__()
 
         self.gib = GIB_Layer(gib_dict, kernel_size, num_observers)
         self.gib_norm = PointBatchNorm(num_observers)
+        self.strided = strided
 
         if out_channels is None:
             out_channels = feat_channels + num_observers
@@ -248,12 +249,33 @@ class GIB_Block(nn.Module):
 
 
     def forward(self, points, q_points, neighbor_idxs) -> torch.Tensor:
+        """
+        Parameters
+        ----------
+
+        `points` - Tuple[torch.Tensor, torch.Tensor]:
+            Tuple containing two tensors:
+                - coords: Tensor of shape (B, N, 3) representing the point cloud
+                - feats: Tensor of shape (B, N, F) representing the features of the point cloud
+
+        `q_points` - torch.Tensor:
+            Tensor of shape (B, Q, 3) representing the query points
+
+        `neighbor_idxs` - torch.Tensor[int]:
+            Tensor of shape (B, Q, K) representing the indices of the neighbors of each query point in the tensor `coords`
+        """
         coords, feats = points
 
         gib_out = self.gib(coords, q_points, neighbor_idxs) # (B, Q, num_observers)
+        # print(f"{gib_out.shape=}")
         gib_out = self.act(self.gib_norm(gib_out)) # (B, Q, num_observers)
 
-        print(f"{feats.shape=}, {gib_out.shape=}")
+        if self.strided: # if the query points are 
+            feats = local_pooling(feats, neighbor_idxs)
+        else:
+            feats = feats
+
+        # print(f"{feats.shape=}, {gib_out.shape=}")
         mlp_out = torch.cat([feats, gib_out], dim=-1) # (B, Q, out_channels)
         mlp_out = self.mlp(mlp_out) # (B, Q, out_channels)
         mlp_out = self.act(self.mlp_norm(mlp_out)) # (B, Q, out_channels)
@@ -269,7 +291,8 @@ class GIB_Sequence(nn.Module):
                  feat_channels, 
                  num_observers:Union[int, list],
                  kernel_size,
-                 out_channels:Union[int, list]=None
+                 out_channels:Union[int, list]=None,
+                 strided:bool=False,
                 ) -> None:
         
         super(GIB_Sequence, self).__init__()
@@ -281,29 +304,31 @@ class GIB_Sequence(nn.Module):
         if isinstance(num_observers, int):
             num_observers = [num_observers] * num_layers
         
-        out_channels = feat_channels if out_channels is None else out_channels
+        out_channels = feat_channels + num_observers if out_channels is None else out_channels
         if isinstance(out_channels, int):
             out_channels = [out_channels] * num_layers
-        
         
         for i in range(num_layers):
             num_obs = num_observers[i]
             out_c = out_channels[i]
-                
-            gib_block = GIB_Block(gib_dict, feat_channels, num_obs, kernel_size, out_c)
+            if i > 0:
+                strided = False # only the first layer of the Sequence is strided
+            
+            gib_block = GIB_Block(gib_dict, feat_channels, num_obs, kernel_size, out_c, strided)
             self.gib_blocks.append(gib_block)
 
             feat_channels = out_c
 
     def forward(self, points, q_coords, neighbor_idxs) -> torch.Tensor:
         coords, feats = points
+        
+        # print(f"{coords.shape=}, {feats.shape}, {q_coords.shape=}, {neighbor_idxs.shape=}")
 
         for gib_block in self.gib_blocks:
-            # 1st iteration: x = (coords, feats); 2nd iteration: x = (coords, new_feats); ...
-            # 1st iteration feats.shape = (B, N, F) or (B, N, out_channels[0]); 2nd iteration feats.shape = (B. N, F) or (B, N, out_channels[1])
+            # 1st it: feats = (B, Q, feat_channels + num_observers)
             feats = gib_block((coords, feats), q_coords, neighbor_idxs)
 
-        return feats # shape
+        return feats # shape (B, Q, out_channels)
     
 
 ###############################################################
@@ -319,12 +344,14 @@ class Unpool_wSkip(nn.Module):
                 out_channels,
                 bias=True,
                 skip=True,
+                concat:bool=True,
                 backend="max") -> None:
     
         super(Unpool_wSkip, self).__init__()
 
         self.skip = skip
         self.backend = backend
+        self.concat = concat
         assert self.backend in ["max", "interp"]
 
         self.proj = nn.Sequential(
@@ -338,7 +365,10 @@ class Unpool_wSkip(nn.Module):
             nn.ReLU(inplace=True),
         )
 
-    def forward(self, curr_points: Tuple[torch.Tensor, torch.Tensor], skip_points: Tuple[torch.Tensor, torch.Tensor], upsampling_idxs: torch.Tensor) -> torch.Tensor:
+    def forward(self, curr_points: Tuple[torch.Tensor, torch.Tensor], 
+                skip_points: Tuple[torch.Tensor, torch.Tensor], 
+                upsampling_idxs: torch.Tensor,
+            ) -> torch.Tensor:
         """
         Parameters
         ----------
@@ -354,6 +384,10 @@ class Unpool_wSkip(nn.Module):
 
         `upsampling_idxs` - torch.Tensor[int]:
             Tensor of shape (B, N, K) representing the indices of the curr_points that are neighbors of the skip_points
+            
+        `concat` - bool:
+            Whether to concatenate the skip features to the interpolated features or to sum them.
+            If sum, the skip_fea
 
         Returns
         -------
@@ -362,31 +396,101 @@ class Unpool_wSkip(nn.Module):
         """
 
         # Extract the coordinates and features from the input points
-        curr_coords, curr_feat = curr_points
-        skip_coords, skip_feat = skip_points
+        curr_coords, curr_feats = curr_points
+        skip_coords, skip_feats = skip_points
 
-        curr_points = torch.cat([curr_coords, curr_feat], dim=-1) # (B, M, 3 + C)
-        skip_points = torch.cat([skip_coords, skip_feat], dim=-1) # (B, N, 3 + C)
+        curr_points = torch.cat([curr_coords, curr_feats], dim=-1) # (B, M, 3 + C)
+        skip_points = torch.cat([skip_coords, skip_feats], dim=-1) # (B, N, 3 + C)
 
         if self.backend == 'interp':
+            # print(f"{curr_points.shape=}, {skip_points.shape=}, {upsampling_idxs.shape=}")
             inter_feats = interpolation(curr_points, skip_points, upsampling_idxs)
         else: #use max pooling
             B, M, _ = curr_points.shape
             B, N, K = upsampling_idxs.shape
             C = curr_points.shape[-1] - 3
             inter_feats = torch.gather(
-                curr_feat.unsqueeze(1).expand(B, N, M, C),  # Expand current features to (B, N, M, C)
+                curr_feats.unsqueeze(1).expand(B, N, M, C),  # Expand current features to (B, N, M, C)
                 2, upsampling_idxs.unsqueeze(-1).expand(B, N, K, C)  # Gather features (B, N, K, C)
             ) # shape (B, N, K, C)
             inter_feats = torch.max(inter_feats, dim=2)[0] # shape (B, N, C) # max pooling
         
         inter_feats = self.proj(inter_feats) # (B, N, out_channels)
+        # print(f"{inter_feats.shape=}")
+        # print(f"{self.proj_skip(skip_feats).shape=}")
         
         if self.skip:
             # summing or concatenating the skip features? Herein lies the question
-            inter_feats = torch.cat([inter_feats, self.proj_skip(skip_feat)], dim=-1) # (B, N, 2*out_channels)
+            skip_feats = self.proj_skip(skip_feats)
+            if self.concat:
+                inter_feats = torch.cat([skip_feats, inter_feats], dim=-1)
+            else:
+                inter_feats = inter_feats + self.proj_skip(skip_feats)
 
-        return torch.cat([skip_coords, inter_feats], dim=-1) # (B, N, 3 + 2*out_channels)
+        return torch.cat([skip_coords, inter_feats], dim=-1) # (B, N, 3 + 2*out_channels) or (B, N, 3 + out_channels)
+    
+    
+    
+    
+    
+class Decoder(nn.Module):
+    
+    def __init__(self, 
+                feat_channels,
+                skip_channels,
+                out_channels,
+                bias=True,
+                skip=True,
+                concat:bool=True,
+                backend="max",
+                num_layers=1, 
+                gib_dict={}, 
+                num_observers=16,
+                kernel_size=0.2,
+            ) -> None:
+        super(Decoder, self).__init__()
+        
+        self.unpool = Unpool_wSkip(feat_channels, skip_channels, out_channels, bias, skip, concat, backend)
+        f_channels = out_channels*2 if concat else out_channels
+        self.gib_seq = GIB_Sequence(num_layers, gib_dict, f_channels, num_observers, kernel_size, out_channels, strided=False)
+        
+        
+        
+    def forward(self, curr_points, skip_points, upsampling_idxs, skip_neigh_idxs):
+        """
+        Parameters
+        ----------
+        `curr_points` - Tuple[torch.Tensor, torch.Tensor]:
+            Tuple containing two tensors:
+                - coords: Tensor of shape (B, M, 3) representing the input coordinates of the current layer
+                - feats: Tensor of shape (B, M, C) representing the input features of the current layer
+
+        `skip_points` - Tuple[torch.Tensor, torch.Tensor]:
+            Tuple containing two tensors:
+                - coords: Tensor of shape (B, N, 3) representing the input coordinates of the skip connection
+                - feats: Tensor of shape (B, N, C) representing the input features of the skip connection
+
+        `upsampling_idxs` - torch.Tensor[int]:
+            Tensor of shape (B, N, K) representing the indices of the curr_points that are neighbors of the skip_points    
+            
+        `skip_neigh_idxs` - torch.Tensor[int]:
+            Tensor of shape (B, N, K) representing the indices of the skip_points that are neighbors of the skip_points
+
+        Returns
+        -------
+        `output` - torch.Tensor:
+            Tensor of shape (B, N, out_channels) representing the output of the Decoder
+        """
+        out = self.unpool(curr_points, skip_points, upsampling_idxs) # output shape: (B, N, 3 + 2*out_channels)
+        
+        out_coords, out_feats = out[..., :3], out[..., 3:]
+        
+        out = self.gib_seq((out_coords, out_feats), out_coords, skip_neigh_idxs) # output shape: (B, N, out_channels)
+        
+        return out # (B, N, out_channels)
+    
+###############################################################
+
 
         
         

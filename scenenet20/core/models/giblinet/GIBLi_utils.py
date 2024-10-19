@@ -14,27 +14,30 @@ from core.sampling.query_points_strat import Query_Points
 
 class PointBatchNorm(nn.Module):
     """
-    Batch Normalization for Point Clouds data in shape of [B*N, C], [B*N, L, C]
+    Batch Normalization for Point Clouds data in shape of ([B], N, C)
 
-    where B is the batch size, N is the number of points, C is the number of channels, and L is the number of neighbors
+    where B is the batch size, N is the number of points, C is the number of channels
     """
 
     def __init__(self, embed_channels):
         super().__init__()
         self.norm = nn.BatchNorm1d(embed_channels)
-
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        if input.dim() == 3:
-            return (
-                self.norm(input.transpose(1, 2).contiguous())
-                .transpose(1, 2)
-                .contiguous()
-            )
-        elif input.dim() == 2:
-            return self.norm(input)
-        else:
-            raise NotImplementedError("Input dimension not supported")
         
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        
+        output = self.norm(input.permute(0, 2, 1).contiguous()).contiguous()
+        return output.permute(0, 2, 1)
+        
+        # if input.dim() == 3:
+        #     return (
+        #         self.norm(input.contiguous().transpose(1, 2))
+        #         .transpose(1, 2)
+        #         .contiguous()
+        #     )
+        # elif input.dim() == 2:
+        #     return self.norm(input)
+        # else:
+        #     raise NotImplementedError
 
 class Neighboring(nn.Module):
 
@@ -201,7 +204,7 @@ def build_fps_graph_pyramid(
         num_q_points = int(num_q_points * sampling_ratio)
         points = Query_Points('fps', num_points=num_q_points)(points)
         points_list.append(points) # (B, Q, 3)
-        print(points.shape)
+        # print(points.shape)
 
     for i in range(num_layers):
         curr_points = points_list[i]
@@ -210,7 +213,7 @@ def build_fps_graph_pyramid(
 
         neighbor_idxs = neighborhood_finder(curr_points, curr_points) # (B, Q[i], k[i]); where Q is the num of q_points and k is the num of neighbors at ith layer
         neighbors_idxs_list.append(neighbor_idxs)
-        print(f"Layer {i}: {neighbor_idxs.shape=}")
+        # print(f"Layer {i}: {neighbor_idxs.shape=}")
 
         upsample_kwargs = {}
         for key, value in neighborhood_kwargs.items():
@@ -232,7 +235,7 @@ def build_fps_graph_pyramid(
             up_points_idxs = upsample_neighborhood_finder(curr_points, next_points) # (B, Q[i], k[i+1]); the indices are from points[i+1]
             upsampling_list.append(up_points_idxs)
 
-            print(f"Layer {i}: {sub_points_idxs.shape=}, {up_points_idxs.shape=}")
+            # print(f"Layer {i}: {sub_points_idxs.shape=}, {up_points_idxs.shape=}")
         
         neighborhood_kwargs = upsample_kwargs
 
@@ -315,7 +318,7 @@ def build_grid_graph_pyramid(
         points_list.append(points)
 
         voxel_size *= voxel_factor
-        print(f"{points.shape=}")
+        # print(f"{points.shape=}")
     
     for i in range(num_layers):
         curr_points = points_list[i]
@@ -325,7 +328,7 @@ def build_grid_graph_pyramid(
 
         s_points_idxs = neighborhood_finder(curr_points, curr_points)
         neighbors_idxs_list.append(s_points_idxs)
-        print(f"Layer {i}: {s_points_idxs.shape=}")
+        # print(f"Layer {i}: {s_points_idxs.shape=}")
 
         for key, value in neighborhood_kwargs.items():
             if key in neighborhood_kwarg_update:
@@ -342,7 +345,7 @@ def build_grid_graph_pyramid(
             up_points_idxs = upsample_neighborhood_finder(curr_points, next_points) # (B, Q[i], k[i+1])
             upsampling_idxs_list.append(up_points_idxs)
 
-            print(f"Layer {i}: {sub_points_idxs.shape=}, {up_points_idxs.shape=}")
+            # print(f"Layer {i}: {sub_points_idxs.shape=}, {up_points_idxs.shape=}")
         
         neighborhood_kwargs = upsample_kwargs
 

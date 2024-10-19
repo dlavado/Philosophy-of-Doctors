@@ -69,21 +69,22 @@ class GIB_Stub(torch.nn.Module):
         """
         super(GIB_Stub, self).__init__()
 
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.sign = 1 if torch.any(torch.rand(1) > 0.5) else -1 # random sign for the kernel
 
-        self.angles:torch.Tensor = angles
+        self.angles:torch.Tensor = angles if angles is not None else None
         self.kernel_reach = kernel_reach
         
         # variables to compute the integral of the GIB function within the kernel reach
         self.n_samples = 1e4
         self.ndims = 3
-        self.montecarlo_points = torch.rand((int(self.n_samples), self.ndims), device=self.device) * 2 * self.kernel_reach - self.kernel_reach
+        self.montecarlo_points = torch.rand((int(self.n_samples), self.ndims)) * 2 * self.kernel_reach - self.kernel_reach
+        # self.montecarlo_points = self.montecarlo_points.cuda()
         mask_inside = torch.linalg.norm(self.montecarlo_points, dim=1) <= self.kernel_reach
         self.montecarlo_points = self.montecarlo_points[mask_inside]
 
         self.epsilon = 1e-8 # small value to avoid division by zero
-        self.intensity = 1 # intensity of the gaussian function
+        self.intensity = 1  # intensity of the gaussian function
         
 
     @abstractmethod
@@ -112,20 +113,21 @@ class GIB_Stub(torch.nn.Module):
         ----------
         `tensor` - torch.Tensor:
             Tensor of shape (N,) representing the values of the kernel; this tensor directly results from the gaussian function.
-
+            
         Returns
         -------
         `tensor` - torch.Tensor:
             Tensor of shape (N,) representing the normalized values of the kernel.
         """
+        self.montecarlo_points = self.montecarlo_points.to(tensor.device)
         integral = self.compute_integral().to(tensor.device)
         return tensor - integral / self.n_samples
-
+    
 
     @abstractmethod
     def forward(self, points:torch.Tensor, q_points:torch.Tensor, supports_idxs:torch.Tensor) -> torch.Tensor:
         """
-        Computes a Cylinder GIB on the query points given the support points.
+        Computes a GIB on the query points given the support points.
 
         Parameters
         ----------
@@ -143,7 +145,7 @@ class GIB_Stub(torch.nn.Module):
         `q_output` - torch.Tensor:
             Tensor of shape (M,) representing the output of the GIB on the query points.    
         """
-
+        
 
     @staticmethod
     def mandatory_parameters():
@@ -194,16 +196,17 @@ class GIB_Stub(torch.nn.Module):
             Tensor of shape (B, M, K, 3) representing the support points.
         """
         B, M, K = supports_idxs.shape
+        F = points.shape[-1]
 
         flat_supports_idxs = supports_idxs.reshape(B, -1) # (B, M*K)
 
         # Gather the points (B, M*K, 3)
         # the expanded tensor lets us gather the points at the indices in flat_supports_idxs
-        gathered_support_points = torch.gather(points, 1, flat_supports_idxs.unsqueeze(-1).expand(-1, -1, 3))
+        gathered_support_points = torch.gather(points, 1, flat_supports_idxs.unsqueeze(-1).expand(-1, -1, F))
 
         # Reshape back to (B, M, K, 3)
-        support_points = gathered_support_points.reshape(B, M, K, 3)
-        return support_points
+        support_points = gathered_support_points.reshape(B, M, K, F)
+        return support_points#.contiguous()
     
 
     def _plot_integral(self, gaussian_x:torch.Tensor):
@@ -237,7 +240,7 @@ class GIB_Stub(torch.nn.Module):
         if self.angles is None:
             return points
         
-        from core.models.GENEONets.geneos.diff_rotation_transform import rotate_points
+        from core.models.giblinet.geneos.diff_rotation_transform import rotate_points
         angles = torch.tanh(self.angles) # convert to range [-1, 1]
         return rotate_points(angles, points)
         
@@ -250,7 +253,7 @@ if __name__ == "__main__":
     from core.neighboring.radius_ball import k_radius_ball
     from core.neighboring.knn import torch_knn
     from core.sampling.FPS import Farthest_Point_Sampling
-    from core.models.GENEONets.geneos import cylinder, disk, cone, ellipsoid
+    from core.models.giblinet.geneos import cylinder, disk, cone, ellipsoid
     
     # # generate some points, query points, and neighbors. For the neighbors, I want to test two scenarios: 
     # # 1) where the neighbors are at radius distance from the query points

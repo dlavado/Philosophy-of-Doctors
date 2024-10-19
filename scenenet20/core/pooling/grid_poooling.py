@@ -26,12 +26,12 @@ class GridPooling:
 
         Parameters
         ----------
-        x : torch.Tensor
+        `x` : torch.Tensor
             Tensor of shape ([B], N, 3 + C) where N is the number of points and C is the number of additional channels.
         
         Returns
         -------
-        aggregated_points : torch.Tensor
+        `aggregated_points` : torch.Tensor
             Tensor of shape ([B], M, 3 + C) where M is the number of unique voxels.
         """
         return grid_pooling_batch(x, self.voxel_size, None, self.feat_mapping)[0]

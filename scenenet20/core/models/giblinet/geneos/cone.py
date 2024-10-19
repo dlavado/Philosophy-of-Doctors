@@ -6,7 +6,7 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 sys.path.insert(3, '../../../..')
-from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub, GIB_PARAMS, NON_TRAINABLE, to_parameter, to_tensor
+from .GIB_Stub import GIB_Stub, GIB_PARAMS, NON_TRAINABLE, to_parameter, to_tensor
 
 
 class Cone(GIB_Stub):

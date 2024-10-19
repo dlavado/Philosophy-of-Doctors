@@ -7,7 +7,7 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 sys.path.insert(3, '../../../..')
-from core.models.GENEONets.geneos.GIB_Stub import GIB_Stub, GIB_PARAMS
+from .GIB_Stub import GIB_Stub, GIB_PARAMS
 
 
 class Disk(GIB_Stub):
@@ -156,6 +156,8 @@ class Disk(GIB_Stub):
 
         # Compute GIB weights; (B, M, K, 2) -> (B, M, K)
         weights = self.gaussian(s_centered[..., :2])
+        # print(f"{weights.shape=} {weights.device=}")
+        # print(f"{s_centered.shape=} {s_centered.device=}")
         in_width_mask = torch.abs(s_centered[..., 2]) <= self.width
         weights = weights * in_width_mask.float() * valid_mask.float()
         
