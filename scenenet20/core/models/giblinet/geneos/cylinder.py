@@ -46,7 +46,7 @@ class Cylinder(GIB_Stub):
         rand_config = GIB_Stub.gib_random_config(kernel_reach)
 
         geneo_params = {
-            'radius' : torch.randint(1, 10, (1,))[0]/100, # float \in [0.1, 1]
+            'radius' : torch.rand(1)[0] * kernel_reach + 0.01, # float \in [0.1, 1]
             'intensity' : torch.randint(0, 10, (1,))[0]/5 # float \in [0, 2]
         }   
         rand_config[GIB_PARAMS].update(geneo_params)

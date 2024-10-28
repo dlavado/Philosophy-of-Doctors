@@ -12,6 +12,7 @@ import ast
 import torch
 from torchvision.transforms import Compose
 import torch.nn.functional as F
+from torchinfo import summary
 
 
 # PyTorch Lightning
@@ -22,6 +23,7 @@ from pytorch_lightning.callbacks import BatchSizeFinder
 # Weights & Biases
 import wandb
 from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.profilers import AdvancedProfiler, SimpleProfiler, PyTorchProfiler
 
 
 # Our code
@@ -30,14 +32,11 @@ sys.path.insert(1, '../..')
 
 import utils.constants as C
 import utils.my_utils as su
-import utils.pointcloud_processing as eda
-
+# import utils.pointcloud_processing as eda
 
 import core.lit_modules.lit_callbacks as lit_callbacks
-from core.lit_modules.lit_scenenet import LitSceneNet_multiclass
+from core.lit_modules.lit_gibli import LitGIBLi
 from core.lit_modules.lit_ts40k import LitTS40K_FULL, LitTS40K_FULL_Preprocessed
-from core.lit_modules.lit_labelec import LitLabelec, LitLabelec_Preprocessed
-from core.criterions.geneo_loss import GENEO_Loss
 import core.datasets.torch_transforms as tt
 
 #####################################################################
@@ -129,197 +128,102 @@ def init_callbacks(ckpt_dir):
     return callbacks
 
 
+
+
+def init_profiler(profiler:str, log_filename):
+    if profiler == 'simple':
+        profiler = SimpleProfiler(dirpath=os.getcwd(), filename=log_filename)       
+    elif profiler == 'advanced':
+        profiler = AdvancedProfiler(dirpath=os.getcwd(),filename=log_filename)     
+    elif profiler == 'pytorch':
+        profiler = PyTorchProfiler(dirpath=os.getcwd(), filename=log_filename)
+    else:
+        profiler = None
+    return profiler
+    
+    
 #####################################################################
 # INIT MODELS
 #####################################################################
 
-def init_scenenet(criterion):
-
-    geneo_config = {
-        'cy'   : wandb.config.cylinder_geneo,
-        'arrow': wandb.config.arrow_geneo,
-        'neg'  : wandb.config.neg_sphere_geneo,
-        'disk' : wandb.config.disk_geneo,
-        'cone' : wandb.config.cone_geneo,
-        'ellip': wandb.config.ellipsoid_geneo, 
+def init_gibli(criterion, pyramid_builder=None) -> pl.LightningModule:
+    
+    gig_dict = {
+        'cy': wandb.config.cylinder,
+        'ellip': wandb.config.ellipsoid,
+        'disk': wandb.config.disk,
+        'cone': wandb.config.cone
     }
-
-    hidden_dims = ast.literal_eval(wandb.config.hidden_dims)         
-    num_classes = wandb.config.num_classes
-
-    model = LitSceneNet_multiclass(geneo_num=geneo_config,
-                                    num_observers=ast.literal_eval(wandb.config.num_observers),
-                                    kernel_size=ast.literal_eval(wandb.config.kernel_size),
-                                    hidden_dims=hidden_dims,
-                                    num_classes=num_classes,
-                                    ignore_index=wandb.config.ignore_index,
-                                    criterion=criterion,
-                                    optimizer=wandb.config.optimizer,
-                                    learning_rate=wandb.config.learning_rate,
-                                    metric_initializer=su.init_metrics,
-                                )
-        
-    return model
-
-
-def init_GENEO_loss(model, base_criterion=None):
-    criterion_params = {}
-
-    if 'tversky' in wandb.config.criterion.lower():
-        criterion_params = {
-            'tversky_alpha': wandb.config.tversky_alpha,
-            'tversky_beta': wandb.config.tversky_beta,
-            'tversky_smooth': wandb.config.tversky_smooth,
-            'focal_gamma': wandb.config.focal_gamma,
-        }
-
-    if 'focal' in wandb.config.criterion.lower():
-        criterion_params['focal_gamma'] = wandb.config.focal_gamma
-
-
-    if base_criterion is None:
-        criterion_class = su.resolve_criterion(wandb.config.criterion)
-        base_criterion = criterion_class(criterion, **criterion_params)
     
-    if wandb.config.geneo_criterion:
-        criterion = GENEO_Loss(base_criterion, 
-                                model.get_geneo_params(),
-                                model.get_cvx_coefficients(),
-                                convex_weight=wandb.config.convex_weight,
-                            )  
-    else:
-        criterion = base_criterion
-
-    model.criterion = criterion # assign criterion to model
     
-
-def init_pointnet(model_name='pointnet'):
-    from core.lit_modules.lit_pointnet import LitPointNet
-
-    # Model definition
-    model = LitPointNet(model=model_name,
-                        criterion=None, # criterion is defined in the model
-                        optimizer_name=wandb.config.optimizer,
-                        num_classes=wandb.config.num_classes,
-                        num_channels=wandb.config.num_data_channels,
-                        learning_rate=wandb.config.learning_rate,
-                        ignore_index=wandb.config.ignore_index,
-                        metric_initializer=su.init_metrics,
-                    )
-    return model
-
-
-def init_kpconv(criterion):
-    from core.lit_modules.lit_kpconv import LitKPConv
-
-    # Model definition
-    model = LitKPConv(criterion=criterion,
-                      optimizer_name=wandb.config.optimizer,
-                      num_stages=wandb.config.num_stages,
-                      voxel_size=wandb.config.voxel_size,
-                      kpconv_radius=wandb.config.kpconv_radius,
-                      kpconv_sigma=wandb.config.kpconv_sigma,
-                      neighbor_limits=ast.literal_eval(wandb.config.neighbor_limits),
-                      init_dim=wandb.config.init_dim,
-                      num_classes=wandb.config.num_classes,
-                      input_dim=wandb.config.num_data_channels,
-                      learning_rate=wandb.config.learning_rate,
-                      ignore_index=wandb.config.ignore_index,
-                      metric_initializer=su.init_metrics,
-                    )
-    return model
-
-
-def init_randlanet(criterion):
-    from core.lit_modules.lit_randlanet import LitRandLANet
-
-    # Model definition
-    model = LitRandLANet(criterion=criterion,
-                         optimizer_name=wandb.config.optimizer,
-                         in_channels=wandb.config.num_data_channels,
-                         num_classes=wandb.config.num_classes,
-                         num_neighbors=wandb.config.num_neighbors,
-                         decimation=wandb.config.decimation,
-                         learning_rate=wandb.config.learning_rate,
-                         
-                         metric_initializer=su.init_metrics,
+    return LitGIBLi(
+        in_channels=wandb.config.in_channels,
+        num_classes=wandb.config.num_classes,
+        num_levels=wandb.config.num_levels,
+        out_gib_channels=wandb.config.out_gib_channels,
+        num_observers=wandb.config.num_observers,
+        kernel_size=wandb.config.kernel_size,
+        gib_dict=gig_dict,
+        skip_connections=wandb.config.skip_connections,
+        pyramid_builder = pyramid_builder,
+        criterion=criterion,
+        optimizer_name=wandb.config.optimizer,
+        learning_rate=wandb.config.learning_rate,
+        metric_initializer=su.init_metrics,
     )
-
-    return model
-
-def init_point_transformer(criterion, model_version='v3'):
-    from core.lit_modules.lit_point_transformer import Lit_PointTransformer
-   
-
-    # Model definition
-    model = Lit_PointTransformer(criterion=criterion,
-                                 in_channels=wandb.config.num_data_channels,
-                                 num_classes=wandb.config.num_classes,
-                                 version=model_version,
-                                 optimizer_name=wandb.config.optimizer,
-                                 learning_rate=wandb.config.learning_rate,
-                                 ignore_index=wandb.config.ignore_index,
-                                 metric_initializer=su.init_metrics,
-                            )
-
-    return model
-
-
-def init_ensemble_model(criterion):
-    from core.lit_modules.lit_ensemble import Lit_EnsembleModel
-    model_names:list[str] = ast.literal_eval(wandb.config.ensemble_models) # list[str]
-    model_names = [model_name.strip().lower() for model_name in model_names]
-
-    models = []
-
-    pretrained_dir = wandb.config.pretrained_model_dir
-    pretrained_dir = replace_variables(pretrained_dir)
-
-    for model_name in model_names:
-        pretrained_path = None
-
-        if model_name == 'kpconv':
-            model = init_kpconv(criterion)
-        elif 'pointnet' in model_name:
-            ptnet_name = model_name.replace('++', '2')
-            model = init_pointnet(ptnet_name)
-        elif 'ptv' in model_name:
-            model_version = model_name.split('pt')[-1]
-            model = init_point_transformer(criterion, model_version)
-
-        for ckpt_file in os.listdir(pretrained_dir):
-            if model_name in ckpt_file.lower() and ckpt_file.endswith('.ckpt'):
-                pretrained_path = os.path.join(pretrained_dir, ckpt_file)
-        
-        if pretrained_path is None:
-            raise FileNotFoundError(f"Pretrained model for {model_name} not found.")
-        else:
-            model = resume_from_checkpoint(pretrained_path, model, criterion.weight)
-        
-        models.append(model)
-
-    model = Lit_EnsembleModel(models=models,
-                              criterion=criterion,
-                              num_classes=wandb.config.num_classes,
-                              use_small_net=wandb.config.use_small_net,
-                              full_train=wandb.config.full_train,
-                              optimizer_name=wandb.config.optimizer,
-                              learning_rate=wandb.config.learning_rate,
-                              ignore_index=wandb.config.ignore_index,
-                              metric_initializer=su.init_metrics,
-                            )
-    
-    return model   
 
 #####################################################################
 # INIT DATASETS
 #####################################################################
 # fd654c61852c40948c264d606c81f59a9dddcc67
 
-def init_ts40k(data_path, preprocessed=False):
+
+def init_pyramid_builder():
+    from core.models.giblinet.GIBLi_utils import BuildGraphPyramid
+    
+    neigh_strategy = wandb.config.neighborhood_strategy
+    
+    if neigh_strategy == 'knn':
+        neighborhood_kwargs = {}
+        neighborhood_update_kwargs = {}
+    elif neigh_strategy == 'dbscan':
+        neighborhood_kwargs = {'eps': wandb.config.dbscan_eps, 'min_points': wandb.config.dbscan_min_points}
+        neighborhood_update_kwargs = {'eps': wandb.config.dbscan_eps_update, 'min_points': wandb.config.dbscan_min_points_update}
+    elif neigh_strategy == 'radius_ball':
+        neighborhood_kwargs = {'radius': wandb.config.radius_ball_radius}
+        neighborhood_update_kwargs = {'radius': wandb.config.radius_ball_radius_update}
+    else:
+        raise ValueError(f"Neighborhood strategy {neigh_strategy} not supported.")
+    
+    if wandb.config.graph_strategy=="grid":
+        voxel_size = torch.tensor(ast.literal_eval(wandb.config.voxel_size))
+    else:
+        voxel_size = None
+    
+    neighborhood_size = wandb.config.neighborhood_size 
+    num_levels =  wandb.config.num_levels
+    if isinstance(neighborhood_size, int):
+        # if the neighborhood size is an integer, then increase the its size by a factor of 1.5 for each level
+        neighborhood_size = [int(neighborhood_size + (neighborhood_size/2)*i) for i in range(num_levels)]
+        
+    sampling_factor = wandb.config.graph_pooling_factor
+    if wandb.config.graph_strategy == 'fps':
+        sampling_factor = 1 / sampling_factor
+
+    return BuildGraphPyramid(num_layers=num_levels,
+                            graph_strategy=wandb.config.graph_strategy,
+                            sampling_factor=sampling_factor,
+                            num_neighbors=neighborhood_size,
+                            neighborhood_strategy=neigh_strategy,
+                            neighborhood_kwargs=neighborhood_kwargs,
+                            neighborhood_kwarg_update=neighborhood_update_kwargs,
+                            voxel_size = voxel_size
+                        )
+
+
+def init_ts40k(data_path, preprocessed=False, pyramid_builder=None):
 
     sample_types = 'all'
-    
     if preprocessed:
         if 'scenenet' in wandb.config.model or wandb.config.model == 'cnn':
             vxg_size = ast.literal_eval(wandb.config.voxel_grid_size) # default is 64^3
@@ -348,7 +252,8 @@ def init_ts40k(data_path, preprocessed=False):
                         num_workers=wandb.config.num_workers,
                         val_split=wandb.config.val_split,
                         load_into_memory=wandb.config.load_into_memory,
-                        use_full_test_set=False
+                        use_full_test_set=False,
+                        _pyramid_builder=pyramid_builder
                     )
 
     if wandb.config.model == 'scenenet' or wandb.config.model == 'unet':
@@ -382,82 +287,14 @@ def init_ts40k(data_path, preprocessed=False):
     return data_module
 
 
-def init_labelec(data_path, preprocessed=False):
-
-
-    if preprocessed:
-        transform = Compose([
-             tt.Merge_Label({2:3, 1:3}), # merge low vegetation and ground with medium vegetation
-        ])
-
-        if wandb.config.add_normals:
-            transform.transforms.append(tt.Add_Normal_Vector())
-
-        return LitLabelec_Preprocessed(
-            data_path,
-            transform=transform,
-            test_transform=transform,
-            load_into_memory=wandb.config.load_into_memory,
-            batch_size=wandb.config.batch_size,
-            val_split=wandb.config.val_split,
-            num_workers=wandb.config.num_workers,
-        )
-
-    transform = Compose([
-        tt.EDP_Labels(),
-        tt.Merge_Label({2:3, 1:3}), # merge low vegetation and ground with medium vegetation
-        tt.Repeat_Points(100_000),
-        # tt.Farthest_Point_Sampling(100_000),
-        tt.Normalize_PCD([0, 1]),
-        tt.To(torch.float32),
-    ])
-
-    if wandb.config.add_normals:
-        transform.transforms.append(tt.Add_Normal_Vector())
-
-    test_transform = Compose([
-        tt.EDP_Labels(),
-        # tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
-        # tt.Farthest_Point_Sampling(100_000),
-        tt.Repeat_Points(100_000),
-        tt.Normalize_PCD([0, 1]),
-    ])
-
-    if wandb.config.add_normals:
-        test_transform.transforms.append(tt.Add_Normal_Vector())
-
-
-    return LitLabelec(
-        data_path,
-        save_chunks=False,
-        transform=transform,
-        test_transform=test_transform,
-        add_rgb=wandb.config.add_rgb,
-        load_into_memory=wandb.config.load_into_memory,
-        batch_size=wandb.config.batch_size,
-        val_split=wandb.config.val_split,
-        num_workers=wandb.config.num_workers,
-    )
- 
 
 #####################################################################
 # INIT MODELS
 #####################################################################
 
-def init_model(model_name, criterion) -> pl.LightningModule:
-    if model_name == 'scenenet':
-        # test_MulticlassJaccardIndex: tensor([0.0000, 0.6459, 0.3951, 0.3087, 0.0633, 0.7802], device='cuda:0'); mean: 0.4387
-        return init_scenenet(criterion)
-    elif 'pointnet' in model_name:
-        return init_pointnet(model_name)
-    elif 'kpconv' in model_name:
-        return init_kpconv(criterion)
-    elif 'randlanet' in model_name:
-        return init_randlanet(criterion)
-    elif 'pt_transformer' in model_name:
-        return init_point_transformer(criterion, wandb.config.model_version)
-    elif 'ensemble' in model_name:
-        return init_ensemble_model(criterion)
+def init_model(model_name, criterion, pyramid_builder=None) -> pl.LightningModule:
+    if model_name == 'gibli':
+        return init_gibli(criterion, pyramid_builder)
     else:
         raise ValueError(f"Model {model_name} not supported.")
     
@@ -484,7 +321,6 @@ def resume_from_checkpoint(ckpt_path, model:pl.LightningModule, class_weights=No
     #                                    metric_initilizer=su.init_metrics
     #                                 )
     return model
-
 
 
 def init_criterion(class_weights=None):
@@ -534,17 +370,18 @@ def main():
     # ------------------------
     # 2 INIT MODEL
     # ------------------------
+    
+    ### PYRAMID BUILDER
+    pyramid_builder = init_pyramid_builder()
 
-    model = init_model(wandb.config.model, criterion)
-    # torchinfo.summary(model, input_size=(wandb.config.batch_size, 1, 64, 64, 64))
+    model = init_model(wandb.config.model, criterion, pyramid_builder)
+    input_size = (wandb.config.batch_size, wandb.config.num_points, wandb.config.in_channels)
+    print(f"{'='*30} Model initialized {'='*30}")
+    summary(model, input_size=input_size)
     
     if wandb.config.resume_from_checkpoint:
         ckpt_path = replace_variables(ckpt_path)
         model = resume_from_checkpoint(ckpt_path, model, class_weights)
-    
-
-    if wandb.config.get('geneo_criterion', False):
-        init_GENEO_loss(model, base_criterion=criterion)
 
     # ------------------------
     # 4 INIT DATA MODULE
@@ -556,17 +393,13 @@ def main():
             data_path = C.TS40K_FULL_PREPROCESSED_PATH
         else:
             data_path = C.TS40K_FULL_PATH
-        # if idis_mode:
-        #     data_path = TS40K_FULL_PREPROCESSED_IDIS_PATH
-        # elif smote_mode:
-        #     data_path = TS40K_FULL_PREPROCESSED_SMOTE_PATH
-        data_module = init_ts40k(data_path, wandb.config.preprocessed)
-    elif dataset_name == 'labelec':
-        if wandb.config.preprocessed:
-            data_path  = C.LABELEC_RGB_PREPROCESSED
-        else:
-            data_path = C.LABELEC_RGB_DIR
-        data_module = init_labelec(data_path, wandb.config.preprocessed)
+        data_module = init_ts40k(data_path, wandb.config.preprocessed, pyramid_builder)
+    # elif dataset_name == 'labelec':
+    #     if wandb.config.preprocessed:
+    #         data_path  = C.LABELEC_RGB_PREPROCESSED
+    #     else:
+    #         data_path = C.LABELEC_RGB_DIR
+    #     data_module = init_labelec(data_path, wandb.config.preprocessed)
     else:
         raise ValueError(f"Dataset {dataset_name} not supported.")
     
@@ -596,7 +429,7 @@ def main():
         devices='auto',#wandb.config.devices,
         num_nodes=wandb.config.num_nodes,
         strategy=wandb.config.strategy,
-        profiler=wandb.config.profiler if wandb.config.profiler else None,
+        profiler= init_profiler(wandb.config.profiler, 'profiler'),
         precision=wandb.config.precision,
         enable_model_summary=True,
         enable_checkpointing=True,
@@ -640,58 +473,11 @@ def main():
 
 
     
-    test_results = trainer.test(model,
-                                datamodule=data_module,
-                                ckpt_path='best' if not prediction_mode else None,
-                            )
+    # test_results = trainer.test(model,
+    #                             datamodule=data_module,
+    #                             ckpt_path='best' if not prediction_mode else None,
+    #                         )
     
-    # test_preds = model.test_preds
-
-    # test_preds = torch.cat(test_preds, dim=0)
-    # torch.save(test_preds, os.path.join(ckpt_dir, 'test_preds.pt'))
-    # input("Press Enter to continue...")
-    # from tqdm import tqdm
-    # batch_size = wandb.config.batch_size
-    # model_name = wandb.config.model
-    # if model_name == 'pt_transformer':
-    #     model_name = f"pt_transformer_{wandb.config.model_version}"
-
-    # if torch.no_grad():
-    #     model = model.to(device)
-    #     for stage in ['fit', 'test']:
-    #         data_module.setup(stage=stage)
-
-    #         dataset = data_module.fit_ds if stage == 'fit' else data_module.test_ds
-    #         dataloader = data_module._fit_dataloader() if stage == 'fit' else data_module.test_dataloader()
-
-    #         for i, batch in tqdm(enumerate(dataloader), desc=f"Predicting {stage} data..."):
-    #             x, _ = batch
-    #             batch = (batch[0].to(device), batch[1].to(device))
-    #             preds = model.evaluate(batch, stage=stage, metric=None, prog_bar=False, logger=False)[1]
-
-    #             preds = preds.reshape(x.shape[0], x.shape[1])
-
-    #             assert x.shape[:2] == preds.shape
-    #             # get dataset index
-    #             for j in range(x.shape[0]):
-    #                 idx = batch_size * i + j
-
-    #                 dataset_x, _ = dataset[idx]
-    #                 assert dataset_x.squeeze().shape == x[j].squeeze().shape
-
-    #                 file_path = dataset._get_file_path(idx)
-    #                 file_name =     (file_path) 
-    #                 preds_file_path = file_path.replace('TS40K-FULL', 'TS40K-FULL-Preds')
-    #                 preds_file_path = preds_file_path.replace(file_name, f'{file_name.split(".")[0]}/{model_name}.pt')
-
-    #                 if torch.randint(0, 10, (1,)).item() >= 9:
-    #                     print(f"{preds[j].shape}")
-    #                     print(f"Saving predictions to {preds_file_path}")
-
-    #                 os.makedirs(os.path.dirname(preds_file_path), exist_ok=True)
-    #                 torch.save(preds[j], preds_file_path)
-
-
         
 
 
@@ -717,8 +503,6 @@ if __name__ == '__main__':
     project_name = f"{dataset_name.upper()}_SoA"
 
     prediction_mode = main_parser.predict
-    idis_mode = main_parser.idis
-    smote_mode = main_parser.smote
 
     # config_path = get_experiment_config_path(model_name, dataset_name)
     experiment_path = C.get_experiment_dir(model_name, dataset_name)
@@ -763,9 +547,3 @@ if __name__ == '__main__':
     # print(f"wandb.config.num_data_channels: {wandb.config.num_data_channels}")
     main()
     
-
-    
-
-
-
-

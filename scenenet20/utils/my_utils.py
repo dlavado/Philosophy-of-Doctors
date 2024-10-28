@@ -7,7 +7,7 @@ import random
 import pytorch_lightning as pl
 import sys
 
-from torchmetrics import MetricCollection, JaccardIndex, F1Score, Accuracy, Precision, Recall
+from torchmetrics import MetricCollection, JaccardIndex, F1Score, Precision, Recall, FBetaScore
 import wandb
 import cloudpickle  
 
@@ -45,7 +45,10 @@ def main_arg_parser():
 
     parser.add_argument('--model', type=str, default='scenenet', help='Model to use')
 
+    parser.add_argument('--predict', action='store_true', default=False, help='If True, the script is in prediction mode')
+
     return parser
+
 
 
 
@@ -80,16 +83,16 @@ def resolve_optimizer(optimizer_name:str, model, learning_rate) -> torch.optim.O
     
 
 def init_metrics(task='multiclass', tau=0.5, num_classes=2, ignore_index=-1):
-
     params = {'task': task, 'num_classes': num_classes, 'ignore_index': ignore_index, 'threshold': tau}
     # 'multidim_average': 'global'
     return MetricCollection([
         JaccardIndex(**params, average=None),
         # JaccardIndex(**params, average=None),
+        # ConfusionMatrix(**params, normalize='true'),
         F1Score(**params, average='macro'),
-        Precision(**params, average='micro'),
-        Recall(**params, average='micro'),
-        Accuracy(**params, average='micro'),
+        FBetaScore(**params, average=None, beta=2.0), # F2 Score, prioritizes recall
+        Precision(**params, average=None),
+        Recall(**params, average=None),
     ])
 
 

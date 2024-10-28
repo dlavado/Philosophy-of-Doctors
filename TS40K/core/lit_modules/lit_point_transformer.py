@@ -120,7 +120,7 @@ class Lit_PointTransformer(LitWrapperModel):
 
         out = self(x) # out shape = (batch_size*num_points, num_classes)
 
-        # print(f"out shape = {out.shape}")
+        # print(f"out shape = {out.shape}, y shape = {y.shape}")
 
         # print(torch.max(out), torch.min(out))
 

@@ -12,10 +12,10 @@ output_dir:
 dataset:
   value: 'labelec'
 preprocessed:
-  value: True
+  value: False
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: True
+  value: False
 add_normals:
   value: True
   description: 'If True, adds normals to the dataset'
@@ -30,7 +30,7 @@ num_data_channels:
   value: 6 # 3 for coords and 3 for rgb
   description: 'Number of channels in the dataset'
 batch_size:
-  value: 16
+  value: 8
 ignore_index:
   value: -1 # noise
 num_workers: 

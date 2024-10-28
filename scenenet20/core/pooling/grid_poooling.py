@@ -4,7 +4,6 @@ import torch_scatter
 
 from typing import Union, Tuple
 
-
 class GridPooling_Module(torch.nn.Module):
 
     def __init__(self, grid_size: Tuple[float, float, float], feat_mapping:Union[str,dict]='max') -> None:
@@ -16,7 +15,7 @@ class GridPooling_Module(torch.nn.Module):
 
 
 class GridPooling:
-    def __init__(self, voxel_size: Tuple[float, float, float], feat_mapping:Union[str,dict]='max') -> None:
+    def __init__(self, voxel_size: Tuple[float, float, float], feat_mapping:Union[str,dict]=None) -> None:
         self.voxel_size = voxel_size
         self.feat_mapping = feat_mapping
     
@@ -34,7 +33,25 @@ class GridPooling:
         `aggregated_points` : torch.Tensor
             Tensor of shape ([B], M, 3 + C) where M is the number of unique voxels.
         """
-        return grid_pooling_batch(x, self.voxel_size, None, self.feat_mapping)[0]
+        from core.neighboring.conversions import batch_to_pack, pack_to_batch
+        
+        if x.dim() == 2:
+            points = x
+            lengths = torch.full((1,), x.size(0), dtype=torch.long)
+            is_batched = False
+        else:
+            is_batched = True
+            points, lengths = batch_to_pack(x)
+        
+        # print(f"{points.shape=}")
+        s_points, s_lengths = grid_pooling_pack_mode(points, lengths, self.voxel_size[0].item())
+        
+        if is_batched:
+            s_points = pack_to_batch(s_points, s_lengths)[0]
+        # print(f"{s_points.shape=}")
+        return s_points
+        
+        # return grid_pooling_batch(x, self.voxel_size, None, self.feat_mapping)[0]
     
 
 def _cluster_to_spoints(cluster: torch.Tensor) -> torch.Tensor:
@@ -188,6 +205,10 @@ def grid_pooling(points: torch.Tensor, voxel_size:Union[None, torch.Tensor]=None
 
     # Get cluster assignments; cluster.shape = (N,)
     cluster = torch_cluster.grid_cluster(pos, size=voxel_size)
+    
+    if feat_mapping is None:
+        aggregated_points = agg_funcs['mean'](pos, cluster, dim=0)
+        return aggregated_points, cluster
 
     # Define aggregation functions
     agg_funcs = {
@@ -270,6 +291,10 @@ def grid_pooling_batch(points: torch.Tensor, voxel_size:Union[None, torch.Tensor
     if voxel_size is None and voxelgrid_size is None:
         raise ValueError("Either 'voxel_size' or 'voxelgrid_size' must be provided.")
     
+    if points.dim() == 2:
+        aggregated_points , cluster = grid_pooling(points, voxel_size, voxelgrid_size, feat_mapping)
+        return aggregated_points, cluster
+    
     for i in range(points.shape[0]):
         aggregated_points, cluster = grid_pooling(points[i], voxel_size, voxelgrid_size, feat_mapping)
         if i == 0:
@@ -281,6 +306,68 @@ def grid_pooling_batch(points: torch.Tensor, voxel_size:Union[None, torch.Tensor
 
     return agg_points, clusters
 
+
+
+def grid_pooling_pack_mode(points, lengths, voxel_size):
+    """Grid subsample in pack mode (fast version).
+
+    Args:
+        points (Tensor): the original points (N, 3).
+        lengths (LongTensor): the numbers of points in the batch (B,).
+        voxel_size (float): the voxel size.
+
+    Returns:
+        sampled_points (Tensor): the subsampled points (M, 3).
+        sampled_lengths (Tensor): the numbers of subsampled points in the batch (B,).
+    """
+    batch_size = lengths.shape[0]
+    
+    def ravel_hash_func(voxels, dimensions): # voxels: (N, 4), dimensions: (4); computes the hash values for each voxel
+        dimension = voxels.shape[1]
+        hash_values = voxels[:, 0].clone()
+        for i in range(1, dimension):
+            hash_values *= dimensions[i]
+            hash_values += voxels[:, i]
+        return hash_values
+
+    # voxelize
+    inv_voxel_size = 1.0 / voxel_size
+    voxels = torch.floor(points * inv_voxel_size).long()
+
+    # normalize, pad with batch indices
+    start_index = 0
+    voxels_list = []
+    for i in range(batch_size):
+        cur_length = lengths[i].item()
+        end_index = start_index + cur_length
+        cur_voxels = voxels[start_index:end_index]  # (L, 3)
+        if cur_voxels.size(0) > 0: # if there are points in the batch
+            cur_voxels -= cur_voxels.amin(0, keepdim=True)  # (L, 3)
+            cur_voxels = torch.cat([torch.full_like(cur_voxels[:, :1], fill_value=i), cur_voxels], dim=1)  # (L, 4)
+            voxels_list.append(cur_voxels)
+        start_index = end_index
+    voxels = torch.cat(voxels_list, dim=0)  # (N, 4)
+
+    # scatter
+    dimensions = voxels.amax(0) + 1  # (4)
+    hash_values = ravel_hash_func(voxels, dimensions)  # (N)
+    unique_values, inv_indices, unique_counts = torch.unique(
+        hash_values, return_inverse=True, return_counts=True
+    )  # (M) (N) (M)
+    inv_indices = inv_indices.unsqueeze(1).expand(-1, 3)  # (N, 3)
+    s_points = torch.zeros(size=(unique_counts.shape[0], 3)).cuda()  # (M, 3)
+    s_points.scatter_add_(0, inv_indices, points)  # (M, 3)
+    s_points /= unique_counts.unsqueeze(1).float()  # (M, 3)
+
+    # compute lengths
+    total_dimension = torch.cumprod(dimensions, dim=0)[-1] / dimensions[0]
+    s_batch_indices = torch.div(unique_values, total_dimension, rounding_mode="floor").long()
+    s_lengths = torch.bincount(s_batch_indices, minlength=batch_size)
+    assert (
+        s_lengths.shape[0] == batch_size
+    ), f"Invalid length of s_lengths ({batch_size} expected, {s_lengths.shape} got)."
+
+    return s_points, s_lengths
 
 if __name__ == '__main__':
     # Generate random points with additional features

@@ -1,0 +1,1918 @@
+================================================== CUDA available: True ==================================================
+===> Device specs: _CudaDeviceProperties(name='NVIDIA GeForce RTX 4070 Laptop GPU', major=8, minor=9, total_memory=7940MB, multi_processor_count=36)
+
+
+==================================================
+Entering main method...
+wandb init.
+Loss function:  cross_entropy
+=====> Class weights: tensor([0.7894, 0.1000, 0.1000, 0.5515, 0.9862, 0.9268])
+============================== Model initialized ==============================
+========================================================================================================================
+Layer (type:depth-idx)                                                 Output Shape              Param #
+========================================================================================================================
+LitGIBLi                                                               [1, 10000, 6]             --
+├─GIBLiNet: 1-1                                                        [1, 10000, 6]             --
+│    └─BuildGraphPyramid: 2-1                                          [1, 10000, 12]            --
+│    └─ModuleList: 2-6                                                 --                        (recursive)
+│    │    └─GIB_Sequence: 3-1                                          [1, 10000, 16]            124
+│    └─ModuleList: 2-5                                                 --                        (recursive)
+│    │    └─GIB_Sequence: 3-2                                          [1, 5000, 16]             332
+│    └─ModuleList: 2-6                                                 --                        (recursive)
+│    │    └─GIB_Sequence: 3-3                                          [1, 5000, 32]             1,784
+│    └─ModuleList: 2-5                                                 --                        (recursive)
+│    │    └─GIB_Sequence: 3-4                                          [1, 2500, 32]             2,296
+│    └─ModuleList: 2-6                                                 --                        (recursive)
+│    │    └─GIB_Sequence: 3-5                                          [1, 2500, 48]             6,660
+│    └─ModuleList: 2-7                                                 --                        --
+│    │    └─Decoder: 3-6                                               [1, 5000, 32]             6,072
+│    │    └─Decoder: 3-7                                               [1, 10000, 16]            1,452
+│    └─Sequential: 2-8                                                 [1, 10000, 6]             --
+│    │    └─Linear: 3-8                                                [1, 10000, 16]            272
+│    │    └─PointBatchNorm: 3-9                                        [1, 10000, 16]            32
+│    │    └─ReLU: 3-10                                                 [1, 10000, 16]            --
+│    │    └─Linear: 3-11                                               [1, 10000, 6]             102
+========================================================================================================================
+Total params: 19,126
+Trainable params: 19,126
+Non-trainable params: 0
+Total mult-adds (M): 0.02
+========================================================================================================================
+Input size (MB): 0.12
+Forward/backward pass size (MB): 40.54
+Params size (MB): 0.08
+Estimated Total Size (MB): 40.74
+========================================================================================================================
+
+=== Data Module TS40K initialized. ===
+
+<core.lit_modules.lit_ts40k.LitTS40K_FULL_Preprocessed object at 0x7daf3e183fd0>
+/home/didi/Downloads/data/TS40K-Dataset/TS40K-FULL-Preprocessed/
+Sanity Checking: |          | 0/? [00:00<?, ?it/s]Sanity Checking:   0%|          | 0/2 [00:00<?, ?it/s]Sanity Checking DataLoader 0:   0%|          | 0/2 [00:00<?, ?it/s]Sanity Checking DataLoader 0:  50%|█████     | 1/2 [00:01<00:01,  0.62it/s]Sanity Checking DataLoader 0: 100%|██████████| 2/2 [00:02<00:00,  0.68it/s]========== val metrics ==========
+	val_MulticlassJaccardIndex: tensor([0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0244], device='cuda:0'); mean: 0.0041
+	val_MulticlassF1Score: 0.00793960690498352
+	val_MulticlassFBetaScore: tensor([0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.1112], device='cuda:0'); mean: 0.0185
+	val_MulticlassPrecision: tensor([0.0000, 0.0000, 0.0000, 0.0000, 0.0000, 0.0244], device='cuda:0'); mean: 0.0041
+	val_MulticlassRecall: tensor([0., 0., 0., 0., 0., 1.], device='cuda:0'); mean: 0.1667
+                                                                           Training: |          | 0/? [00:00<?, ?it/s]Training:   0%|          | 0/14610 [00:00<?, ?it/s]Epoch 0:   0%|          | 0/14610 [00:00<?, ?it/s] name='gib_neigh_encoders.0.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.6293],
+        [0.1543],
+        [0.1188],
+        [0.0976]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 0.0032],
+        [ 0.0006],
+        [ 0.0044],
+        [-0.0183]], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-2.0217e+00, -6.6031e+00, -1.6764e-06], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1., device='cuda:0', requires_grad=True),  param.grad=tensor(0.0014, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0106, device='cuda:0', requires_grad=True),  param.grad=tensor(5.2170, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([0., 0., 0.], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0., device='cuda:0', requires_grad=True),  param.grad=tensor(0.0099, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0312, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-4.6786e-02,  2.1845e-03,  6.5484e-10], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.7981], device='cuda:0', requires_grad=True),  param.grad=tensor([0.0006], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1084, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0016, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.1003, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0020, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 7.2199e-02, -2.8771e+00, -5.2387e-09], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.0323, device='cuda:0', requires_grad=True),  param.grad=tensor(0.1328, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.4000, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0013, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0483, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0884, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.4075],
+        [0.2405],
+        [0.1717],
+        [0.1803]], device='cuda:0', requires_grad=True),  param.grad=tensor([[-0.0050],
+        [-0.0124],
+        [ 0.0006],
+        [ 0.0317]], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 2.7943e-01,  5.5123e-01, -2.0955e-08], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1., device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0024, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0230, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.1123, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([2.0949e-01, 3.3332e-01, 2.0955e-08], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.8000, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0018, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0363, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0032, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-1.6268e-03, -7.6652e-04, -2.4556e-10], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.1052], device='cuda:0', requires_grad=True),  param.grad=tensor([-0.0001], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0389, device='cuda:0', requires_grad=True),  param.grad=tensor(-4.0712e-05, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0864, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0001, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([1.1692e-01, 4.3816e-01, 4.4529e-08], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.2113, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0368, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0047, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0573, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0992, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.2821],
+        [0.1627],
+        [0.4936],
+        [0.0616]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 0.0036],
+        [ 0.0061],
+        [ 0.0034],
+        [-0.0469]], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 5.7453e-03,  7.8827e-03, -5.2387e-09], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0040, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0594, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0107, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([0.0149, 0.0048, 0.0000], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.6000, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0015, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0913, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0122, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 3.3428e-02, -2.3896e-02,  2.6193e-09], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.6056], device='cuda:0', requires_grad=True),  param.grad=tensor([0.0020], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0780, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0014, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.1093, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0038, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-1.2156e-01,  4.1973e-02,  1.0477e-08], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.2856, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0422, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.6000, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0018, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0961, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0681, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.1407],
+        [0.2431],
+        [0.5473],
+        [0.0689]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 0.0044],
+        [-0.0005],
+        [ 0.0005],
+        [ 0.0003]], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([1.3049e-02, 8.8943e-02, 5.2387e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0004, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0279, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0237, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([5.3037e-03, 5.3139e-02, 2.6193e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.8000, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0832, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0024, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-0.0121, -0.0252,  0.0000], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.7700], device='cuda:0', requires_grad=True),  param.grad=tensor([-0.0003], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0833, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0008, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0666, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0011, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 4.3244e-03,  8.9625e-04, -3.2742e-10], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.4767, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0052, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1., device='cuda:0', requires_grad=True),  param.grad=tensor(-1.9227e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0924, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0013, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.6416],
+        [0.1900],
+        [0.1134],
+        [0.0550]], device='cuda:0', requires_grad=True),  param.grad=tensor([[0.0009],
+        [0.0010],
+        [0.0006],
+        [0.0006]], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 3.9584e-02,  1.1710e-01, -1.5716e-08], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1., device='cuda:0', requires_grad=True),  param.grad=tensor(-6.4017e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0418, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0188, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([0.0130, 0.0409, 0.0000], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.8000, device='cuda:0', requires_grad=True),  param.grad=tensor(3.5702e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0561, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0042, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-9.4423e-06, -5.4089e-04, -2.5580e-12], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.3322], device='cuda:0', requires_grad=True),  param.grad=tensor([-5.9573e-06], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0788, device='cuda:0', requires_grad=True),  param.grad=tensor(1.6342e-06, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0398, device='cuda:0', requires_grad=True),  param.grad=tensor(-2.4735e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([1.5716e-04, 6.1033e-05, 0.0000e+00], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.8662, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(1.4414e-06, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0690, device='cuda:0', requires_grad=True),  param.grad=tensor(2.6598e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.lambdas',  param=Parameter containing:
+tensor([[0.2890],
+        [0.0539],
+        [0.1449],
+        [0.5121]], device='cuda:0', requires_grad=True),  param.grad=tensor([[0.0007],
+        [0.0005],
+        [0.0007],
+        [0.0009]], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-1.4820e-01, -9.7713e-02,  3.9290e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(1.6526e-06, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0377, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0026, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-3.4183e-02, -2.5562e-02, -2.2919e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(-4.0680e-06, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0317, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0014, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-5.8145e-04,  6.5451e-05,  6.1391e-11], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.9057], device='cuda:0', requires_grad=True),  param.grad=tensor([2.0331e-05], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0536, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0001, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0314, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0007, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-1.3188e-03,  6.4006e-03,  8.1855e-11], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.6804, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1., device='cuda:0', requires_grad=True),  param.grad=tensor(-1.5509e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0125, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0041, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.6638],
+        [0.0996],
+        [0.0556],
+        [0.1811]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 0.0010],
+        [-0.0018],
+        [ 0.0056],
+        [ 0.0003]], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([0., 0., 0.], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(0., device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0261, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0204, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([3.4490e-03, 6.7249e-01, 4.1910e-08], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0845, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0156, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 1.1268e-01, -1.1598e-01,  1.3097e-09], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.8867], device='cuda:0', requires_grad=True),  param.grad=tensor([0.0003], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0671, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0013, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0550, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0007, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-1.2111e-02,  8.0448e-03, -2.6193e-09], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.7639, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(-5.3524e-05, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0568, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0018, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2802],
+        [0.2599],
+        [0.3089],
+        [0.1511]], device='cuda:0', requires_grad=True),  param.grad=tensor([[0.0008],
+        [0.0008],
+        [0.0006],
+        [0.0010]], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 3.2336e-02,  4.7272e-02, -7.8580e-09], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(3.3786e-06, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1005, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0011, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([1.7930e-02, 2.6126e-02, 2.6193e-09], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.8000, device='cuda:0', requires_grad=True),  param.grad=tensor(7.6537e-06, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1067, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0005, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-7.2694e-03, -1.0322e-02, -8.1855e-11], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.2976], device='cuda:0', requires_grad=True),  param.grad=tensor([-0.0002], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0690, device='cuda:0', requires_grad=True),  param.grad=tensor(-3.6743e-05, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0496, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0005, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 4.0817e-04,  5.8541e-04, -8.1855e-11], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.7820, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1., device='cuda:0', requires_grad=True),  param.grad=tensor(4.9059e-05, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0213, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0032, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.0690],
+        [0.3480],
+        [0.2821],
+        [0.3010]], device='cuda:0', requires_grad=True),  param.grad=tensor([[0.0009],
+        [0.0006],
+        [0.0008],
+        [0.0009]], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([1.4119e-01, 1.5204e-01, 5.2387e-09], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.4000, device='cuda:0', requires_grad=True),  param.grad=tensor(1.7301e-05, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0209, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0088, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 7.1067e-02,  1.6008e-01, -5.2387e-09], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.8000, device='cuda:0', requires_grad=True),  param.grad=tensor(-3.5845e-05, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0826, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0017, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-3.0510e-05, -2.0470e-04,  6.3949e-13], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.0067], device='cuda:0', requires_grad=True),  param.grad=tensor([-2.3145e-05], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1077, device='cuda:0', requires_grad=True),  param.grad=tensor(-1.0595e-08, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0404, device='cuda:0', requires_grad=True),  param.grad=tensor(-4.3653e-06, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 2.5407e-03, -4.6034e-06,  8.1855e-11], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.5141, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(3.3716e-05, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0480, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0004, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.0700],
+        [0.0538],
+        [0.0441],
+        [0.8321]], device='cuda:0', requires_grad=True),  param.grad=tensor([[0.0007],
+        [0.0005],
+        [0.0005],
+        [0.0010]], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([3.3365e-04, 9.7544e-04, 3.2742e-10], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1., device='cuda:0', requires_grad=True),  param.grad=tensor(8.9989e-06, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1091, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0001, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([0., 0., 0.], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0., device='cuda:0', requires_grad=True),  param.grad=tensor(7.3084e-05, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0113, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 4.0048e-04, -2.1029e-05, -5.1159e-12], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.4653], device='cuda:0', requires_grad=True),  param.grad=tensor([-8.4866e-07], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0533, device='cuda:0', requires_grad=True),  param.grad=tensor(-1.1548e-05, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0103, device='cuda:0', requires_grad=True),  param.grad=tensor(-6.2805e-05, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-4.2755e-01, -8.2061e-02,  3.1432e-08], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.2269, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0362, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(-7.2541e-06, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0419, device='cuda:0', requires_grad=True),  param.grad=tensor(0.1358, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.0683],
+        [0.0331],
+        [0.0834],
+        [0.8152]], device='cuda:0', requires_grad=True),  param.grad=tensor([[-0.0019],
+        [-0.0038],
+        [ 0.0006],
+        [ 0.0014]], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 6.5683e-03, -1.3777e-02, -6.5484e-10], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1., device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1044, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0034, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 5.1478e-03, -1.1090e-02,  2.6193e-09], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.6000, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0609, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0042, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 0.0074, -0.0060,  0.0000], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.9289], device='cuda:0', requires_grad=True),  param.grad=tensor([5.3192e-06], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0753, device='cuda:0', requires_grad=True),  param.grad=tensor(6.7422e-05, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0154, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([3.1963e-03, 2.3951e-03, 6.5484e-10], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.8870, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0003, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0700, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0022, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.3595],
+        [0.0722],
+        [0.4511],
+        [0.1173]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 0.0013],
+        [-0.0015],
+        [ 0.0008],
+        [ 0.0005]], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-3.1679e-04,  2.5157e-02,  1.3097e-09], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0002, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1044, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0009, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-1.8712e-02,  3.8415e-02,  3.9290e-09], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.8000, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0230, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0059, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 1.2890e-03, -4.4360e-03, -3.0695e-11], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.3964], device='cuda:0', requires_grad=True),  param.grad=tensor([-6.6579e-05], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0767, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0002, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0996, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0001, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 3.9019e-05, -8.3270e-04,  2.0464e-11], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.5255, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.4000, device='cuda:0', requires_grad=True),  param.grad=tensor(-1.0308e-05, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0377, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0005, device='cuda:0')
+Epoch 0:   0%|          | 1/14610 [00:01<6:38:29,  0.61it/s]Epoch 0:   0%|          | 1/14610 [00:01<6:38:38,  0.61it/s, v_num=bkt3, train_loss_step=1.750, train_MulticlassJaccardIndex_step=0.0543, train_MulticlassF1Score_step=0.097, train_MulticlassFBetaScore_step=0.0978, train_MulticlassPrecision_step=0.146, train_MulticlassRecall_step=0.153]name='gib_neigh_encoders.0.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.3559],
+        [0.2213],
+        [0.2136],
+        [0.2092]], device='cuda:0', requires_grad=True),  param.grad=tensor([[-4.0992e-02],
+        [ 7.1685e-04],
+        [-9.3371e-05],
+        [ 7.2701e-02]], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([1.0000e-04, 1.0000e-04, 9.9407e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([1.7684e+00, 1.4384e-02, 5.1863e-07], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.9999, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0149, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0105, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.8049, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-3.8483e-05,  1.0061e-05,  0.0000e+00], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(-1.0000e-04, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0042, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0312, device='cuda:0', requires_grad=True),  param.grad=tensor(-2.0310e-05, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([ 1.0000e-04, -1.0000e-04, -6.1459e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 4.3372e-02,  1.0830e-02, -7.8913e-10], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.7980], device='cuda:0', requires_grad=True),  param.grad=tensor([-0.0002], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1085, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0005, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.1002, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0003, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04,  1.0000e-04,  3.4378e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.3199e+01, -1.3131e+01,  7.5961e-08], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.0322, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0764, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.4001, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0108, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0482, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0508, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2913],
+        [0.2465],
+        [0.2301],
+        [0.2321]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 0.0048],
+        [-0.0028],
+        [ 0.0007],
+        [-0.0005]], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -1.0000e-04,  6.7695e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 9.3284e-01, -3.9714e-01,  1.3424e-07], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0001, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0012, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0231, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.2123, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -1.0000e-04, -6.7695e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 7.1088e-01, -3.1307e-01, -1.4930e-07], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.8001, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0005, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0362, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.1020, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([9.9999e-05, 9.9999e-05, 2.3968e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-4.6184e-04,  3.1026e-04,  1.7890e-10], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.1053], device='cuda:0', requires_grad=True),  param.grad=tensor([-5.5766e-05], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0390, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0003, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0865, device='cuda:0', requires_grad=True),  param.grad=tensor(-5.7465e-05, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -1.0000e-04, -8.1661e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 2.3778e+00,  1.8041e-01, -5.2387e-09], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.2112, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0426, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1999, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0572, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.1151, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.2548],
+        [0.2261],
+        [0.3148],
+        [0.2044]], device='cuda:0', requires_grad=True),  param.grad=tensor([[-0.0014],
+        [-0.0025],
+        [ 0.0004],
+        [ 0.0076]], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -1.0000e-04,  3.4378e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.4542e-02,  9.3706e-03, -5.5661e-09], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.1999, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0028, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0595, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0141, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -1.0000e-04,  0.0000e+00], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.4334e-02,  1.0967e-02, -3.1105e-09], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.5999, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0012, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0914, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0143, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04,  1.0000e-04, -2.0757e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.5256e-02, -1.5473e-02, -2.0975e-09], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.6055], device='cuda:0', requires_grad=True),  param.grad=tensor([-0.0002], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0781, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0027, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.1092, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0013, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([ 1.0000e-04, -1.0000e-04, -5.1166e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([2.5497e-01, 7.5018e-02, 9.1759e-08], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.2855, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0025, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.6001, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0009, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0960, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0040, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2202],
+        [0.2440],
+        [0.3307],
+        [0.2050]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 0.0030],
+        [-0.0013],
+        [ 0.0006],
+        [ 0.0009]], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -1.0000e-04, -3.4378e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.1106e-01, -2.0829e-02,  6.5484e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1999, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0004, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0280, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0409, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -1.0000e-04, -2.0757e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 4.8949e-02, -1.9448e-02, -4.4713e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.8001, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0003, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0833, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0022, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([1.0000e-04, 1.0000e-04, 0.0000e+00], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-0.0005,  0.0023,  0.0000], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.7701], device='cuda:0', requires_grad=True),  param.grad=tensor([-9.0951e-05], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0834, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0667, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0004, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -9.9999e-05,  3.1704e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.5250e-02,  7.4299e-04, -2.8093e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.4766, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0032, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0001, device='cuda:0', requires_grad=True),  param.grad=tensor(4.4543e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0923, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0008, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.3594],
+        [0.2288],
+        [0.2119],
+        [0.1999]], device='cuda:0', requires_grad=True),  param.grad=tensor([[0.0011],
+        [0.0004],
+        [0.0006],
+        [0.0007]], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -1.0000e-04,  6.1114e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.2279e-01,  4.0298e-02, -1.3097e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0001, device='cuda:0', requires_grad=True),  param.grad=tensor(9.1681e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0417, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0174, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -1.0000e-04,  0.0000e+00], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 9.1028e-02,  3.0711e-02, -2.0955e-08], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.7999, device='cuda:0', requires_grad=True),  param.grad=tensor(-4.0489e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0560, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0070, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([9.9894e-05, 9.9998e-05, 2.5573e-08], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-2.9029e-03,  1.6324e-04, -6.1368e-11], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.3323], device='cuda:0', requires_grad=True),  param.grad=tensor([-5.3279e-05], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0787, device='cuda:0', requires_grad=True),  param.grad=tensor(-3.2959e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0399, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0003, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-9.9994e-05, -9.9984e-05,  0.0000e+00], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.0238e-04, -8.9649e-05, -5.1159e-12], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.8662, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1999, device='cuda:0', requires_grad=True),  param.grad=tensor(-9.2259e-07, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0689, device='cuda:0', requires_grad=True),  param.grad=tensor(3.1769e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.lambdas',  param=Parameter containing:
+tensor([[0.2560],
+        [0.2024],
+        [0.2216],
+        [0.3200]], device='cuda:0', requires_grad=True),  param.grad=tensor([[0.0008],
+        [0.0006],
+        [0.0007],
+        [0.0008]], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([ 1.0000e-04,  1.0000e-04, -2.8207e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-9.6431e-02, -6.2097e-02, -9.1268e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1999, device='cuda:0', requires_grad=True),  param.grad=tensor(1.0044e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0376, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0056, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([1.0000e-04, 1.0000e-04, 1.8646e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-8.5386e-02, -6.1670e-02,  1.5358e-08], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2001, device='cuda:0', requires_grad=True),  param.grad=tensor(-1.7860e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0316, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0060, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([ 9.9998e-05, -9.9985e-05, -6.1016e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 4.4872e-03, -1.0541e-03,  1.3292e-10], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.9056], device='cuda:0', requires_grad=True),  param.grad=tensor([3.6163e-06], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0535, device='cuda:0', requires_grad=True),  param.grad=tensor(-1.3787e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0313, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0003, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([ 9.9999e-05, -1.0000e-04, -8.1190e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 3.6400e-03, -5.7543e-03, -5.0679e-11], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.6804, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0001, device='cuda:0', requires_grad=True),  param.grad=tensor(6.0971e-06, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0124, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0014, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.3663],
+        [0.2084],
+        [0.1994],
+        [0.2260]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 0.0008],
+        [-0.0063],
+        [ 0.0077],
+        [ 0.0010]], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([ 1.0222e-03, -1.8870e-04, -1.0232e-10], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0000e-04, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0585, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0204, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0004, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -1.0000e-04, -8.0736e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 4.2654e-01, -1.1769e-01,  4.0600e-08], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2001, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0012, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0844, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0601, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04,  1.0000e-04, -1.1580e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-6.6718e-02, -1.4932e-02, -9.7202e-10], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.8866], device='cuda:0', requires_grad=True),  param.grad=tensor([0.0016], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0670, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0061, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0551, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0021, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([ 1.0000e-04, -1.0000e-04,  2.0757e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.5998e-03,  8.4881e-06, -4.6107e-10], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.7639, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2001, device='cuda:0', requires_grad=True),  param.grad=tensor(4.4792e-05, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0567, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2572],
+        [0.2520],
+        [0.2647],
+        [0.2261]], device='cuda:0', requires_grad=True),  param.grad=tensor([[0.0007],
+        [0.0008],
+        [0.0008],
+        [0.0007]], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -1.0000e-04,  4.4003e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.2709e-02, -3.2309e-03, -3.3970e-09], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1999, device='cuda:0', requires_grad=True),  param.grad=tensor(-1.3848e-05, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1004, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0044, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -1.0000e-04, -2.0757e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-7.3572e-03, -1.9490e-03,  3.9699e-09], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.7999, device='cuda:0', requires_grad=True),  param.grad=tensor(6.7349e-06, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1066, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0024, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([1.0000e-04, 1.0000e-04, 8.1190e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([3.6587e-03, 4.7481e-03, 2.9962e-10], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.2977], device='cuda:0', requires_grad=True),  param.grad=tensor([6.3076e-05], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0691, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0002, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0497, device='cuda:0', requires_grad=True),  param.grad=tensor(-6.8705e-05, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-9.9998e-05, -9.9998e-05,  8.1190e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-2.1789e-04, -1.6777e-04, -9.7662e-11], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.7820, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.9999, device='cuda:0', requires_grad=True),  param.grad=tensor(-7.5983e-06, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0214, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0005, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.2075],
+        [0.2742],
+        [0.2567],
+        [0.2616]], device='cuda:0', requires_grad=True),  param.grad=tensor([[-0.0022],
+        [ 0.0030],
+        [ 0.0008],
+        [ 0.0008]], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -1.0000e-04, -3.4378e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-3.6673e-01,  8.8064e-02, -6.1636e-08], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.3999, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0004, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0210, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0554, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -1.0000e-04,  3.4378e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-6.1464e-02,  4.9910e-03, -4.7898e-09], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.8001, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0003, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0825, device='cuda:0', requires_grad=True),  param.grad=tensor(4.0091e-05, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([ 9.9967e-05,  9.9995e-05, -6.3945e-09], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([6.1449e-06, 4.6287e-05, 1.0108e-12], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.0068], device='cuda:0', requires_grad=True),  param.grad=tensor([-2.1895e-05], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1077, device='cuda:0', requires_grad=True),  param.grad=tensor(-9.5438e-08, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0405, device='cuda:0', requires_grad=True),  param.grad=tensor(2.4380e-06, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04,  9.9783e-05, -8.1190e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-8.5956e-05,  7.1724e-05, -2.2157e-12], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.5141, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1999, device='cuda:0', requires_grad=True),  param.grad=tensor(2.4524e-07, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0481, device='cuda:0', requires_grad=True),  param.grad=tensor(5.4101e-06, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.1960],
+        [0.1929],
+        [0.1910],
+        [0.4201]], device='cuda:0', requires_grad=True),  param.grad=tensor([[0.0004],
+        [0.0007],
+        [0.0005],
+        [0.0011]], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-9.9997e-05, -9.9999e-05, -3.1704e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 5.7592e-03,  1.5513e-03, -5.4996e-10], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.9999, device='cuda:0', requires_grad=True),  param.grad=tensor(-5.0255e-05, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1092, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0010, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([0., 0., 0.], device='cuda:0', requires_grad=True),  param.grad=tensor([-1.6447e-05, -3.9293e-06, -6.3949e-13], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(-9.9986e-05, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0015, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0113, device='cuda:0', requires_grad=True),  param.grad=tensor(-1.0991e-06, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-9.9998e-05,  9.9952e-05,  5.1133e-08], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-7.3694e-04, -9.2764e-04, -1.6056e-12], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.4654], device='cuda:0', requires_grad=True),  param.grad=tensor([-7.1128e-05], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0534, device='cuda:0', requires_grad=True),  param.grad=tensor(-2.1888e-05, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0104, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0038, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([ 1.0000e-04,  1.0000e-04, -7.5864e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([4.5096e-01, 4.4728e-04, 5.2387e-08], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.2268, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0159, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2001, device='cuda:0', requires_grad=True),  param.grad=tensor(6.9237e-05, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0418, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0597, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.1965],
+        [0.1897],
+        [0.1994],
+        [0.4145]], device='cuda:0', requires_grad=True),  param.grad=tensor([[0.0010],
+        [0.0005],
+        [0.0006],
+        [0.0009]], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04,  1.0000e-04,  6.1459e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 2.7132e-02, -5.3276e-03, -1.2048e-09], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0001, device='cuda:0', requires_grad=True),  param.grad=tensor(5.3701e-05, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1043, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0011, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04,  1.0000e-04, -2.0757e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 4.2160e-02, -8.7629e-03, -1.0078e-08], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.6001, device='cuda:0', requires_grad=True),  param.grad=tensor(-6.9732e-05, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0608, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0037, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04,  1.0000e-04,  0.0000e+00], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-8.6803e-03, -2.9963e-03,  3.3253e-11], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.9288], device='cuda:0', requires_grad=True),  param.grad=tensor([-1.0631e-05], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0752, device='cuda:0', requires_grad=True),  param.grad=tensor(1.8196e-05, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0155, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0019, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0000e-04, -1.0000e-04, -6.1459e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-8.9429e-05, -1.3088e-04, -1.6547e-11], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.8870, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1999, device='cuda:0', requires_grad=True),  param.grad=tensor(-1.7733e-06, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0701, device='cuda:0', requires_grad=True),  param.grad=tensor(8.9650e-05, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.2754],
+        [0.2067],
+        [0.3018],
+        [0.2161]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 0.0019],
+        [-0.0007],
+        [ 0.0007],
+        [ 0.0007]], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([ 9.9997e-05, -1.0000e-04, -1.1580e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 2.1523e-03, -1.7462e-03, -2.1576e-09], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1999, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0003, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1045, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0005, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([ 1.0000e-04, -1.0000e-04, -2.8207e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 2.2329e-02, -2.7024e-03, -4.6330e-08], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.8001, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0004, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0229, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0209, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-9.9999e-05,  1.0000e-04,  3.0602e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-7.9435e-04, -2.1134e-04, -3.0433e-11], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.3965], device='cuda:0', requires_grad=True),  param.grad=tensor([-7.4852e-05], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0766, device='cuda:0', requires_grad=True),  param.grad=tensor(1.0127e-05, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0995, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0001, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-9.9974e-05,  9.9999e-05, -2.0422e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.3069e-04, -7.5038e-05, -1.3839e-12], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.5255, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.4001, device='cuda:0', requires_grad=True),  param.grad=tensor(-1.1144e-07, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0376, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0001, device='cuda:0')
+Epoch 0:   0%|          | 2/14610 [00:03<6:30:34,  0.62it/s, v_num=bkt3, train_loss_step=1.750, train_MulticlassJaccardIndex_step=0.0543, train_MulticlassF1Score_step=0.097, train_MulticlassFBetaScore_step=0.0978, train_MulticlassPrecision_step=0.146, train_MulticlassRecall_step=0.153]Epoch 0:   0%|          | 2/14610 [00:03<6:30:38,  0.62it/s, v_num=bkt3, train_loss_step=1.740, train_MulticlassJaccardIndex_step=0.0482, train_MulticlassF1Score_step=0.086, train_MulticlassFBetaScore_step=0.0849, train_MulticlassPrecision_step=0.166, train_MulticlassRecall_step=0.119]name='gib_neigh_encoders.0.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2774],
+        [0.2425],
+        [0.2406],
+        [0.2395]], device='cuda:0', requires_grad=True),  param.grad=tensor([[-0.0017],
+        [ 0.0007],
+        [ 0.0090],
+        [-0.0047]], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([0.0001, 0.0002, 0.0001], device='cuda:0', requires_grad=True),  param.grad=tensor([4.7856e+00, 3.5918e+00, 7.0198e-07], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0000, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0007, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0104, device='cuda:0', requires_grad=True),  param.grad=tensor(2.4147, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([ 7.4386e-05, -7.4309e-05,  0.0000e+00], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-2.1445e-04,  3.4617e-05, -5.8833e-11], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(-0.0001, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0053, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0313, device='cuda:0', requires_grad=True),  param.grad=tensor(1.5941e-05, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([ 9.8524e-05, -1.8619e-04, -5.1655e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-3.0124e-01, -1.3662e-01, -3.5888e-09], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.7980], device='cuda:0', requires_grad=True),  param.grad=tensor([0.0025], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1085, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0007, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.1002, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0013, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.7478e-04,  1.8703e-04, -2.4348e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-3.3160e+01,  2.9137e+01, -3.1301e-07], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.0322, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.3291, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.4000, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0009, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0481, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.2186, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2605],
+        [0.2491],
+        [0.2450],
+        [0.2455]], device='cuda:0', requires_grad=True),  param.grad=tensor([[-0.0046],
+        [-0.0092],
+        [ 0.0008],
+        [ 0.0165]], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.9051e-04, -1.1084e-04,  1.0456e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.1643e+00, -9.5298e-01, -1.8356e-08], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0001, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0014, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0232, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0378, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.9031e-04, -9.7871e-05, -8.8313e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.2773e+00, -1.0447e+00, -9.6793e-09], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.8002, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0014, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0363, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0203, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([1.8479e-04, 1.3417e-04, 2.6138e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.4020e-03,  1.3042e-03, -1.2072e-09], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.1054], device='cuda:0', requires_grad=True),  param.grad=tensor([0.0002], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0390, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0004, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0866, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0001, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-0.0002, -0.0002, -0.0001], device='cuda:0', requires_grad=True),  param.grad=tensor([-7.3303e-01, -2.5729e+00,  2.0300e-08], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.2112, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0104, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1998, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0032, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0572, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0281, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.2510],
+        [0.2439],
+        [0.2665],
+        [0.2386]], device='cuda:0', requires_grad=True),  param.grad=tensor([[-0.0016],
+        [-0.0037],
+        [-0.0004],
+        [ 0.0090]], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.9382e-04, -2.0008e-04,  6.9503e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.3706e-02, -2.4755e-02, -1.1050e-08], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.1999, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0030, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0595, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0087, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.9988e-04, -1.9491e-04,  1.3419e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-3.3969e-02, -4.7240e-02, -7.0804e-09], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.5999, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0018, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0914, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0156, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.3004e-04,  1.9670e-04, -2.1862e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-3.5857e-02, -3.2011e-02, -2.0106e-09], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.6055], device='cuda:0', requires_grad=True),  param.grad=tensor([-0.0005], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0780, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0013, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.1092, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0013, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([ 6.1648e-05, -1.9765e-04, -1.2187e-04], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-2.9712e-01, -1.7525e-01,  7.8580e-08], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.2854, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.1331, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.6001, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0012, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0959, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.2154, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2424],
+        [0.2482],
+        [0.2707],
+        [0.2387]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 0.0043],
+        [ 0.0010],
+        [ 0.0016],
+        [-0.0041]], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.8172e-04, -1.4826e-04, -7.1590e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-3.5807e-01, -2.9713e-01, -2.2919e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1998, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0007, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0281, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0744, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.8120e-04, -1.3733e-04, -1.2615e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.1200e-01, -6.2473e-02, -6.4256e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.8002, device='cuda:0', requires_grad=True),  param.grad=tensor(3.4320e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0834, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0140, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([0.0002, 0.0002, 0.0000], device='cuda:0', requires_grad=True),  param.grad=tensor([-4.2909e-02, -2.6511e-03, -9.8225e-10], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.7702], device='cuda:0', requires_grad=True),  param.grad=tensor([0.0003], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0835, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0004, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0668, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0031, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.8986e-04, -1.9908e-04,  1.6784e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-2.2531e-02,  1.8916e-02, -2.8649e-10], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.4765, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0468, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0001, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0012, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0923, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0118, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.2783],
+        [0.2442],
+        [0.2402],
+        [0.2373]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 1.4530e-03],
+        [-6.6635e-05],
+        [ 5.3849e-04],
+        [ 9.8244e-04]], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.9138e-04, -1.8758e-04,  9.9574e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([2.5289e-01, 7.8203e-02, 1.3097e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0001, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0002, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0417, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0369, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.8314e-04, -1.9828e-04,  4.4433e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([2.2873e-01, 7.6762e-02, 7.2032e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.7999, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0001, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0560, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0180, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([1.7452e-04, 1.4263e-04, 3.5923e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 2.1762e-03, -4.5834e-04,  1.5700e-11], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.3324], device='cuda:0', requires_grad=True),  param.grad=tensor([-0.0001], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0787, device='cuda:0', requires_grad=True),  param.grad=tensor(-4.4658e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0400, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0018, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.9675e-04, -7.6161e-05,  2.6916e-08], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-3.5141e-03, -1.6878e-03, -4.1760e-10], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.8662, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1999, device='cuda:0', requires_grad=True),  param.grad=tensor(4.8583e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0688, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0012, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.lambdas',  param=Parameter containing:
+tensor([[0.2513],
+        [0.2381],
+        [0.2428],
+        [0.2679]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 8.0581e-04],
+        [ 1.9381e-03],
+        [ 4.3556e-04],
+        [-7.2636e-05]], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([ 1.9675e-04,  1.9647e-04, -1.0927e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 5.0889e-02, -1.3772e-01,  9.6998e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1998, device='cuda:0', requires_grad=True),  param.grad=tensor(1.1478e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0375, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0362, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([ 1.9398e-04,  1.9439e-04, -1.4703e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 2.9216e-02, -1.4917e-01, -1.8254e-08], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2002, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0002, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0316, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0601, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([ 3.4807e-05, -2.9865e-05, -1.5904e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 4.2317e-03, -2.2954e-03, -6.5707e-11], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.9055], device='cuda:0', requires_grad=True),  param.grad=tensor([-8.2298e-05], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0534, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0004, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0312, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0047, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([ 5.2847e-05, -1.0005e-04, -9.3208e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 6.3040e-03, -5.5897e-03,  2.4288e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.6804, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0001, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0123, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0153, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2802],
+        [0.2392],
+        [0.2371],
+        [0.2435]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 0.0008],
+        [ 0.0090],
+        [-0.0089],
+        [ 0.0020]], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-7.4413e-05,  7.4408e-05,  5.3465e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-9.9300e-06,  1.4662e-03, -1.9743e-10], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.0002, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0130, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0203, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-0.0002, -0.0002, -0.0002], device='cuda:0', requires_grad=True),  param.grad=tensor([ 3.8143e-02,  6.6828e-01, -6.5484e-08], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2002, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0016, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0844, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0255, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.1972e-04,  1.7596e-04, -1.2555e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-7.3733e-02, -6.2416e-01, -4.3741e-09], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.8865], device='cuda:0', requires_grad=True),  param.grad=tensor([-0.0026], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0669, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0018, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0552, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0026, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([ 1.5668e-04, -1.6708e-04,  3.3243e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.2217e-02,  1.8854e-02,  5.7298e-09], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.7639, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2001, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0003, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0566, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0110, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2518],
+        [0.2505],
+        [0.2537],
+        [0.2441]], device='cuda:0', requires_grad=True),  param.grad=tensor([[1.4667e-03],
+        [1.2262e-03],
+        [2.6899e-04],
+        [2.1524e-05]], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.3513e-04, -1.6177e-04,  7.8329e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-8.3683e-02,  5.2427e-02,  3.5440e-08], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0002, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1003, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0002, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.3373e-04, -1.6128e-04, -4.5677e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-4.9052e-02,  3.0978e-02, -7.3592e-09], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.7998, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0001, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1065, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0001, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([ 1.2638e-04,  1.2976e-04, -3.5175e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 5.8425e-02,  9.3190e-03, -7.4850e-11], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.2977], device='cuda:0', requires_grad=True),  param.grad=tensor([-0.0004], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0690, device='cuda:0', requires_grad=True),  param.grad=tensor(-5.8155e-05, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0498, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0008, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.2404e-04, -1.4390e-04,  1.7056e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-4.0577e-03,  7.8045e-05, -5.6659e-10], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.7820, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.9998, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0215, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0135, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.2395],
+        [0.2560],
+        [0.2516],
+        [0.2528]], device='cuda:0', requires_grad=True),  param.grad=tensor([[-0.0058],
+        [ 0.0065],
+        [ 0.0008],
+        [ 0.0012]], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-5.4615e-05, -1.9528e-04,  2.1358e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-5.4458e-01, -9.2067e-01,  5.4679e-08], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.4000, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0011, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0210, device='cuda:0', requires_grad=True),  param.grad=tensor(0.2254, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0198e-04, -1.6929e-04,  6.7685e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.0726e-01, -1.2531e-01, -3.2742e-09], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.8000, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0008, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0824, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0113, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([ 1.5093e-04,  1.4893e-04, -1.4743e-08], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.4283e-04, -6.2258e-05,  1.1469e-12], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.0069], device='cuda:0', requires_grad=True),  param.grad=tensor([0.0003], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1078, device='cuda:0', requires_grad=True),  param.grad=tensor(6.4368e-07, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0405, device='cuda:0', requires_grad=True),  param.grad=tensor(5.8343e-05, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.6445e-04,  2.9826e-05, -1.1858e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.7841e-03, -6.1299e-04, -5.3397e-11], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.5141, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1998, device='cuda:0', requires_grad=True),  param.grad=tensor(9.4856e-05, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0481, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0027, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2357],
+        [0.2349],
+        [0.2345],
+        [0.2949]], device='cuda:0', requires_grad=True),  param.grad=tensor([[-0.0082],
+        [ 0.0007],
+        [ 0.0008],
+        [ 0.0079]], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.7816e-04, -1.9866e-04, -1.8850e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 4.0553e-02,  8.8366e-03, -2.4966e-09], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0000, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0021, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1091, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0326, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([7.4350e-05, 7.4147e-05, 3.3656e-09], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.1357e-06, -1.6365e-05, -1.8154e-13], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(-2.8866e-05, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0181, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0114, device='cuda:0', requires_grad=True),  param.grad=tensor(-5.8063e-06, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-6.6590e-05,  1.7586e-04,  8.3804e-08], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 2.9216e-02, -1.6185e-02, -4.8097e-11], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.4654], device='cuda:0', requires_grad=True),  param.grad=tensor([2.7184e-05], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0535, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0002, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0105, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0009, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([ 9.2074e-05,  1.6660e-04, -1.5567e-04], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 7.1984e-01, -1.0646e-01,  1.2573e-07], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.2268, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.1346, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0017, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0418, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.5069, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2359],
+        [0.2343],
+        [0.2366],
+        [0.2933]], device='cuda:0', requires_grad=True),  param.grad=tensor([[1.3519e-03],
+        [5.1945e-05],
+        [1.6984e-03],
+        [6.2026e-05]], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.8808e-04,  1.8934e-04,  1.4754e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-2.9740e-02,  1.2478e-02,  7.4078e-09], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0001, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0001, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1042, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0019, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.8198e-04,  1.9871e-04,  2.6450e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-5.4250e-02,  1.8829e-02,  6.0572e-09], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.6002, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0003, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0607, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0151, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-8.6813e-05,  1.9324e-04, -1.7461e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 3.6346e-02, -1.3051e-02,  1.4430e-10], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.9288], device='cuda:0', requires_grad=True),  param.grad=tensor([0.0002], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0751, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0005, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0156, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0045, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.6490e-04, -1.6284e-04, -9.0272e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-3.3457e-04, -1.8556e-03,  3.2742e-10], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.8870, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1998, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0702, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0057, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.2562],
+        [0.2392],
+        [0.2631],
+        [0.2415]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 0.0059],
+        [-0.0052],
+        [ 0.0011],
+        [ 0.0008]], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([ 3.6128e-05, -1.6169e-04, -7.2082e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 2.1955e-02,  1.4672e-02, -2.7626e-09], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1998, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0011, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1046, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0109, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([ 8.5977e-05, -1.6162e-04,  2.4311e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([1.0955e-01, 1.5641e-01, 3.9290e-09], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.8002, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0018, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0228, device='cuda:0', requires_grad=True),  param.grad=tensor(0.1348, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.1798e-04,  1.7047e-04,  6.1066e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.0782e-03, -2.5570e-03,  2.1051e-10], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.3966], device='cuda:0', requires_grad=True),  param.grad=tensor([0.0002], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0765, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0004, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0994, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0007, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.9043e-04,  1.7341e-04, -2.9374e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-5.4473e-03,  1.5774e-03,  9.4708e-10], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.5255, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.4002, device='cuda:0', requires_grad=True),  param.grad=tensor(9.4441e-06, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0375, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0033, device='cuda:0')
+Epoch 0:   0%|          | 3/14610 [00:04<6:28:58,  0.63it/s, v_num=bkt3, train_loss_step=1.740, train_MulticlassJaccardIndex_step=0.0482, train_MulticlassF1Score_step=0.086, train_MulticlassFBetaScore_step=0.0849, train_MulticlassPrecision_step=0.166, train_MulticlassRecall_step=0.119]Epoch 0:   0%|          | 3/14610 [00:04<6:29:01,  0.63it/s, v_num=bkt3, train_loss_step=1.820, train_MulticlassJaccardIndex_step=0.048, train_MulticlassF1Score_step=0.088, train_MulticlassFBetaScore_step=0.0949, train_MulticlassPrecision_step=0.144, train_MulticlassRecall_step=0.155] name='gib_neigh_encoders.0.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2569],
+        [0.2481],
+        [0.2476],
+        [0.2474]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 0.0506],
+        [ 0.0007],
+        [ 0.0115],
+        [-0.0618]], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([4.6236e-05, 1.8167e-04, 1.4742e-04], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 7.8572e+00, -2.3091e+00,  1.3201e-06], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0000, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0128, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0104, device='cuda:0', requires_grad=True),  param.grad=tensor(5.2964, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([ 1.4741e-04, -1.5166e-04,  2.1636e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-3.3209e-04,  1.2296e-04, -6.7029e-11], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(-0.0002, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0441, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0313, device='cuda:0', requires_grad=True),  param.grad=tensor(8.8186e-05, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([ 1.6079e-04, -1.2788e-04,  6.2744e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.4453e-01,  1.4510e-01, -7.0395e-09], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.7979], device='cuda:0', requires_grad=True),  param.grad=tensor([0.0033], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1086, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0081, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.1001, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0127, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.3679e-04,  1.5718e-04,  2.2492e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.8354e+01, -9.6780e+00, -3.9290e-08], device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.0322, device='cuda:0', requires_grad=True),  param.grad=tensor(0.3432, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.4000, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0110, device='cuda:0')
+name='gib_neigh_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0481, device='cuda:0', requires_grad=True),  param.grad=tensor(0.2280, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2526],
+        [0.2498],
+        [0.2487],
+        [0.2489]], device='cuda:0', requires_grad=True),  param.grad=tensor([[-0.0039],
+        [-0.0091],
+        [ 0.0007],
+        [ 0.0153]], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.8636e-04, -6.3676e-05, -2.4926e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([2.8639e-01, 1.4793e-02, 4.9358e-08], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0002, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0012, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0232, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0368, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.7007e-04, -3.8684e-05,  3.9400e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 2.3160e-01, -1.4516e-02, -4.2140e-08], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.8003, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0014, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0363, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0015, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([2.7602e-04, 9.4346e-05, 6.9000e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-7.5934e-04,  2.7553e-04, -5.8880e-10], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.1054], device='cuda:0', requires_grad=True),  param.grad=tensor([-1.3786e-05], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0390, device='cuda:0', requires_grad=True),  param.grad=tensor(-1.3670e-05, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0866, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0001, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-0.0002, -0.0001, -0.0002], device='cuda:0', requires_grad=True),  param.grad=tensor([ 4.3148e-02,  1.4537e-01, -4.8458e-08], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.2112, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0130, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1998, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0030, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0572, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0350, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.2502],
+        [0.2485],
+        [0.2541],
+        [0.2472]], device='cuda:0', requires_grad=True),  param.grad=tensor([[-0.0011],
+        [-0.0016],
+        [-0.0003],
+        [ 0.0060]], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-0.0002, -0.0002,  0.0001], device='cuda:0', requires_grad=True),  param.grad=tensor([ 6.4426e-02, -2.6819e-02, -2.9468e-08], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.1999, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0023, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0594, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0152, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.8542e-04, -1.5097e-04,  3.8619e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.2766e-01, -3.3844e-02,  1.8499e-08], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.5999, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0010, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0913, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0133, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0202e-04,  2.9410e-04, -1.6514e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-6.0824e-03, -1.2912e-02,  4.1643e-09], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.6054], device='cuda:0', requires_grad=True),  param.grad=tensor([-0.0004], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0780, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0014, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.1092, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0012, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([ 8.7539e-05, -1.7352e-04, -2.0010e-04], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 2.9755e-01, -1.4676e-01, -1.4930e-07], device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.2854, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0302, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.6001, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0008, device='cuda:0')
+name='gib_neigh_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0960, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0488, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2481],
+        [0.2495],
+        [0.2552],
+        [0.2472]], device='cuda:0', requires_grad=True),  param.grad=tensor([[0.0004],
+        [0.0005],
+        [0.0007],
+        [0.0013]], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.3956e-04, -9.8150e-05, -9.0865e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-9.1613e-02, -1.7164e-01,  3.6835e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1997, device='cuda:0', requires_grad=True),  param.grad=tensor(-6.8319e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0281, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0130, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.4796e-04, -1.0933e-04,  8.1958e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-3.1792e-02, -3.2559e-02, -2.5554e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.8003, device='cuda:0', requires_grad=True),  param.grad=tensor(-3.0701e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0835, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0003, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([2.4625e-04, 2.1288e-04, 3.4299e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([3.8361e-03, 5.3674e-03, 1.6267e-10], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.7702], device='cuda:0', requires_grad=True),  param.grad=tensor([-3.7308e-06], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0836, device='cuda:0', requires_grad=True),  param.grad=tensor(-2.4204e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0667, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0006, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.7756e-04, -2.6754e-04,  2.6547e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.4266e-02, -1.2966e-02,  2.5477e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.4765, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0069, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0001, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0001, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0922, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0018, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.2571],
+        [0.2485],
+        [0.2475],
+        [0.2468]], device='cuda:0', requires_grad=True),  param.grad=tensor([[0.0006],
+        [0.0010],
+        [0.0008],
+        [0.0006]], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-0.0003, -0.0003,  0.0001], device='cuda:0', requires_grad=True),  param.grad=tensor([ 2.4390e-02,  4.3362e-02, -5.3205e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0000, device='cuda:0', requires_grad=True),  param.grad=tensor(-4.7264e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0417, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0072, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-2.6638e-04, -2.9354e-04,  6.3303e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([2.5403e-02, 5.2309e-02, 4.5839e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.8000, device='cuda:0', requires_grad=True),  param.grad=tensor(3.6895e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0561, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0077, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([1.8235e-04, 2.0849e-04, 5.1218e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.1542e-03, -1.7813e-03, -1.1843e-11], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.3325], device='cuda:0', requires_grad=True),  param.grad=tensor([2.4176e-05], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0788, device='cuda:0', requires_grad=True),  param.grad=tensor(3.1189e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0401, device='cuda:0', requires_grad=True),  param.grad=tensor(-1.0366e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.3695e-04, -1.1231e-05,  1.5482e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([2.9473e-03, 1.5994e-03, 1.3228e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.8662, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1998, device='cuda:0', requires_grad=True),  param.grad=tensor(-2.2662e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0689, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0005, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.lambdas',  param=Parameter containing:
+tensor([[0.2503],
+        [0.2470],
+        [0.2482],
+        [0.2545]], device='cuda:0', requires_grad=True),  param.grad=tensor([[0.0012],
+        [0.0006],
+        [0.0008],
+        [0.0004]], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([ 2.5094e-04,  2.9335e-04, -2.0487e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-3.9010e-02, -5.9989e-03,  2.4556e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1997, device='cuda:0', requires_grad=True),  param.grad=tensor(9.3845e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0375, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0224, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([ 2.4387e-04,  2.8250e-04, -4.9706e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-4.7306e-02, -9.1751e-03,  9.3621e-09], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2001, device='cuda:0', requires_grad=True),  param.grad=tensor(-3.3575e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0316, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0289, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-4.5635e-05,  5.0820e-05, -1.9693e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 4.2182e-03, -1.0547e-03, -9.6723e-11], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.9055], device='cuda:0', requires_grad=True),  param.grad=tensor([1.7625e-05], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0535, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0003, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0312, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0003, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-2.0663e-05, -6.5277e-05, -8.8579e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-4.2362e-05,  4.0347e-03,  4.2462e-10], device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.6804, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0002, device='cuda:0', requires_grad=True),  param.grad=tensor(-8.8250e-05, device='cuda:0')
+name='gib_neigh_encoders.2.gib_blocks.2.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0123, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0117, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2576],
+        [0.2473],
+        [0.2468],
+        [0.2483]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 0.0008],
+        [ 0.0027],
+        [-0.0010],
+        [ 0.0006]], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.3131e-04,  1.8389e-05,  1.5894e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-4.4878e-04, -1.6225e-04, -1.5392e-10], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.0003, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0023, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0203, device='cuda:0', requires_grad=True),  param.grad=tensor(9.8368e-05, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-0.0002, -0.0002, -0.0002], device='cuda:0', requires_grad=True),  param.grad=tensor([-1.1401e-01, -4.2543e-02, -7.5306e-09], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2002, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0004, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0843, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0071, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.0164e-04,  2.4956e-04, -3.8325e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.0110e-01,  3.8134e-02,  5.2956e-10], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.8866], device='cuda:0', requires_grad=True),  param.grad=tensor([-0.0005], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0668, device='cuda:0', requires_grad=True),  param.grad=tensor(6.0818e-05, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0552, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0009, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([ 2.3284e-04, -2.4618e-04,  2.4610e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([4.0685e-03, 3.2024e-02, 1.2432e-09], device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.7639, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(-3.4767e-05, device='cuda:0')
+name='gib_pooling_encoders.0.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0567, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0016, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2504],
+        [0.2501],
+        [0.2509],
+        [0.2485]], device='cuda:0', requires_grad=True),  param.grad=tensor([[0.0009],
+        [0.0008],
+        [0.0007],
+        [0.0006]], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-8.6522e-05, -2.4119e-04,  4.7418e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 8.3366e-03, -3.1611e-02, -6.4256e-09], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1999, device='cuda:0', requires_grad=True),  param.grad=tensor(3.0969e-05, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1002, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0036, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-8.3879e-05, -2.4065e-04, -4.1598e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 4.6183e-03, -1.8860e-02, -1.7189e-09], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.7997, device='cuda:0', requires_grad=True),  param.grad=tensor(1.4726e-05, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1064, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0018, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([ 6.5918e-05,  1.0700e-04, -8.1736e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 2.5231e-04, -6.6182e-04, -2.3599e-10], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.2978], device='cuda:0', requires_grad=True),  param.grad=tensor([-7.9195e-05], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0690, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0499, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0005, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-6.2677e-05, -1.8568e-04,  4.2790e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.5387e-03,  1.1134e-03,  1.6946e-10], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.7820, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.9999, device='cuda:0', requires_grad=True),  param.grad=tensor(-2.5305e-05, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0214, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0030, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.2474],
+        [0.2515],
+        [0.2504],
+        [0.2507]], device='cuda:0', requires_grad=True),  param.grad=tensor([[-0.0006],
+        [ 0.0022],
+        [ 0.0008],
+        [ 0.0006]], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([ 1.7718e-05, -1.4633e-04,  1.9151e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-2.4403e-03, -2.6399e-01,  2.0730e-08], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.4001, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0209, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0045, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-5.4917e-05, -1.7208e-04,  9.7760e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.1007e-02, -3.1022e-02, -2.0668e-09], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.8000, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0002, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0825, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0005, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([ 9.6900e-05,  2.0337e-04, -2.4242e-08], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 4.0525e-05, -4.9630e-05, -3.5071e-13], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.0068], device='cuda:0', requires_grad=True),  param.grad=tensor([6.5355e-06], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1078, device='cuda:0', requires_grad=True),  param.grad=tensor(2.2898e-07, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0405, device='cuda:0', requires_grad=True),  param.grad=tensor(2.4007e-06, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.6849e-04,  8.6976e-05, -1.2258e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 5.9808e-03,  3.2261e-04, -2.1492e-09], device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.5141, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1998, device='cuda:0', requires_grad=True),  param.grad=tensor(-2.7207e-05, device='cuda:0')
+name='gib_pooling_encoders.1.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0482, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0006, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2464],
+        [0.2462],
+        [0.2461],
+        [0.2614]], device='cuda:0', requires_grad=True),  param.grad=tensor([[-0.0013],
+        [ 0.0007],
+        [ 0.0005],
+        [ 0.0029]], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-2.4991e-04, -2.7669e-04,  6.8717e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 2.6044e-03, -5.4522e-02, -3.4174e-09], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0000, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0005, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1090, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0099, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([1.2728e-04, 1.4961e-04, 6.1591e-09], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 5.0682e-07,  2.6235e-06, -9.8006e-12], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(3.9409e-05, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0006, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0115, device='cuda:0', requires_grad=True),  param.grad=tensor(-5.3993e-06, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.2970e-04,  2.4300e-04,  2.8135e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.9788e-02,  5.4503e-02, -2.6675e-10], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.4655], device='cuda:0', requires_grad=True),  param.grad=tensor([-0.0001], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0534, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0105, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0092, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([ 3.9702e-05,  2.4862e-04, -2.3633e-04], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 2.5767e-01, -6.3512e-01, -1.2573e-07], device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.2268, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0270, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.2000, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0005, device='cuda:0')
+name='decoders.0.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0419, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.1014, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.lambdas',  param=Parameter containing:
+tensor([[0.2464],
+        [0.2460],
+        [0.2466],
+        [0.2610]], device='cuda:0', requires_grad=True),  param.grad=tensor([[0.0008],
+        [0.0002],
+        [0.0013],
+        [0.0008]], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.8808e-04,  2.0083e-04, -1.4095e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-4.1219e-03,  2.2302e-02, -2.6136e-09], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.0001, device='cuda:0', requires_grad=True),  param.grad=tensor(1.1360e-05, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1041, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0013, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.7073e-04,  1.9339e-04,  4.5854e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-7.5700e-03,  3.6339e-02, -1.0309e-08], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.6003, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0002, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0607, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0087, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.4472e-04,  2.8296e-04, -8.1208e-07], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 1.9720e-02, -2.6173e-02, -2.2222e-11], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.9288], device='cuda:0', requires_grad=True),  param.grad=tensor([0.0001], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0750, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0002, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0156, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0054, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-2.0813e-04, -1.6214e-04, -1.2012e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-2.4601e-04,  2.3217e-04, -1.0807e-10], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.8870, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1998, device='cuda:0', requires_grad=True),  param.grad=tensor(-1.6303e-06, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.0.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0702, device='cuda:0', requires_grad=True),  param.grad=tensor(5.3241e-05, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.lambdas',  param=Parameter containing:
+tensor([[0.2515],
+        [0.2473],
+        [0.2533],
+        [0.2479]], device='cuda:0', requires_grad=True),  param.grad=tensor([[ 0.0031],
+        [-0.0017],
+        [ 0.0009],
+        [ 0.0007]], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cy_0.gib_params.angles',  param=Parameter containing:
+tensor([-3.2308e-05, -2.3505e-04,  3.8478e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-1.9486e-03,  5.3013e-03,  1.9185e-09], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cy_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.1997, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0005, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cy_0.gib_params.radius',  param=Parameter containing:
+tensor(0.1047, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0059, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.ellip_0.gib_params.angles',  param=Parameter containing:
+tensor([ 2.1455e-05, -2.3502e-04,  5.8859e-05], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-6.3672e-02,  5.1830e-02, -1.2769e-08], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.ellip_0.gib_params.intensity',  param=Parameter containing:
+tensor(0.8003, device='cuda:0', requires_grad=True),  param.grad=tensor(-0.0008, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.ellip_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0227, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0900, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.6638e-04,  2.4957e-04,  3.3839e-08], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([ 2.0836e-03, -4.0088e-03,  1.5806e-10], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.intensity',  param=Parameter containing:
+tensor([0.3966], device='cuda:0', requires_grad=True),  param.grad=tensor([8.7509e-05], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0765, device='cuda:0', requires_grad=True),  param.grad=tensor(5.1736e-05, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.disk_0.gib_params.width',  param=Parameter containing:
+tensor(0.0993, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0003, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.angles',  param=Parameter containing:
+tensor([-1.2832e-04,  1.4352e-04, -3.6608e-06], device='cuda:0',
+       requires_grad=True),  param.grad=tensor([-2.5907e-04,  1.3980e-03,  9.8641e-11], device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.inc',  param=Parameter containing:
+tensor(0.5255, device='cuda:0', requires_grad=True),  param.grad=tensor(0., device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.intensity',  param=Parameter containing:
+tensor(1.4002, device='cuda:0', requires_grad=True),  param.grad=tensor(-8.1630e-06, device='cuda:0')
+name='decoders.1.gib_seq.gib_blocks.1.gib.gibs.cone_0.gib_params.radius',  param=Parameter containing:
+tensor(0.0374, device='cuda:0', requires_grad=True),  param.grad=tensor(0.0006, device='cuda:0')
+Epoch 0:   0%|          | 4/14610 [00:06<6:28:18,  0.63it/s, v_num=bkt3, train_loss_step=1.820, train_MulticlassJaccardIndex_step=0.048, train_MulticlassF1Score_step=0.088, train_MulticlassFBetaScore_step=0.0949, train_MulticlassPrecision_step=0.144, train_MulticlassRecall_step=0.155]Epoch 0:   0%|          | 4/14610 [00:06<6:28:20,  0.63it/s, v_num=bkt3, train_loss_step=1.760, train_MulticlassJaccardIndex_step=0.0522, train_MulticlassF1Score_step=0.0949, train_MulticlassFBetaScore_step=0.101, train_MulticlassPrecision_step=0.134, train_MulticlassRecall_step=0.152]

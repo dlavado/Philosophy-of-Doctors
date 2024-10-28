@@ -24,7 +24,8 @@ class KNN_Neighboring:
             support points of shape (B, Q, k)
         """
         
-        return torch_knn(q_points, x, self.k)[1]
+        # return torch_knn(q_points, x, self.k)[1]
+        return keops_knn(q_points, x, self.k)[1]
 
 
 def torch_knn(q_points: Tensor, s_points: Tensor, k: int) -> Tuple[Tensor, Tensor]:
@@ -71,4 +72,26 @@ def torch_knn(q_points: Tensor, s_points: Tensor, k: int) -> Tuple[Tensor, Tenso
         return dists.squeeze(0), indices.squeeze(0)
 
     return dists, indices
+
+
+def keops_knn(q_points: Tensor, s_points: Tensor, k: int) -> Tuple[Tensor, Tensor]:
+    """kNN with PyKeOps.
+
+    Args:
+        q_points (Tensor): (*, N, C)
+        s_points (Tensor): (*, M, C)
+        k (int)
+
+    Returns:
+        knn_distance (Tensor): (*, N, k)
+        knn_indices (LongTensor): (*, N, k)
+    """
+    from pykeops.torch import LazyTensor
+    num_batch_dims = q_points.dim() - 2
+    xi = LazyTensor(q_points.unsqueeze(-2))  # (*, N, 1, C)
+    xj = LazyTensor(s_points.unsqueeze(-3))  # (*, 1, M, C)
+    dij = (xi - xj).norm2()  # (*, N, M)
+    knn_distances, knn_indices = dij.Kmin_argKmin(k, dim=num_batch_dims + 1)  # (*, N, K)
+    return knn_distances, knn_indices
+
 

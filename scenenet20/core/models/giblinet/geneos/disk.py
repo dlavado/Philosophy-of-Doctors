@@ -53,8 +53,8 @@ class Disk(GIB_Stub):
 
         disk_params = {
              
-            'radius' : torch.rand(1)[0] * kernel_reach, # float \in ]0, kernel_reach]
-            'width' : torch.rand(1)[0] * kernel_reach,  # float \in ]0, kernel_reach]
+            'radius' : torch.rand(1)[0] * kernel_reach + 0.01, # float \in ]0, kernel_reach]
+            'width' : torch.rand(1)[0] * kernel_reach + 0.01,  # float \in ]0, kernel_reach]
             'intensity' : torch.rand(1)
         }
 
@@ -158,8 +158,10 @@ class Disk(GIB_Stub):
         weights = self.gaussian(s_centered[..., :2])
         # print(f"{weights.shape=} {weights.device=}")
         # print(f"{s_centered.shape=} {s_centered.device=}")
-        in_width_mask = torch.abs(s_centered[..., 2]) <= self.width
-        weights = weights * in_width_mask.float() * valid_mask.float()
+        # in_width_mask = torch.abs(s_centered[..., 2]) <= self.width
+        weights = weights * torch.relu(self.width - torch.abs(s_centered[..., 2])) # Zero out weights outside the disk's width
+        # weights = weights * (s_centered[..., 2] <= self.width).float() # Zero out weights outside the disk's width
+        weights = weights *  valid_mask.float()
         
         weights = self.sum_zero(weights) # (B, M, K)
         q_output = torch.sum(weights, dim=-1) # (B, M)

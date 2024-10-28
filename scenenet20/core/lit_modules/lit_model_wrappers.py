@@ -136,7 +136,7 @@ class LitWrapperModel(pl.LightningModule):
             if print_metrics:
                 # if metric is per class
                 if isinstance(metric_val, torch.Tensor) and metric_val.ndim > 0: 
-                    print(f'\t{prefix}_{metric_name}: {metric_val}; mean: {metric_val[metric_val > 0].mean():.4f}') # class 0 is noise
+                    print(f'\t{prefix}_{metric_name}: {metric_val}; mean: {metric_val.mean():.4f}')
                 else:
                     print(f'\t{prefix}_{metric_name}: {metric_val}')
 

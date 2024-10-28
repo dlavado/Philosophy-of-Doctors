@@ -1,0 +1,152 @@
+
+# Description: config file for default parameters of scenenet_ts40k experiment
+# Author: Diogo Mateus
+
+project:
+  value: 'GIBLi-Net'
+output_dir: 
+  value: 'experiments/gibli_ts40k/outputs'
+# ------------------ #
+# dataset config
+# ------------------ #
+dataset:
+  value: 'ts40k'
+preprocessed:
+  value: True
+  description: 'If True, uses the preprocessed the dataset'
+load_into_memory:
+  value: False
+data_path:
+  value: ''
+in_channels:
+  value: 3
+  description: 'Number of input data channels'
+add_normals:
+  value: False
+  description: 'If True, adds normals to the input data'
+num_classes:
+  value: 6
+batch_size:
+  value: 1
+ignore_index:
+  value: -1 # noise
+num_workers: 
+  value: 0
+val_split:
+  value: 0.1
+num_points:
+  value: 10000
+# ------------------ #
+# model config
+# ------------------ #
+model:
+  value: 'gibli'
+# --- GiBs config
+cylinder:
+  value: 1
+disk:
+  value: 1
+cone:
+  value: 1
+ellipsoid:
+  value: 1
+num_observers:
+  value: 1
+kernel_size:
+  value: 0.1
+# --- GIBLi config
+num_levels:
+  value: 3
+  description: 'Number of levels in the model'
+out_gib_channels:
+  value: 16
+  description: 'Number of output channels for GIB'
+skip_connections:
+  value: True
+  description: 'Whether to use skip connections in the model'
+graph_strategy:
+  value: 'fps' # 'fps' or 'grid'
+  description: 'Strategy for graph construction'
+graph_pooling_factor:
+  value: 2
+  description: 'Pooling factor for graph operations'
+neighborhood_strategy:
+  value: 'knn'
+  description: 'Strategy for neighborhood operations'
+neighborhood_size:
+  value: 8
+  description: 'Size of the neighborhood for the strategy'
+neighborhood_kwargs:
+  value: {}
+  description: 'Additional keyword arguments for neighborhood operations'
+neighborhood_update_kwargs:
+  value: {}
+  description: 'Additional keyword arguments for neighborhood updates'
+voxel_size:
+  value: "[0.05, 0.05, 0.05]"
+  description: 'Voxel size for voxelization'
+# ------------------ #
+# training config
+# ------------------ #
+optimizer:
+  value: 'adam' #'adam' 
+learning_rate:
+  value: 0.001
+max_epochs:
+  value: 100 # -1 for infinite
+accelerator:
+  value: 'gpu' # 'ddp' or 'dp'
+devices:
+  value: -1 # -1 for all available gpus
+num_nodes:
+  value: 1
+strategy:
+  value: 'auto' # 'ddp'
+early_stop_metric:
+  value: 'val_MulticlassJaccardIndex'
+# ------------------ #
+#criterion config
+# ------------------ #
+criterion:
+  value: 'cross_entropy'
+geneo_criterion:
+  value: True
+  description: 'If True, uses the geneo wrapper criterion, otherwise uses the standard criterion'
+class_weights:
+  value: True
+  description: 'Use class weights in the loss function'
+# ------------------ #
+# Lit Trainer config
+# ------------------ #
+fast_dev_run:
+  value: True
+precision: # 16 or 32 FPU precision
+  value: 32
+  description: 'FPU precision'
+auto_lr_find:
+  value: False
+auto_scale_batch_size:
+  value: False
+profiler:
+  value: False # 'simple' or 'advanced'
+  description: 'PyTorch Lightning profiler'
+accumulate_grad_batches:
+  value: 1
+  description: 'Accumulate gradients on k batches before performing a backward pass'
+save_onnx:
+  value: False
+  description: 'Save model in onnx format'
+# ------------------ #
+# Checkpoint config
+# ------------------ #
+resume_from_checkpoint:
+  value: False
+checkpoint_dir:
+  value:  '${experiment_path}/wandb/'
+resume_checkpoint_name:
+  value: MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
+  value: 1 # every n epochs
+checkpoint_every_n_steps:
+  value: 0 # every n steps
+  

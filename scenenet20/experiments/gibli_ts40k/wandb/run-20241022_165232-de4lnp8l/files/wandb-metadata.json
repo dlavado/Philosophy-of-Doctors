@@ -1,0 +1,171 @@
+{
+    "os": "Linux-6.8.0-47-generic-x86_64-with-glibc2.39",
+    "python": "3.10.13",
+    "heartbeatAt": "2024-10-22T15:52:33.078694",
+    "startedAt": "2024-10-22T15:52:32.591397",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "--model",
+        "gibli"
+    ],
+    "state": "running",
+    "program": "/home/didi/VSCode/Philosophy-of-Doctors/scenenet20/scripts/main.py",
+    "codePathLocal": "main.py",
+    "codePath": "scenenet20/scripts/main.py",
+    "git": {
+        "remote": "https://github.com/dlavado/Philosophy-of-Doctors.git",
+        "commit": "41e074867015cc4aa571c6d2513a553ed62362ea"
+    },
+    "email": "d.lavado@campus.fct.unl.pt",
+    "root": "/home/didi/VSCode/Philosophy-of-Doctors",
+    "host": "tsuky",
+    "username": "didi",
+    "executable": "/home/didi/miniconda3/envs/gib/bin/python3",
+    "cpu_count": 16,
+    "cpu_count_logical": 24,
+    "cpu_freq": {
+        "current": 1851.4064166666667,
+        "min": 800.0,
+        "max": 4466.666666666667
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2871.902,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 799.674,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 1595.264,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 891.011,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 4044.433,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 4771.225,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 5000.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 4800.0
+        },
+        {
+            "current": 801.054,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 797.516,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 800.68,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 2364.259,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 797.77,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 3700.0
+        },
+        {
+            "current": 800.0,
+            "min": 800.0,
+            "max": 3700.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 936.7875633239746,
+            "used": 422.15936279296875
+        }
+    },
+    "gpu": "NVIDIA GeForce RTX 4070 Laptop GPU",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 4070 Laptop GPU",
+            "memory_total": 8585740288
+        }
+    ],
+    "memory": {
+        "total": 31.08474349975586
+    }
+}

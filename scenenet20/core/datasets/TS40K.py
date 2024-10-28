@@ -884,10 +884,10 @@ class TS40K_FULL_Preprocessed(Dataset):
 
     This results in a datasets with similar structure to the original TS40K_FULL dataset, but with the preprocessed data.
 
-    The targets are specific to the sem-_seg task, for others, different preprocessing should be applied.
+    The targets are specific to the sem_seg task, for others, different preprocessing should be applied.
     """
 
-    def __init__(self, dataset_path, split='fit', sample_types='all', transform=None, load_into_memory=True) -> None:
+    def __init__(self, dataset_path:str, split='fit', sample_types='all', transform=None, load_into_memory=True, use_full_test_set=False) -> None:
         super().__init__()
 
         if sample_types != 'all' and not isinstance(sample_types, list):
@@ -895,6 +895,12 @@ class TS40K_FULL_Preprocessed(Dataset):
         
         self.dataset_path = dataset_path
         self.transform = transform
+
+        if split == 'test' and use_full_test_set:
+            self.dataset_path = self.dataset_path.replace('-Preprocessed', '')
+            self.ts40k_full = TS40K_FULL(self.dataset_path, split='test', sample_types=sample_types, task='sem_seg', transform=transform, load_into_memory=load_into_memory)
+        else:
+            self.ts40k_full = None
 
         if sample_types == 'all':
             sample_types = ['tower_radius', '2_towers', 'no_tower']
@@ -907,6 +913,8 @@ class TS40K_FULL_Preprocessed(Dataset):
                                  if os.path.isfile(os.path.join(type_path, file)) and ('.npy' in file or '.pt' in file)]
 
         self.data_files = np.array(self.data_files)
+        self.pyramids = None
+        self.pyramids_built = False
 
 
         self.load_into_memory = False
@@ -919,14 +927,31 @@ class TS40K_FULL_Preprocessed(Dataset):
         self.data = []
         for i in tqdm(range(len(self)), desc="Loading data into memory..."):
             self.data.append(self.__getitem__(i))
+            
+    def _build_pyramid(self, pyramid_builder):
+        self.pyramids = []
+        for i in tqdm(range(len(self)), desc="Building Dataset pyramids..."):
+            coords = self[i][0]
+            coords = coords[..., :3].cuda()
+            pyramid_dict = pyramid_builder(coords)
+            for key, val in pyramid_dict.items():
+                pyramid_dict[key] = [t.cpu() for t in val]
+            self.pyramids.append(pyramid_dict)
+        self.pyramids_built = True
 
 
     def __len__(self):
         return len(self.data_files)
+    
+    def _get_file_path(self, idx) -> str:
+        return os.path.join(self.dataset_path, self.data_files[idx])
 
 
     def __getitem__(self, idx) -> Tuple[torch.Tensor, torch.Tensor]:
         # data[i]
+
+        if self.ts40k_full:
+            return self.ts40k_full[idx]
 
         if self.load_into_memory:
             return self.data[idx]
@@ -944,6 +969,14 @@ class TS40K_FULL_Preprocessed(Dataset):
         if self.transform:
             pt = self.transform(pt)
             #print(f"Transformed sample: {sample[0].shape}, {sample[1].shape}, {sample[2].shape}")
+            
+        if self.pyramids_built:
+            
+            return {
+                'coords' : pt[0],
+                'sem_labels' : pt[1],
+                'graph_pyramid' : self.pyramids[idx]
+            }
 
         return pt
        

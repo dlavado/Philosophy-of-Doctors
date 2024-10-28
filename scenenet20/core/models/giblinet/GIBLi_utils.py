@@ -311,6 +311,8 @@ def build_grid_graph_pyramid(
     upsampling_idxs_list:List[torch.Tensor] = []
 
     points = points[..., :3]
+    
+    voxel_size = voxel_size.to(points.device)
 
     points_list.append(points)
     for _ in range(num_layers - 1):

@@ -1,11 +1,44 @@
 
 
 import pytorch_lightning as pl
+import torch
 from torch.utils.data import DataLoader, random_split
 import sys
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 from core.datasets.Labelec import Labelec_Dataset as Labelec, Labelec_Preprocessed
+
+def collate_fn(batch):
+    coords_list = []
+    feats_list = []
+    labels = []
+    batch_vector = []
+
+    for i, (x, label) in enumerate(batch):
+        # Assuming coords are in the first C_coords columns and feats in the remaining columns
+        C_coords = 3  # or however many columns `coords` have
+
+        coords = x[:, :C_coords]         # Extract coords
+        feats = x[:, C_coords:]          # Extract feats
+
+        coords_list.append(coords)       # Shape: (N_i, C_coords)
+        feats_list.append(feats)         # Shape: (N_i, C_feats)
+        labels.append(label)             # Shape: (N_i, 1) or (N_i,)
+        batch_vector.append(torch.full((x.shape[0],), i, dtype=torch.long))
+
+    # Concatenate each list into a single tensor
+    coords = torch.cat(coords_list, dim=0)  # Shape: (B * N, C_coords)
+    feats = torch.cat(feats_list, dim=0)    # Shape: (B * N, C_feats)
+    labels = torch.cat(labels, dim=0)       # Shape: (B * N, 1) or (B * N,)
+    batch_vector = torch.cat(batch_vector, dim=0)  # Shape: (B * N,)
+
+    # Return a dictionary with the separate components
+    return {
+        'coords': coords,
+        'feats': feats,
+        'batch_vector': batch_vector,
+        'labels': labels
+    }
 
 
 class LitLabelec(pl.LightningDataModule):

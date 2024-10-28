@@ -30,13 +30,8 @@ class GIBLiNet(nn.Module):
                 num_observers:int,
                 kernel_size:float,
                 gib_dict:dict,
-                neighborhood_strategy:str,
-                neighborhood_size:Union[int, List[int]],
-                neighborhood_kwargs:Dict,
-                neighborhood_update_kwargs:Dict,
                 skip_connections:bool,
-                graph_strategy:str,
-                graph_pooling_factor:int,
+                pyramid_builder:BuildGraphPyramid
                 ) -> None:
         
         super(GIBLiNet, self).__init__()
@@ -44,20 +39,8 @@ class GIBLiNet(nn.Module):
         self.skip_connections = skip_connections
         self.num_levels = num_levels
 
-        # Build the graph pyramid
-        if isinstance(neighborhood_size, int):
-            # if the neighborhood size is an integer, then increase the its size by a factor of 1.5 for each level
-            neighborhood_size = [int(neighborhood_size + (neighborhood_size/2)*i) for i in range(num_levels)]
 
-        self.graph_pyramid = BuildGraphPyramid(num_levels,
-                                    graph_strategy,
-                                    graph_pooling_factor,
-                                    neighborhood_size,
-                                    neighborhood_strategy,
-                                    neighborhood_kwargs,
-                                    neighborhood_update_kwargs,
-                                    voxel_size = torch.tensor([0.05, 0.05, 0.05]).cuda() if graph_strategy=="grid" else None
-                                )
+        self.pyramid_builder = pyramid_builder
 
         # Build the GIB layers
         self.gib_neigh_encoders = nn.ModuleList()
@@ -95,7 +78,6 @@ class GIBLiNet(nn.Module):
                                    strided=True
                                 )
             self.gib_pooling_encoders.append(gib_seq)
-            
 
             # Build unpooling layers
             dec = Decoder(feat_channels=enc_channels[i+1], 
@@ -119,9 +101,31 @@ class GIBLiNet(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(enc_channels[0], num_classes)
         )
+        
+        
+    def maintain_convexity(self):
+        for i in range(self.num_levels):
+            self.gib_neigh_encoders[i].maintain_convexity()
+
+            if i < self.num_levels - 1:
+                self.gib_pooling_encoders[i].maintain_convexity()
+                self.decoders[i].maintain_convexity()
+                
+                
+    def get_cvx_coefficients(self) -> List[torch.Tensor]:
+        # get the convex coefficients for every GIB layer
+        cvx_coefs = []
+        for i in range(self.num_levels):
+            cvx_coefs.extend(self.gib_neigh_encoders[i].get_cvx_coefficients())
+
+            if i < self.num_levels - 1:
+                cvx_coefs.extend(self.gib_pooling_encoders[i].get_cvx_coefficients())
+                cvx_coefs.extend(self.decoders[i].get_cvx_coefficients())
+        
+        return cvx_coefs
 
 
-    def forward(self, x:torch.Tensor) -> torch.Tensor:
+    def forward(self, x:torch.Tensor, graph_pyramid_dict=None) -> torch.Tensor:
         # this assumes that the input is of shape (B, N, 3 + F), where N is the number of points and F is the number of features (F >= 0).
         # the batch_dim is necessary for now
         
@@ -132,7 +136,8 @@ class GIBLiNet(nn.Module):
         coords = x[..., :3]
 
         # Build the graph pyramid
-        graph_pyramid_dict = self.graph_pyramid(coords)
+        if graph_pyramid_dict is None:
+            graph_pyramid_dict = self.pyramid_builder(coords)
 
         point_list = graph_pyramid_dict['points_list'] # shape of 0th element: (batch, num_points, 3)
         neighbors_idxs_list = graph_pyramid_dict['neighbors_idxs_list'] # shape of 0th element: (B, Q[0], neighborhood_size[0]) idxs from points[0]
@@ -186,10 +191,10 @@ if __name__ == "__main__":
 
 
     ts40k = TS40K_FULL_Preprocessed(
-        C.TS40K_FULL_PREPROCESSED_PATH, 
-        split='fit', 
-        sample_types=['tower_radius', '2_towers'], 
-        transform=None, 
+        C.TS40K_FULL_PREPROCESSED_PATH,
+        split='fit',
+        sample_types=['tower_radius', '2_towers'],
+        transform=None,
         load_into_memory=False
     )
 
@@ -210,7 +215,8 @@ if __name__ == "__main__":
     gib_dict = {
         'cy' : 2,
         'ellip': 2,
-        'disk': 2
+        'disk': 2,
+        'cone': 2
     }
 
     neighborhood_strategy = "knn"
@@ -239,8 +245,6 @@ if __name__ == "__main__":
                     graph_pooling_factor
                 ).cuda()
     
-    # print the model summary
-    # torchsummary.summary(model, x.shape[1:])
 
     pred = model(points.unsqueeze(0).cuda())
     print(pred.shape) # should be (1, 10_000, 10) for 10 classes
