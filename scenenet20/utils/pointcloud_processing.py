@@ -205,9 +205,9 @@ def np_to_ply(xyz:np.ndarray, save=False, filename="pcd.ply"):
         the corresponding ply obj
     """
     pcd = o3d.geometry.PointCloud()
-    for i in range(xyz.shape[0]):
-        pcd.points.append(xyz[i])
-    # pcd.points = o3d.utility.Vector3dVector(xyz)
+    # for i in range(xyz.shape[0]):
+    #     pcd.points.append(xyz[i])
+    pcd.points = o3d.utility.Vector3dVector(xyz)
     if save:
         o3d.io.write_point_cloud(os.getcwd() + "/../Data_sample/" + filename, pcd)
     return pcd

@@ -163,3 +163,7 @@ class LitWrapperModel(pl.LightningModule):
         
         raise NotImplementedError(f'Optimizer {self.hparams.optimizer_name} not implemented')
     
+    def tensor_memory_in_mb(self, tensor:torch.Tensor):
+        return tensor.element_size() * tensor.numel() / (1024 ** 2)  # Convert bytes to MB
+
+    

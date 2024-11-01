@@ -55,15 +55,15 @@ class Neighboring(nn.Module):
         """
         Parameters
         ----------
-        q_points : torch.Tensor
+        `q_points` : torch.Tensor
             query points of shape (B, Q, 3)
 
-        support : torch.Tensor
+        `support` : torch.Tensor
             input tensor of shape (B, N, 3)
 
         Returns
         -------
-        neighbor_idxs : torch.Tensor
+        `neighbor_idxs` : torch.Tensor
             neighbor indices of shape (B, Q, k)
         """
         return self.neighbor(q_points, support)

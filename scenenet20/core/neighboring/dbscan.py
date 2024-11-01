@@ -1,6 +1,7 @@
 
 
 import torch
+from pykeops.torch import LazyTensor
 
 class DBSCAN_Neighboring:
 
@@ -29,22 +30,21 @@ class DBSCAN_Neighboring:
         return neighbors
 
 
-
 def dbscan_cluster(q_points: torch.Tensor, s_points: torch.Tensor, eps: float, min_points: int, k: int):
     """
-    Clusters points using DBSCAN algorithm in PyTorch and returns the k nearest neighbors.
+    Clusters points using DBSCAN algorithm in PyTorch
 
     Parameters
     ----------
-    q_points : torch.Tensor
+    `q_points` : torch.Tensor
         Query points of shape (B, N, 3), where B is the batch size, N is the number of query points;
-    s_points : torch.Tensor
+    `s_points` : torch.Tensor
         Support points of shape (B, M, 3), where B is the batch size, M is the number of support points;
-    eps : float
+    `eps` : float
         Maximum distance between two points for them to be considered neighbors.
-    min_points : int
+    `min_points` : int
         Minimum number of points required to form a dense region (core point).
-    k : int
+    `k` : int
         The maximum number of neighbors to return for each query point.
 
     Returns
@@ -55,94 +55,107 @@ def dbscan_cluster(q_points: torch.Tensor, s_points: torch.Tensor, eps: float, m
     
     B, N, C = q_points.shape
     _, M, _ = s_points.shape
+    
+    MAX_ITERS = 5
 
     # Initialize tensor for clusters (neighborhood indices) and noise
     clusters = torch.full((B, N, k), -1, dtype=torch.long)  # -1 will denote no neighbors found
 
     # Compute pairwise distances between query points and support points
     dist_matrix = torch.cdist(q_points, s_points)  # Shape (B, N, M)
+    support_dist = torch.cdist(s_points, s_points) # Shape (B, M, M)
+    print(f"support_dist: {support_dist.shape}")    
     
     for b in range(B):  # Iterate over batch
         for i in range(N):  # Iterate over query points
             # Find neighbors within epsilon distance
-            neighbors = torch.where(dist_matrix[b, i] <= eps)[0]  # Get neighbor indices
+            neighbors = torch.nonzero(dist_matrix[b, i] <= eps).squeeze()  # Get neighbor indices
+            print(f"neighbors {i}: {neighbors.shape}")
+            iters = 0
+            visited = torch.zeros(M, dtype=torch.bool)
 
-            if neighbors.numel() < min_points:
-                # Not enough neighbors to form a cluster, leave the row as -1s
+            if not neighbors.size():  # If no neighbors found
+                continue
+            
+            while 0 < neighbors.numel() < k and iters < MAX_ITERS:
+                unvisited_neighbors = neighbors[~visited[neighbors]]
+                print(f"cluster {i} --- unvisited neighbors: {unvisited_neighbors.shape}")
+                expanded_neighbors = torch.where(support_dist[b, unvisited_neighbors] <= eps)[1]
+                print(f"cluster {i} --- expanded neighbors: {expanded_neighbors.shape}")
+                if expanded_neighbors.numel() == 0:
+                    break
+                neighbors = torch.cat((neighbors, expanded_neighbors)).unique()
+                iters += 1    
+                visited[neighbors] = True
+                
+            print(f"cluster {i} --- final neighbors: {neighbors.shape}")
+                
+            if neighbors.numel() < min_points:  # If not enough neighbors to form a cluster
                 continue
 
-            # If neighbors are found, fill up to k neighbors
-            selected_neighbors = neighbors[:k]  # Select up to k neighbors
+            selected_neighbors = neighbors[:k]
             clusters[b, i, :selected_neighbors.numel()] = selected_neighbors
 
     return clusters
 
 
-def find_nearest_neighbors(q_points: torch.Tensor, s_points: torch.Tensor, k: int):
+
+def keops_dbscan_cluster(q_points: torch.Tensor, s_points: torch.Tensor, eps: float, min_points: int, k: int):
     """
-    Finds the k-nearest neighbors to each query point using a strategy complementary to farthest point sampling.
+    Clusters points using an epsilon radius with KeOps to find `k` nearest neighbors, expanding as necessary.
 
     Parameters
     ----------
     q_points : torch.Tensor
-        Query points of shape (B, N, C), where B is the batch size, N is the number of query points, and C is the number of dimensions.
+        Query points of shape (B, N, C).
     s_points : torch.Tensor
-        Support points of shape (B, M, C), where B is the batch size, M is the number of support points, and C is the number of dimensions.
+        Support points of shape (B, M, C).
+    eps : float
+        Maximum distance between two points for them to be considered neighbors.
+    min_points : int
+        Minimum number of points required to form a cluster.
     k : int
-        The maximum number of neighbors to find for each query point.
+        Number of nearest neighbors to retrieve for each query point.
 
     Returns
     -------
-    neighbors : torch.Tensor
-        Tensor of shape (B, N, k) representing the indices of the k nearest neighbors for each query point.
+    clusters : torch.Tensor
+        Tensor of shape (B, N, k) representing the indices of the `k` nearest neighbors for each query point.
+        If fewer than `k` neighbors are found within eps distance, the row will be padded with -1s.
     """
-    
-    B, N, C = q_points.shape
-    _, M, _ = s_points.shape
+    # Initialization
+    B, N, _ = q_points.shape
+    clusters = torch.full((B, N, k), -1, dtype=torch.long, device=q_points.device)
 
-    # Initialize tensor for neighbors
-    neighbors = torch.full((B, N, k), -1, dtype=torch.long)
+    # Compute pairwise distances in KeOps and expand neighbor lists
+    for b in range(B):
+        q_batch = LazyTensor(q_points[b].unsqueeze(-2)[..., :3])  # (N, 1, 3); xyz
+        s_batch = LazyTensor(s_points[b].unsqueeze(-3)[..., :3])  # (1, M, 3); xyz
+        
+        dist_matrix = (q_batch - s_batch).norm2()  # (N, M), squared distances
+        dist_to_eps = (dist_matrix - eps**2).relu() # (N, M), if dist_matrix <= eps set to zero, else set to dist_matrix
+        
+        
+        for i in range(N):
+            # Find neighbors within epsilon distance
+            eps_neighbors = dist_to_eps.argKmin(k, dim=0) # Get neighbor indices 
+            
+            print(eps_neighbors.shape)
+            if eps_neighbors.numel() < min_points: # no points to form a cluster
+                continue
+            
+            # Expand neighbors until at least `k` neighbors are gathered
+            while eps_neighbors.numel() < k:
+                expanded_neighbors = dist_to_eps[eps_neighbors].argKmin(k - eps_neighbors.numel(), dim=0)
 
-    # Compute pairwise distances between query points and support points
-    # dist_matrix = torch.cdist(q_points, s_points)  # Shape (B, N, M)
-    
-    for b in range(B):  # Iterate over batches
-        for i in range(N):  # Iterate over query points
-            # List to store the set of neighbors (starting with the closest point)
-            selected_neighbors = []
+                # Concatenate and unique
+                eps_neighbors = torch.cat((eps_neighbors, expanded_neighbors)).unique()
 
-            # Calculate initial distances between the query point and all support points
-            q_point = q_points[b, i].unsqueeze(0)  # Shape (1, C)
-            dist_matrix = torch.cdist(q_point, s_points[b]).squeeze(0)  # Shape (M,)
+            # Update clusters with indices of neighbors
+            print(eps_neighbors.shape) # shape = (k)
+            clusters[b, i, :k] = eps_neighbors[:k]
 
-            # Find the closest point initially and store its index
-            first_neighbor = torch.argmin(dist_matrix)
-            selected_neighbors.append(first_neighbor.item())
-
-            # Maintain the running minimum distance from the selected set to all support points
-            min_dists = dist_matrix.clone()  # Shape (M,)
-
-            for _ in range(1, k):
-                # Get distances from the latest selected neighbor to all points
-                latest_neighbor = selected_neighbors[-1]
-                new_dists = torch.cdist(s_points[b, latest_neighbor].unsqueeze(0), s_points[b]).squeeze(0)  # Shape (M,)
-                
-                # Update the running minimum distance for all points
-                min_dists = torch.minimum(min_dists, new_dists)
-
-                # Mask the selected neighbors to avoid re-selecting them
-                min_dists[selected_neighbors] = float('inf')
-                
-                # Select the next closest point to the current selected set
-                next_neighbor = torch.argmin(min_dists)
-                selected_neighbors.append(next_neighbor.item())
-
-
-            # Save the selected neighbors (ensuring k neighbors)
-            neighbors[b, i, :] = torch.tensor(selected_neighbors[:k])
-
-    return neighbors
-
+    return clusters
 
 
 if __name__ == '__main__':
@@ -164,37 +177,52 @@ if __name__ == '__main__':
         transform=None, 
         load_into_memory=False
     )
+    
+    ts40k = TS40K_FULL(
+        constants.TS40K_FULL_PATH, 
+        split='fit', 
+        sample_types=['tower_radius', '2_towers'], 
+        transform=None, 
+        load_into_memory=False
+    )
 
     NUM_Q_POINTS = 5000
     fps = Farthest_Point_Sampling(NUM_Q_POINTS)
 
 
-    sample = ts40k[0]
+    sample = ts40k[10]
     points, labels = sample[0], sample[1]
+    
+    print(points.shape, labels.shape)
+    eda.plot_pointcloud(points.cpu().numpy()[0], classes=labels.cpu().long().numpy()[0], window_name='Original Point Cloud', use_preset_colors=True)
 
-    query_points, q_labels = fps(torch.concat([points, labels.reshape(-1, 1)], dim=1))
+
+    query_points = fps(torch.concat([points, labels.unsqueeze(-1)], dim=-1).squeeze(0))
+    query_points, q_labels = query_points[..., :-1], query_points[..., -1]
     print(query_points.shape, q_labels.shape)
     print(torch.unique(labels))
-    query_points
-
-    eps = 0.1
+    
+    eps = 0.03
     min_points = 10
-    k = 100
+    k = 200
+    
+    
+    clusters = dbscan_cluster(query_points.unsqueeze(0), points.unsqueeze(0), eps, min_points, k)
+    
+    # clusters = keops_dbscan_cluster(query_points.unsqueeze(0), points.unsqueeze(0), eps, min_points, k)
 
-    # clusters = dbscan_cluster(query_points.unsqueeze(0), points.unsqueeze(0), eps, min_points, k)
-
-    clusters = find_nearest_neighbors(query_points.unsqueeze(0), points.unsqueeze(0), k) # (B, NUM_Q_POINTS, k)
-
+    
     print(clusters.shape)
 
-    eda.plot_pointcloud(points.numpy(), labels.numpy(), window_name='Original Point Cloud', use_preset_colors=True)
-
     # plot a few clusters
-    for i in range(10):
+    for i in range(1000):
         i = torch.randint(0, clusters.shape[1], (1,)).item()
         cluster = clusters[0, i].numpy()
         cluster = cluster[cluster != -1]
-        print(cluster)
+        if 5 not in labels[cluster].unique():
+            continue
+        print(f"number of dbscan neighbors: {len(cluster)}")
+        # print(cluster)
         if len(cluster) == 0:
             continue
         eda.plot_pointcloud(points[cluster].numpy(), labels[cluster].numpy(), window_name=f'Cluster {i}', use_preset_colors=True)

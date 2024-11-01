@@ -43,15 +43,15 @@ model:
   value: 'gibli'
 # --- GiBs config
 cylinder:
-  value: 1
+  value: 160
 disk:
-  value: 1
+  value: 160
 cone:
-  value: 1
+  value: 160
 ellipsoid:
-  value: 1
+  value: 160
 num_observers:
-  value: 1
+  value: 100
 kernel_size:
   value: 0.1
 # --- GIBLi config
@@ -65,7 +65,7 @@ skip_connections:
   value: True
   description: 'Whether to use skip connections in the model'
 graph_strategy:
-  value: 'fps' # 'fps' or 'grid'
+  value: 'grid' # 'fps' or 'grid'
   description: 'Strategy for graph construction'
 graph_pooling_factor:
   value: 2
@@ -74,7 +74,7 @@ neighborhood_strategy:
   value: 'knn'
   description: 'Strategy for neighborhood operations'
 neighborhood_size:
-  value: 8
+  value: "8" # "[16, 48, 96, 192, 384]"
   description: 'Size of the neighborhood for the strategy'
 neighborhood_kwargs:
   value: {}

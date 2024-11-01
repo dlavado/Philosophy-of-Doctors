@@ -937,7 +937,8 @@ class TS40K_FULL_Preprocessed(Dataset):
             for key, val in pyramid_dict.items():
                 pyramid_dict[key] = [t.cpu() for t in val]
             self.pyramids.append(pyramid_dict)
-        self.pyramids_built = True
+
+        self.pyramids_built = True  
 
 
     def __len__(self):
@@ -970,8 +971,14 @@ class TS40K_FULL_Preprocessed(Dataset):
             pt = self.transform(pt)
             #print(f"Transformed sample: {sample[0].shape}, {sample[1].shape}, {sample[2].shape}")
             
-        if self.pyramids_built:
             
+        for pyramid in self.pyramids:
+            for key, l in pyramid.items():
+               for i, t in enumerate(l):
+                   assert pyramid[key][i].device == torch.device('cpu'), f"Pyramid {key} {i} is not on cpu" 
+        
+          
+        if self.pyramids_built:
             return {
                 'coords' : pt[0],
                 'sem_labels' : pt[1],

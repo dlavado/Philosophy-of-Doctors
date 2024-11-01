@@ -157,7 +157,6 @@ class GIB_Layer(nn.Module):
             # print(f"{gib_output.shape=}")
             q_outputs[:, :, i] = gib_output
             
-
         if not batched:
             q_outputs = q_outputs.squeeze(0)
 

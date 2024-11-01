@@ -80,7 +80,22 @@ class LitGIBLi(LitWrapperModel):
             x, y = batch
             graph_pyramid = None
             
+        # total_mem = 0
+        # if graph_pyramid is not None:
+        #     for _, val in graph_pyramid.items():
+        #         total_mem += sum([self.tensor_memory_in_mb(t) for t in val])
+                
+        
+        # print(f"Memory occupied by input: {self.tensor_memory_in_mb(x) + self.tensor_memory_in_mb(y)} MB")
+        # print(f"Memory occupied by graph pyramid: {total_mem} MB")
+        # print(f"Memory before backward: {torch.cuda.memory_allocated() / (1024 ** 2)} MB")
+        
+        # print(torch.cuda.memory_stats())
+        
         logits = self.model(x, graph_pyramid)
+        
+        del graph_pyramid
+        torch.cuda.empty_cache()
         
         logits = logits.reshape(-1, logits.shape[-1])
         y = y.to(torch.long).reshape(-1)
@@ -110,11 +125,14 @@ class LitGIBLi(LitWrapperModel):
         # for name, param in self.model.named_parameters():
         #     if 'gib_params' in name or 'lambdas' in name:
         #         print(f"{name=},  {param=},  {param.grad=}")
-                
+        
+        # print(f"Memory after backward: {torch.cuda.memory_allocated() / (1024 ** 2)} MB")
         super().on_after_backward()
     
     
     def optimizer_step(self, epoch, batch_idx, optimizer, optimizer_closure):
+        
+        # print(f"Memory after optimizer step: {torch.cuda.memory_allocated() / (1024 ** 2)} MB")
 
         optimizer.step(closure=optimizer_closure) # update the model parameters
         

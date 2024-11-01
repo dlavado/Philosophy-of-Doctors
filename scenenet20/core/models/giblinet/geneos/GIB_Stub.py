@@ -13,6 +13,7 @@ sys.path.insert(2, '../../..')
 GIB_PARAMS = "gib_params"
 NON_TRAINABLE = "non_trainable"
 KERNEL_REACH = "kernel_reach"
+NUM_GIBS = "num_gibs"
 
 
 
@@ -161,7 +162,7 @@ class GIB_Stub(torch.nn.Module):
         Returns a random GENEO configuration
         """
         config = {
-                KERNEL_REACH: kernel_reach   
+            KERNEL_REACH: kernel_reach   
         }
         gib_params = {
             'intensity' : torch.randint(5, 10, (1,))[0]/5, # float \in [0, 1]
@@ -243,6 +244,180 @@ class GIB_Stub(torch.nn.Module):
         from core.models.giblinet.geneos.diff_rotation_transform import rotate_points
         angles = torch.tanh(self.angles) # convert to range [-1, 1]
         return rotate_points(angles, points)
+    
+    
+    
+class GIBCollection(torch.nn.Module):
+    
+    def __init__(self, kernel_reach:float, num_gibs, angles=None, intensity=1, **kwargs):
+        """
+        Initializes the GIB kernel.
+
+        Parameters
+        ----------
+
+        `kernel_reach` - int:
+            The kernel's neighborhood reach in Geometric space.
+            
+        `num_gibs` - int:
+            The number of GIBs in the collection.
+            
+        `intensity` - torch.Tensor:
+            tensor of shape (num_gibs,) representing scalar intensities for each GIB;
+            
+        `angles` - torch.Tensor:
+            tensor of shape (num_gibs, 3) containing rotation angles for the x, y, and z axes for each GIB;
+        """
+        super(GIBCollection, self).__init__()
+    
+
+        self.kernel_reach = kernel_reach
+        self.num_gibs = num_gibs
+        
+        # variables to compute the integral of the GIB function within the kernel reach
+        self.n_samples = 1e4
+        self.ndims = 3
+        self.montecarlo_points = torch.rand((self.num_gibs, int(self.n_samples), self.ndims)) * 2 * self.kernel_reach - self.kernel_reach # (G, Big_N, 3)
+        mask_inside = torch.linalg.norm(self.montecarlo_points, dim=-1) <= self.kernel_reach
+        self.montecarlo_points = self.montecarlo_points[mask_inside]
+        self.epsilon = 1e-8 # small value to avoid division by zero        
+
+        self.intensity = intensity # intensity of the gaussian function
+        self.angles = angles
+        
+        
+    @abstractmethod
+    def compute_integral(self) -> torch.Tensor:
+        """
+        Computes an integral approximation of the gaussian function within the kernel_reach.
+       
+        Returns
+        -------
+        `integral` - torch.Tensor:
+            Tensor of shape (G,) representing the integral of the gaussian function within the kernel reach for each gib in the collection;
+        """
+
+    @abstractmethod
+    def gaussian(self, x:torch.Tensor) -> torch.Tensor:
+        """
+        Computes the gaussian function for the given input tensor.
+        """
+        
+    @staticmethod
+    def mandatory_parameters():
+        return []
+
+    @staticmethod
+    def gib_parameters():
+        return []
+    
+    
+    @staticmethod
+    def gib_random_config(num_gibs:int, kernel_reach:int):
+        """
+        Returns a random GENEO configuration
+        """
+        config = {
+            KERNEL_REACH: kernel_reach   
+        }
+        gib_params = {
+            'intensity' : torch.randint(5, 10, (num_gibs, 1))/5, # float \in [0, 1]
+            'angles'    : torch.zeros((num_gibs, 3))
+        }
+
+        for param in GIB_Stub.gib_parameters():
+            gib_params[param] = torch.randint(0, 10, (num_gibs,))[0]/5 # float \in [0, 2]
+
+        config[GIB_PARAMS] = gib_params
+        config[NON_TRAINABLE] = []
+
+        return config
+    
+    
+    def sum_zero(self, tensor:torch.Tensor) -> torch.Tensor:
+        """
+        Normalizes the input tensor by subtracting the integral of the resulting gaussian functions within the kernel reach.
+
+        Parameters
+        ----------
+        `tensor` - torch.Tensor:
+            Tensor of shape (..., G, K) representing the values of the kernel;
+            This tensor is the product of the gaussian function of the GIB Collection; where G is the number of GIBs and K is the num of neighbors;
+            
+        Returns
+        -------
+        `tensor` - torch.Tensor:
+            Tensor of shape (..., G, K) representing the normalized values of the kernel.
+        """
+        self.montecarlo_points = self.montecarlo_points.to(tensor.device) # (Big_N, 3)
+        integral = self.compute_integral().to(tensor.device) # (G,)
+        # print(f"{integral.shape=}")
+        # print(f"{tensor.shape=}")
+        return tensor - integral.unsqueeze(-1) / self.n_samples
+    
+    
+    def _retrieve_support_points(self, points: torch.Tensor, supports_idxs: torch.Tensor) -> torch.Tensor:
+        """
+        Retrieves the support points from the input tensor given the support indices.
+
+        Parameters
+        ----------
+
+        `points` - torch.Tensor:
+            Tensor of shape (B, N, 3) representing the point cloud.
+
+        `supports_idxs` - torch.Tensor:
+            Tensor of shape (B, M, K) representing the indices of the support points for each query point.
+
+        Returns
+        -------
+        `support_points` - torch.Tensor:
+            Tensor of shape (B, M, K, 3) representing the support points.
+        """
+        B, M, K = supports_idxs.shape
+        F = points.shape[-1]
+
+        flat_supports_idxs = supports_idxs.reshape(B, -1) # (B, M*K)
+
+        # Gather the points (B, M*K, 3)
+        # the expanded tensor lets us gather the points at the indices in flat_supports_idxs
+        gathered_support_points = torch.gather(points, 1, flat_supports_idxs.unsqueeze(-1).expand(-1, -1, F))
+
+        # Reshape back to (B, M, K, 3)
+        support_points = gathered_support_points.reshape(B, M, K, F)
+        return support_points#.contiguous()
+    
+
+    def _plot_integral(self, gaussian_x:torch.Tensor):
+        print(f"{gaussian_x.shape=}")
+        import matplotlib.pyplot as plt
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        mc = self.montecarlo_points.detach().cpu().numpy()
+        ax.scatter(mc[:, 0], mc[:, 1], mc[:, 2], c=gaussian_x.detach().cpu().numpy(), cmap='magma')
+        plt.show()  
+    
+      
+    def rotate(self, points:torch.Tensor) -> torch.Tensor:
+        """
+        Rotate a tensor along the x, y, and z axes by the angles of each GIB in the collection.
+        
+        Parameters
+        ----------
+        `points` - torch.Tensor:
+            Tensor of shape (N, 3) representing the 3D points to rotate.
+            
+        Returns
+        -------
+        `points` - torch.Tensor:
+            Tensor of shape (G, N, 3) containing the rotated
+        """
+        if self.angles is None:
+            return points
+        
+        from core.models.giblinet.geneos.diff_rotation_transform import rotate_points_batch
+        angles = torch.tanh(self.angles) # convert to range [-1, 1]
+        return rotate_points_batch(angles, points)
         
 
 

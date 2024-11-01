@@ -155,7 +155,6 @@ def init_gibli(criterion, pyramid_builder=None) -> pl.LightningModule:
         'cone': wandb.config.cone
     }
     
-    
     return LitGIBLi(
         in_channels=wandb.config.in_channels,
         num_classes=wandb.config.num_classes,
@@ -186,9 +185,9 @@ def init_pyramid_builder():
     if neigh_strategy == 'knn':
         neighborhood_kwargs = {}
         neighborhood_update_kwargs = {}
-    elif neigh_strategy == 'dbscan':
-        neighborhood_kwargs = {'eps': wandb.config.dbscan_eps, 'min_points': wandb.config.dbscan_min_points}
-        neighborhood_update_kwargs = {'eps': wandb.config.dbscan_eps_update, 'min_points': wandb.config.dbscan_min_points_update}
+    # elif neigh_strategy == 'dbscan': #TODO: fix DBSCAN
+    #     neighborhood_kwargs = {'eps': wandb.config.dbscan_eps, 'min_points': wandb.config.dbscan_min_points}
+    #     neighborhood_update_kwargs = {'eps': wandb.config.dbscan_eps_update, 'min_points': wandb.config.dbscan_min_points_update}
     elif neigh_strategy == 'radius_ball':
         neighborhood_kwargs = {'radius': wandb.config.radius_ball_radius}
         neighborhood_update_kwargs = {'radius': wandb.config.radius_ball_radius_update}
@@ -200,11 +199,11 @@ def init_pyramid_builder():
     else:
         voxel_size = None
     
-    neighborhood_size = wandb.config.neighborhood_size 
+    neighborhood_size = ast.literal_eval(wandb.config.neighborhood_size) 
     num_levels =  wandb.config.num_levels
     if isinstance(neighborhood_size, int):
-        # if the neighborhood size is an integer, then increase the its size by a factor of 1.5 for each level
-        neighborhood_size = [int(neighborhood_size + (neighborhood_size/2)*i) for i in range(num_levels)]
+        # if the neighborhood size is an integer, then increase its size by a factor of 2 for each level
+        neighborhood_size = [neighborhood_size * (2**i) for i in range(num_levels)]
         
     sampling_factor = wandb.config.graph_pooling_factor
     if wandb.config.graph_strategy == 'fps':
@@ -222,7 +221,6 @@ def init_pyramid_builder():
 
 
 def init_ts40k(data_path, preprocessed=False, pyramid_builder=None):
-
     sample_types = 'all'
     if preprocessed:
         if 'scenenet' in wandb.config.model or wandb.config.model == 'cnn':
@@ -285,8 +283,6 @@ def init_ts40k(data_path, preprocessed=False, pyramid_builder=None):
                            load_into_memory=wandb.config.load_into_memory,
                         )
     return data_module
-
-
 
 #####################################################################
 # INIT MODELS
@@ -500,8 +496,7 @@ if __name__ == '__main__':
     
     model_name = main_parser.model
     dataset_name = main_parser.dataset
-    project_name = f"{dataset_name.upper()}_SoA"
-
+    project_name = "GIBLi-Net"
     prediction_mode = main_parser.predict
 
     # config_path = get_experiment_config_path(model_name, dataset_name)

@@ -34,10 +34,9 @@ class Farthest_Point_Sampling:
             B = None
             batch_vector = None
 
-        # fps_indices = fps(pointcloud, batch=batch_vector, ratio=self.num_points/pointcloud.shape[0], random_start=True)
         start_idx = torch.randint(0, pointcloud.shape[0], (1,)).item()
-        q_points = torch_fpsample.sample(pointcloud.cpu(), self.num_points, start_idx=start_idx)[0].to(pointcloud.device)
-        # q_points = pointcloud[fps_indices]
+        fps_indices = torch_fpsample.sample(pointcloud.cpu(), self.num_points, start_idx=start_idx)[1].to(pointcloud.device)
+        q_points = x[fps_indices]
 
         if B is not None:
             q_points = q_points.reshape(B, -1, q_points.shape[-1])
