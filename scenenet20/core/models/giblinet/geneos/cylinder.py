@@ -154,7 +154,9 @@ class CylinderCollection(GIBCollection):
             tensor of shape (num_gibs, 1) representing scalar intensities for each cylinder GIB;
         """
 
-        super().__init__(kernel_reach, num_gibs=num_gibs, angles=kwargs.get('angles', None), intensity=kwargs.get('intensity', None))
+        super().__init__(kernel_reach, num_gibs=num_gibs, angles=kwargs.get('angles', None), intensity=kwargs.get('intensity', 1))
+        
+        print(self.angles)
 
         if kwargs.get('radius') is None:
             raise KeyError("Provide a radius for the cylinder in the kernel.")
@@ -172,7 +174,6 @@ class CylinderCollection(GIBCollection):
 
         geneo_params = {
             'radius' : torch.rand((num_gibs, 1)) * kernel_reach + 0.01, # float \in [0.1, 1]
-            # 'intensity' : torch.randint(0, 10, (num_gibs,))[0]/5 # float \in [0, 2]
         }   
         rand_config[GIB_PARAMS].update(geneo_params)
 
@@ -206,9 +207,10 @@ class CylinderCollection(GIBCollection):
        `integral` - torch.Tensor:
             Tensor of shape (G,) representing the integral of the gaussian function within the kernel reach for each gib in the collection;
         """
-        gaussian_x = self.gaussian(self.montecarlo_points[..., :2]) # shape (G, Big_N)
-        # self._plot_integral(gaussian_x)  
-        integral = torch.sum(gaussian_x, dim=-1) # shape (G,)
+        mc_weights = self.gaussian(self.montecarlo_points[..., :2]) # shape (G, Big_N)
+        # for g in range(self.num_gibs):
+        #     self._plot_integral(mc_weights[g], plot_valid=True)
+        integral = torch.sum(mc_weights, dim=-1) # shape (G,)
         return integral
 
     def forward(self, points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor) -> torch.Tensor:
@@ -232,37 +234,14 @@ class CylinderCollection(GIBCollection):
         `q_outputs` - torch.Tensor:
             Tensor of shape ([B], M, G), representing the output of the Cylinder GIB Collection on the query points.
         """
-        # Check if data is batched (points has shape (B, N, 3) or (N, 3))
-        if points.dim() == 2:
-            # If unbatched, add a batch dimension
-            points = points.unsqueeze(0)
-            q_points = q_points.unsqueeze(0)
-            support_idxs = support_idxs.unsqueeze(0)
-            batched = False
-        else:
-            batched = True
-
-        # Gather support points: (B, M, K) -> (B, M, K, 3)
-        support_points = self._retrieve_support_points(points, support_idxs)
-        valid_mask = (support_idxs != -1) # Mask out invalid indices with -1; shape (B, M, K)
-
-        # Center support points: (B, M, K, 3) - (B, M, 1, 3)
-        print(f"{support_points.shape=} {q_points.shape=}")
-        s_centered = support_points - q_points.unsqueeze(2) # (B, M, K, 3)
-        print(f"{s_centered.shape=}")
-        s_centered = self.rotate(s_centered) # (B, M, G, K, 3), where G is the number of GIBs
-        print(f"{s_centered.shape=}")
+        ##### prep for GIB computation #####
+        s_centered, valid_mask, batched = self._prep_support_vectors(points, q_points, support_idxs)
 
         # Compute GIB weights; (B, M, G, K, 2) -> (B, M, G, K)
         weights = self.gaussian(s_centered[..., :2])
-        print(f"{weights.shape=}")
-        valid_mask = valid_mask.unsqueeze(2).expand_as(weights)
-        print(f"{valid_mask.shape=}")
-        weights = weights * valid_mask.float()
-        print(f"{weights.shape=}")
-
-        weights = self.sum_zero(weights) # (B, M, G, K)
-        q_output = torch.sum(weights, dim=-1) # (B, M, G)
+        #print(f"{weights.shape=}")
+        
+        q_output = self._validate_and_sum(weights, valid_mask) # (B, M, G)
 
         if not batched:
             q_output = q_output.squeeze(0)  # Shape becomes (M)
@@ -290,11 +269,11 @@ if __name__ == "__main__":
     print(neighbors_idxs.shape)
     print(q_points.shape)
 
-    cylinder = Cylinder(kernel_reach=1, radius=0.2)
+    # cylinder = Cylinder(kernel_reach=1, radius=0.2)
 
-    cy_weights = cylinder.forward(points, q_points, neighbors_idxs)
-    print(cy_weights.shape)
-    print(cy_weights)
+    # cy_weights = cylinder.forward(points, q_points, neighbors_idxs)
+    # print(cy_weights.shape)
+    # print(cy_weights)
 
     # plot q_points + kernel
     import matplotlib.pyplot as plt
@@ -315,7 +294,7 @@ if __name__ == "__main__":
     ###############################################################
     # Test Cylinder Collection
     
-    num_gibs = 15
+    num_gibs = 1
     
     cy_rand_config = CylinderCollection.gib_random_config(num_gibs, kernel_reach=1)
     cylinders = CylinderCollection(kernel_reach=1, num_gibs=num_gibs, **cy_rand_config[GIB_PARAMS])  

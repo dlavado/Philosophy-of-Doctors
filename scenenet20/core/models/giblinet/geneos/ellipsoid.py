@@ -6,7 +6,7 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 sys.path.insert(3, '../../../..')
-from .GIB_Stub import GIB_Stub, GIB_PARAMS, NON_TRAINABLE, KERNEL_REACH
+from GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS, NON_TRAINABLE, KERNEL_REACH
 
 class Ellipsoid(GIB_Stub):
 
@@ -142,23 +142,168 @@ class Ellipsoid(GIB_Stub):
             q_output = q_output.squeeze(0)
 
         return q_output
+    
+    
+    
+class EllipsoidCollection(GIBCollection):
+    
+    
+    def __init__(self, kernel_reach:float, num_gibs, **kwargs):
+        """
+        Collection of Ellipsoid GIBs.
+        
+        Parameters
+        ----------
+        `kernel_reach` - float:
+            Maximum reach of the kernel.
+        
+        `num_gibs` - int:
+            Number of GIBs in the collection.
+        
+        Required Kwargs
+        --------------
+        `radii` - torch.Tensor:
+            Tensor of shape (num_gibs, 3) representing the radii of each ellipsoid.
+        """
+        
+        super().__init__(kernel_reach, num_gibs=num_gibs, angles=kwargs.get('angles', None), intensity=kwargs.get('intensity', 1))
+        
+        
+        self.radii = kwargs.get('radii', None)
+        if self.radii is None:
+            raise KeyError("Provide radii for the ellipsoid.")
+        
+        
+    def mandatory_parameters():
+        return ['radii']
+    
+    def gib_parameters():
+        return EllipsoidCollection.mandatory_parameters() + ['intensity']
 
+    def gib_random_config(num_gibs, kernel_reach):
+        rand_config = GIBCollection.gib_random_config(num_gibs, kernel_reach)
+
+        gib_params = {
+            'radii' : torch.rand(num_gibs, 3),
+        }
+        
+        rand_config[GIB_PARAMS].update(gib_params)
+
+        return rand_config
+    
+    def gaussian(self, x:torch.Tensor) -> torch.Tensor:
+        """
+        Computes the gaussian function of the Ellipsoid GIB for the input tensor.
+
+        Parameters
+        ----------
+        `x` - torch.Tensor:
+            Tensor of shape (..., G, K, 3) representing the input tensor, where G is the number of GIBs.
+
+        Returns
+        -------
+        `gaussian` - torch.Tensor:
+            Tensor of shape (..., G, K) representing the gaussian function of the input tensor.
+        """
+    
+        """ Covariance matrix is diagonal, so we can simplify the computation:
+        \Sigma = 
+        [ r1^2  r1r2  r1r3 
+          r2r1  r2^2  r2r3
+          r3r1  r3r2  r3^2  
+        ]
+        """
+        cov_matrix = torch.diag_embed((self.radii + self.epsilon)** 2) # (G, 3, 3)
+        precision_matrix = torch.inverse(cov_matrix) # (G, 3, 3)
+        # print(f"{precision_matrix.shape=}")
+        
+        # exponent = torch.matmul(x, precision_matrix) # (..., G, K, 3) @ (G, 3, 3) -> (..., G, K, 3)
+        # exponent = torch.matmul(exponent, x.transpose(-1, -2)) # (..., G, K, 3) @ (..., G, 3, K) -> (..., G, K, K)
+        # exponent = -0.5 * torch.sum(exponent, dim=-1) # (..., G, K)
+        exponent = -0.5 * torch.einsum('...gki,gij,...gkj->...gk', x, precision_matrix, x) # (..., G, K)
+        # exponent = -0.5 * torch.sum(x * torch.matmul(x, precision_matrix), dim=-1) # (..., G, K)
+        
+        gauss_dist = torch.exp(exponent)
+
+        return self.intensity * gauss_dist
+    
+    
+    def compute_integral(self) -> torch.Tensor:
+        """
+        Computes an integral approximation of the gaussian function within the kernel_reach.
+
+        Returns
+        -------
+        `integral` - torch.Tensor:
+            Tensor of shape (G,) representing the integral of the gaussian function within the kernel reach for each gib in the collection;
+        """
+        # print(f"{self.montecarlo_points.shape=}")
+        mc_weights = self.gaussian(self.montecarlo_points) # (G, K)
+        # print(f"{mc_weights.shape=}")
+        # for g in range(self.num_gibs):
+        #     self._plot_integral(mc_weights[g], plot_valid=True)
+        return torch.sum(mc_weights, dim=-1)
+        
+    
+    
+    def forward(self, points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor) -> torch.Tensor:
+        """
+        Generalized version that computes the output of the Ellipoid GIB on the query points
+        given the support points, for either batched or unbatched data.
+        
+        Parameters
+        ----------
+        `points` - torch.Tensor:
+            Tensor of shape ([B], N, 3), representing the point cloud.
+
+        `q_points` - torch.Tensor:
+            Tensor of shape ([B], M, 3), representing the query points; M <= N.
+
+        `supports_idxs` - torch.Tensor[int]:
+            Tensor of shape ([B], M, K), representing the indices of the support points for each query point; K <= N.
+
+        Returns
+        -------
+        `q_outputs` - torch.Tensor:
+            Tensor of shape ([B], M, G), representing the output of the Ellipsoid GIB on the query points.
+        """
+        
+        ##### prep for GIB computation #####
+        s_centered, valid_mask, batched = self._prep_support_vectors(points, q_points, support_idxs)
+        
+        # print(f"{s_centered.shape=}")   
+        # Compute GIB weights; (B, M, G, K, 3) -> (B, M, G, K)
+        weights = self.gaussian(s_centered)
+        # print(f"{weights.shape=}")
+        
+        ### Post Processing ###
+        q_output = self._validate_and_sum(weights, valid_mask) # (B, M, G)
+
+        if not batched:
+            q_output = q_output.squeeze(0)
+
+        return q_output
+    
+    
+    
+        
+        
 
 
 if __name__ == "__main__":
-    from core.neighboring.radius_ball import k_radius_ball
+    from core.neighboring.radius_ball import keops_radius_search
     from core.neighboring.knn import torch_knn
     from core.pooling.fps_pooling import fps_sampling
     
     # generate some points, query points, and neighbors. For the neighbors, I want to test two scenarios: 
     # 1) where the neighbors are at radius distance from the query points
     # 2) where the neighbors are very distance fromt the query points, at least 2*radius distance
-    points = torch.rand((3, 100_000, 3), device='cuda')
+    points = torch.rand((3, 100_000, 3))
     q_points = fps_sampling(points, num_points=1_000)
     print(f"{q_points.shape=}")
     num_neighbors = 16
-    neighbors_idxs = k_radius_ball(q_points, points, 0.2, num_neighbors, loop=True)
-    # _, neighbors_idxs = torch_knn(q_points, q_points, num_neighbors)
+    # neighbors_idxs = keops_radius_search(q_points, points, 0.2, num_neighbors, loop=True)
+    _, neighbors_idxs = torch_knn(q_points, q_points, num_neighbors)
 
 
     print(points.shape)
@@ -170,21 +315,51 @@ if __name__ == "__main__":
                       radii  = torch.tensor([0.01, 0.5, 0.01], device=points.device),)
 
     ellip_weights = ellip.forward(points, q_points, neighbors_idxs)
-    print(ellip_weights.shape)
-    print(ellip_weights)
+    # print(ellip_weights.shape)
 
     # plot q_points + kernel
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D
-    q_points = q_points[0]
+    # q_points = q_points[0]
+    # q_points = q_points.cpu().numpy()
+    # ellip_weights = ellip_weights.cpu().detach().numpy()
+    # ellip_weights = ellip_weights[0]
+
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    # # ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c='b')
+    # ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c=ellip_weights, cmap='magma')
+
+    # plt.show()    
+    
+    
+    
+    ################# EllipsoidCollection #################
+    
+    num_gibs = 1
+    
+    radii = torch.tensor([0.5, 0.01, 0.01], device=points.device)
+    radii = radii.repeat(num_gibs, 1)
+    print(f"{radii.shape=}")
+    
+    # ellip_init = EllipsoidCollection.gib_random_config(num_gibs, 0.2)
+    # ellip_coll = EllipsoidCollection(kernel_reach=0.2, num_gibs=num_gibs, **ellip_init[GIB_PARAMS])
+    
+    ellip_coll = EllipsoidCollection(kernel_reach=0.2, num_gibs=num_gibs, radii=radii)
+    
+    ellip_weights = ellip_coll.forward(points, q_points, neighbors_idxs) # (B, M, G)
+    
+    print(ellip_weights.shape)
+    print(ellip_coll.radii.shape)
+    
     q_points = q_points.cpu().numpy()
+    q_points = q_points[0]
     ellip_weights = ellip_weights.cpu().detach().numpy()
     ellip_weights = ellip_weights[0]
-
+    ellip_weights = ellip_weights[:, 0] # take the first gib
+    
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    # ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c='b')
     ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c=ellip_weights, cmap='magma')
-
-    plt.show()    
-
+    plt.show()
+ 

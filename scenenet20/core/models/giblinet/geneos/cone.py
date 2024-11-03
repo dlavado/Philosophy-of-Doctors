@@ -1,13 +1,6 @@
 
 import torch
-import sys
-
-sys.path.insert(0, '..')
-sys.path.insert(1, '../..')
-sys.path.insert(2, '../../..')
-sys.path.insert(3, '../../../..')
-from .GIB_Stub import GIB_Stub, GIB_PARAMS, NON_TRAINABLE, to_parameter, to_tensor
-
+from GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS, NON_TRAINABLE, to_parameter, to_tensor
 
 class Cone(GIB_Stub):
 
@@ -22,9 +15,6 @@ class Cone(GIB_Stub):
 
         `inc` - float \in ]0, 1[
         cone's inclination
-        
-        `apex` - int \in [0, kernel_size[0]-1]
-            cone's height
         """
 
         super().__init__(kernel_reach, angles=kwargs.get('angles', None))  
@@ -57,12 +47,10 @@ class Cone(GIB_Stub):
         geneo_params = {
             'radius' : torch.rand(1)[0] * kernel_reach + 0.01, # float \in [0.01, kernel_reach]
             'inc' : torch.rand(1,)[0], #float \in [0, 1]
-            # 'apex': 0,
             'intensity' : torch.randint(5, 10, (1,))[0] / 5 #float \in [1, 2]
         }   
         
         rand_config[GIB_PARAMS].update(geneo_params)
-        # rand_config[NON_TRAINABLE] = ['apex']
 
         return rand_config
 
@@ -169,44 +157,225 @@ class Cone(GIB_Stub):
             q_output = q_output.squeeze(0)
 
         return q_output
+    
+    
+    
+class ConeCollection(GIBCollection):
+    
+    
+    
+    def __init__(self, kernel_reach:float, num_gibs, **kwargs):
+        """
+        Collection of Cone GIBs.
+        
+        Parameters
+        ----------
+        
+        `kernel_reach` - float:
+            reach of the kernel
+            
+        `num_gibs` - int:
+            number of GIBs to generate
+            
+        Required
+        --------
+        `radius` - float \in  ]0, kernel_size[1]]:
+            cone's base radius
+
+        `inc` - float \in ]0, 1[
+            cone's inclination
+        """
+        
+        
+        super().__init__(kernel_reach, num_gibs=num_gibs, angles=kwargs.get('angles', None), intensity=kwargs.get('intensity', 1))
+        
+        self.radius = kwargs.get('radius', None)
+        self.inc = kwargs.get('inc', None)
+        
+        if self.radius is None:
+            raise KeyError("Provide a radius for the cone.")
+        
+        if self.inc is None:
+            raise KeyError("Provide an inclination for the cone.")
+        
+        
+    
+    def mandatory_parameters():
+        return ['radius','inc', 'cylinder_radius']
+
+    def gib_parameters():
+        return ConeCollection.mandatory_parameters() + ['intensity']
+
+    
+    def gib_random_config(num_gibs, kernel_reach):
+        rand_config = GIBCollection.gib_random_config(num_gibs, kernel_reach)
+
+        geneo_params = {
+            'radius' : torch.rand((num_gibs, 1)) * kernel_reach + 0.01, # float \in [0.01, kernel_reach]
+            'inc' : torch.rand((num_gibs, 1))[0], #float \in [0, 1]
+        }
+        
+        rand_config[GIB_PARAMS].update(geneo_params)
+
+        return rand_config
+
+    
+    def gaussian(self, x:torch.Tensor, rad) -> torch.Tensor:
+        x_norm = torch.linalg.norm(x, dim=-1)
+        return self.intensity * torch.exp((x_norm**2) * (-1 / (2*(rad + self.epsilon)**2)))
+    
+    
+    def compute_integral(self) -> torch.Tensor:
+        """
+        Computes an integral approximation of the gaussian function within the kernel_reach.
+
+        Returns
+        -------
+        `integral` - torch.Tensor:
+            Tensor of shape (G,) representing the integral of the gaussian function within the kernel reach for each gib in the collection;
+        """
+        # import matplotlib.pyplot as plt
+        # calculate the integral of the gaussian function in a `self.kernel_reach` ball radius
+        cone_inc = torch.clamp(self.inc, 0, 0.499) # tan is not defined for 90 degrees
+        mc_height = self.montecarlo_points[..., 2]
+        radius = self.radius*mc_height*torch.tan(cone_inc*torch.pi) # cone's radius at the height of the support point
+        mc_weights = self.gaussian(self.montecarlo_points[..., :2], rad=radius)
+        # print(f"{mc_weights.shape=}")
+        # for g in range(self.num_gibs):
+        #     self._plot_integral(mc_weights[g], plot_valid=True)
+        integral = torch.sum(mc_weights, dim=-1)
+        return integral
+    
+    
+    def forward(self, points:torch.Tensor, q_points:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
+        """
+        Generalized version that computes the output of the Cone GIB on the query points
+        given the support points
+        
+        
+        Parameters
+        ----------
+        `points` - torch.Tensor:
+            Tensor of shape ([B], N, 3), representing the point cloud.
+
+        `q_points` - torch.Tensor:
+            Tensor of shape ([B], M, 3), representing the query points; M <= N.
+
+        `supports_idxs` - torch.Tensor[int]:
+            Tensor of shape ([B], M, K), representing the indices of the support points for each query point; K <= N.
+
+        Returns
+        -------
+        `q_outputs` - torch.Tensor:
+            Tensor of shape ([B], M, G), representing the output of the Cone GIB on the query points.
+        """
+        if points.dim() == 2:
+            # If unbatched, add a batch dimension
+            points = points.unsqueeze(0)
+            q_points = q_points.unsqueeze(0)
+            support_idxs = support_idxs.unsqueeze(0)
+            batched = False
+        else:
+            batched = True
+
+        # Gather support points: (B, M, K) -> (B, M, K, 3)
+        support_points = self._retrieve_support_points(points, support_idxs)
+        valid_mask = (support_idxs != -1) # Mask out invalid indices with -1; shape (B, M, K)
+
+        # Center support points: (B, M, K, 3) - (B, M, 1, 3)
+        s_centered = support_points - q_points.unsqueeze(2) # (B, M, K, 3)
+        if self.angles:
+            s_centered = self.rotate(s_centered) # (B, M, G, K, 3), where G is the number of GIBs, we rotate each GIB separately according to their respective angles
+        else:
+            s_centered = s_centered.unsqueeze(2).expand(-1, -1, self.num_gibs, -1, -1) # (B, M, G, K, 3), expand the tensor to maintain the same shape as the angles tensor
+        
+        # Compute GIB weights; (B, M, G, K, 3) -> (B, M, G, K)
+        s_height = support_points[..., 2].unsqueeze(2).expand(-1, -1, self.num_gibs, -1) # (B, M, G, K)
+        #print(f"{s_height.shape=}")
+        cone_inc = torch.clamp(self.inc, 0, 0.499) # tan is not defined for 90 degrees
+        radius = self.radius*s_height*torch.tan(cone_inc*torch.pi) #S; cone's radius at the height of the support point
+        #print(f"{radius.shape=}") # (B, M, G, K)
+        weights = self.gaussian(s_centered[..., :2], rad=radius) # Kx1;
+        #print(f"{weights.shape=}")
+        
+        ### Post Processing ###
+        q_output = self._validate_and_sum(weights, valid_mask) # (B, M, G)
+
+        if not batched:
+            q_output = q_output.squeeze(0)
+
+        return q_output
+        
+    
 
 
 if __name__ == "__main__":
-    from core.neighboring.radius_ball import k_radius_ball
+    import sys
+    sys.path.insert(0, '..')
+    sys.path.insert(1, '../..')
+    sys.path.insert(2, '../../..')
+    sys.path.insert(3, '../../../..')
+    from core.neighboring.radius_ball import keops_radius_search
     from core.neighboring.knn import torch_knn
     from core.pooling.fps_pooling import fps_sampling
     
     # generate some points, query points, and neighbors. For the neighbors, I want to test two scenarios: 
     # 1) where the neighbors are at radius distance from the query points
     # 2) where the neighbors are very distance fromt the query points, at least 2*radius distance
-    points = torch.rand((3, 100_000, 3), device='cuda')
+    points = torch.rand((3, 100_000, 3))
     q_points = fps_sampling(points, num_points=1_000)
     print(f"{q_points.shape=}")
     num_neighbors = 16
-    neighbors_idxs = k_radius_ball(q_points, points, 0.2, num_neighbors, loop=True)
-    # _, neighbors_idxs = torch_knn(q_points, q_points, num_neighbors)
+    # neighbors_idxs = keops_radius_search(q_points, points, 0.2, num_neighbors, loop=True)
+    _, neighbors_idxs = torch_knn(q_points, q_points, num_neighbors)
 
 
     print(points.shape)
     print(neighbors_idxs.shape)
     print(q_points.shape)
 
-    cone = Cone(kernel_reach=0.3, radius=0.5, inc=0.1, apex=0, intensity=1.0)
+    # cone = Cone(kernel_reach=0.3, radius=0.5, inc=0.1, apex=0, intensity=1.0)
 
-    cone_weights = cone.forward(points, q_points, neighbors_idxs)
-    print(cone_weights.shape)
-    print(cone_weights)
+    # cone_weights = cone.forward(points, q_points, neighbors_idxs)
+    # print(cone_weights.shape)
+    # print(cone_weights)
 
     # plot q_points + kernel
     import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D
+    # from mpl_toolkits.mplot3d import Axes3D
+    # q_points = q_points.cpu().numpy()
+    # q_points = q_points[0]
+    # cone_weights = cone_weights.cpu().numpy()
+    # cone_weights = cone_weights[0]
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    # # ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c='b')
+    # ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c=cone_weights, cmap='magma')
+
+    # plt.show()  
+    
+    
+    ################ Test Cone Collection ################
+    
+    
+    num_gibs = 2
+    radius = torch.tensor([0.5]).repeat(num_gibs, 1)
+    inc = torch.tensor([0.1]).repeat(num_gibs, 1)
+    print(f"{radius.shape=} {inc.shape=}")
+    
+    cone_collection = ConeCollection(kernel_reach=0.3, num_gibs=num_gibs, radius=radius, inc=inc)
+    
+    cone_weights = cone_collection.forward(points, q_points, neighbors_idxs)
+    print(cone_weights.shape)
+    
+    # plot q_points + kernel
     q_points = q_points.cpu().numpy()
     q_points = q_points[0]
     cone_weights = cone_weights.cpu().numpy()
     cone_weights = cone_weights[0]
+    cone_weights = cone_weights[:, 0] # get the weights of the first cone
+    
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    # ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c='b')
     ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c=cone_weights, cmap='magma')
-
-    plt.show()  
+    plt.show()

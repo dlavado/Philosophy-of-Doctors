@@ -1,13 +1,7 @@
 
 
 import torch
-
-import sys
-sys.path.insert(0, '..')
-sys.path.insert(1, '../..')
-sys.path.insert(2, '../../..')
-sys.path.insert(3, '../../../..')
-from .GIB_Stub import GIB_Stub, GIB_PARAMS
+from GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS
 
 
 class Disk(GIB_Stub):
@@ -170,22 +164,149 @@ class Disk(GIB_Stub):
             q_output = q_output.squeeze(0)
 
         return q_output
+    
+    
+    
+class DiskCollection(GIBCollection):
+    
+    
+    def __init__(self, kernel_reach:float, num_gibs, **kwargs):
+        """
+        Collection of Ellipsoid GIBs.
+        
+        Parameters
+        ----------
+        `kernel_reach` - float:
+            Maximum reach of the kernel.
+        
+        `num_gibs` - int:
+            Number of GIBs in the collection.
+        
+        Required Kwargs
+        --------------
+        `radius` - float:
+            radius of the disk; radius <= kernel_reach;
+
+        `width` - float:
+            width of the disk; width <= kernel_reach;
+        """
+        
+        super().__init__(kernel_reach, num_gibs=num_gibs, angles=kwargs.get('angles', None), intensity=kwargs.get('intensity', 1))
+        
+        self.radius = kwargs.get('radius', None)
+        self.width = kwargs.get('width', None)
+        
+        if self.radius is None:
+            raise KeyError("Provide a radius for the disk in the kernel.")
+        
+        if self.width is None:
+            raise KeyError("Provide a width for the disk in the kernel.")
+        
+    def mandatory_parameters():
+        return ['radius', 'width']
+    
+    def gib_parameters():
+        return DiskCollection.mandatory_parameters() + ['intensity']
+    
+    def gib_random_config(num_gibs, kernel_reach):
+        rand_config = GIBCollection.gib_random_config(num_gibs, kernel_reach)
+
+        disk_params = {
+            'radius' : torch.rand((num_gibs, 1)) * kernel_reach + 0.01, # float \in ]0, kernel_reach]
+            'width' : torch.rand((num_gibs, 1)) * kernel_reach + 0.01,  # float \in ]0, kernel_reach]
+        }
+
+        rand_config[GIB_PARAMS].update(disk_params)
+
+        return rand_config
+        
+    
+    def gaussian(self, x:torch.Tensor) -> torch.Tensor:
+        """
+        Computes the gaussian function of the Disk GIB for the input tensor.
+
+        Parameters
+        ----------
+        `x` - torch.Tensor:
+            Tensor of shape (..., G, K, 2) representing the input tensor. 
+            Where G is the number of GIBs, and K is the number of neighbors and their dimensions.
+
+        Returns
+        -------
+        `gaussian` - torch.Tensor:
+            Tensor of shape (..., G, K) representing the gaussian function of the input tensor.
+        """
+        x_norm = torch.linalg.norm(x, dim=-1) # shape (..., G, K)
+        return self.intensity * torch.exp((x_norm**2) * (-1 / (2*(self.radius + self.epsilon)**2))) # Kx1
+    
+    def compute_integral(self) -> torch.Tensor:
+        mc_weights = self.gaussian(self.montecarlo_points[..., :2]).squeeze()
+        mc_weights = mc_weights * torch.relu(self.width - torch.abs(self.montecarlo_points[..., 2])) # Zero out weights outside the disk's width
+        print(f"{mc_weights.shape=}")
+        for g in range(self.num_gibs):
+            self._plot_integral(mc_weights[g])
+        return torch.sum(mc_weights)    
+    
+    
+    def forward(self, points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor) -> torch.Tensor:
+        """
+        Generalized version that computes the output of the Disk GIB on the query points
+        given the support points, for either batched or unbatched data.
+        
+        Parameters
+        ----------
+        `points` - torch.Tensor:
+            Tensor of shape ([B], N, 3), representing the point cloud.
+
+        `q_points` - torch.Tensor:
+            Tensor of shape ([B], M, 3), representing the query points; M <= N.
+
+        `supports_idxs` - torch.Tensor[int]:
+            Tensor of shape ([B], M, K), representing the indices of the support points for each query point; K <= N.
+
+        Returns
+        -------
+        `q_outputs` - torch.Tensor:
+            Tensor of shape ([B], M, G), representing the output of the Disk GIB on the query points.
+        """
+
+        ##### prep for GIB computation #####
+        s_centered, valid_mask, batched = self._prep_support_vectors(points, q_points, support_idxs)
+        
+        
+        # Compute GIB weights; (B, M, K, 2) -> (B, M, K)
+        weights = self.gaussian(s_centered[..., :2])
+        weights = weights * torch.relu(self.width - torch.abs(s_centered[..., 2])) # Zero out weights outside the disk's width
+        # weights = weights * (s_centered[..., 2] <= self.width).float() # Zero out weights outside the disk's width
+        
+        ### Post Processing ###
+        q_output = self._validate_and_sum(weights, valid_mask) # (B, M, G)
+
+        if not batched:
+            q_output = q_output.squeeze(0)
+
+        return q_output
 
 
 if __name__ == '__main__':
-    from core.neighboring.radius_ball import k_radius_ball
+    import sys
+    sys.path.insert(0, '..')
+    sys.path.insert(1, '../..')
+    sys.path.insert(2, '../../..')
+    sys.path.insert(3, '../../../..')
+    from core.neighboring.radius_ball import keops_radius_search
     from core.neighboring.knn import torch_knn
     from core.pooling.fps_pooling import fps_sampling
     
     # generate some points, query points, and neighbors. For the neighbors, I want to test two scenarios: 
     # 1) where the neighbors are at radius distance from the query points
     # 2) where the neighbors are very distance fromt the query points, at least 2*radius distance
-    points = torch.rand((3, 100_000, 3), device='cuda')
+    points = torch.rand((3, 100_000, 3))
     q_points = fps_sampling(points, num_points=1_000)
     print(f"{q_points.shape=}")
-    num_neighbors = 8
-    neighbors_idxs = k_radius_ball(q_points, points, 0.2, num_neighbors, loop=True)
-    _, neighbors_idxs = torch_knn(q_points, points, num_neighbors)
+    num_neighbors = 16
+    # neighbors_idxs = keops_radius_search(q_points, points, 0.2, num_neighbors, loop=True)
+    _, neighbors_idxs = torch_knn(q_points, q_points, num_neighbors)
 
 
     print(points.shape)
@@ -201,16 +322,42 @@ if __name__ == '__main__':
     # plot q_points + kernel
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D
-    q_points = q_points[0]
+    # q_points = q_points[0]
+    # q_points = q_points.cpu().numpy()
+    # disk_weights = disk_weights[0]
+    # disk_weights = disk_weights.cpu().detach().numpy()
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    # # ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c='b')
+    # ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c=disk_weights, cmap='magma')
+
+    # plt.show()  
+    
+    num_gibs = 2
+    
+    radius = torch.tensor([0.5]).repeat(num_gibs, 1)
+    width = torch.tensor([0.1]).repeat(num_gibs, 1)
+    radius[1] = 0.1
+    width[1] = 0.8
+    
+    
+    disk_collection = DiskCollection(0.2, num_gibs, radius=radius, width=width)
+    
+    disk_weights = disk_collection.forward(points, q_points, neighbors_idxs)
+    
+    print(disk_weights.shape)
+    
     q_points = q_points.cpu().numpy()
-    disk_weights = disk_weights[0]
+    q_points = q_points[0]
     disk_weights = disk_weights.cpu().detach().numpy()
+    disk_weights = disk_weights[0]
+    disk_weights = disk_weights[:, 0]
+    
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    # ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c='b')
     ax.scatter(q_points[:, 0], q_points[:, 1], q_points[:, 2], c=disk_weights, cmap='magma')
-
-    plt.show()  
+    plt.show()
+    
 
     
     

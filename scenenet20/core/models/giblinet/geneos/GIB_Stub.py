@@ -277,9 +277,10 @@ class GIBCollection(torch.nn.Module):
         # variables to compute the integral of the GIB function within the kernel reach
         self.n_samples = 1e4
         self.ndims = 3
-        self.montecarlo_points = torch.rand((self.num_gibs, int(self.n_samples), self.ndims)) * 2 * self.kernel_reach - self.kernel_reach # (G, Big_N, 3)
-        mask_inside = torch.linalg.norm(self.montecarlo_points, dim=-1) <= self.kernel_reach
+        self.montecarlo_points = torch.rand((int(self.n_samples), self.ndims)) * 2 * self.kernel_reach - self.kernel_reach
+        mask_inside = torch.norm(self.montecarlo_points, dim=-1) <= self.kernel_reach # (G, Big_N)
         self.montecarlo_points = self.montecarlo_points[mask_inside]
+        self.montecarlo_points = self.montecarlo_points.unsqueeze(0).expand(self.num_gibs, -1, -1)
         self.epsilon = 1e-8 # small value to avoid division by zero        
 
         self.intensity = intensity # intensity of the gaussian function
@@ -322,7 +323,7 @@ class GIBCollection(torch.nn.Module):
         }
         gib_params = {
             'intensity' : torch.randint(5, 10, (num_gibs, 1))/5, # float \in [0, 1]
-            'angles'    : torch.zeros((num_gibs, 3))
+            'angles'    : torch.randn((num_gibs, 3))
         }
 
         for param in GIB_Stub.gib_parameters():
@@ -388,13 +389,17 @@ class GIBCollection(torch.nn.Module):
         return support_points#.contiguous()
     
 
-    def _plot_integral(self, gaussian_x:torch.Tensor):
+    def _plot_integral(self, gaussian_x:torch.Tensor, plot_valid=False):
         print(f"{gaussian_x.shape=}")
         import matplotlib.pyplot as plt
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         mc = self.montecarlo_points.detach().cpu().numpy()
-        ax.scatter(mc[:, 0], mc[:, 1], mc[:, 2], c=gaussian_x.detach().cpu().numpy(), cmap='magma')
+        if plot_valid: # only plot points with positive weights
+            valid_mask = gaussian_x > self.epsilon
+            mc = mc[:, valid_mask]
+            gaussian_x = gaussian_x[valid_mask]
+        ax.scatter(mc[0, :, 0], mc[0, :, 1], mc[0, :, 2], c=gaussian_x.detach().cpu().numpy(), cmap='magma')
         plt.show()  
     
       
@@ -418,9 +423,44 @@ class GIBCollection(torch.nn.Module):
         from core.models.giblinet.geneos.diff_rotation_transform import rotate_points_batch
         angles = torch.tanh(self.angles) # convert to range [-1, 1]
         return rotate_points_batch(angles, points)
+    
+    
+    def _prep_support_vectors(self, points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor):
+        
+        if points.dim() == 2:
+            # If unbatched, add a batch dimension
+            points = points.unsqueeze(0)
+            q_points = q_points.unsqueeze(0)
+            support_idxs = support_idxs.unsqueeze(0)
+            batched = False
+        else:
+            batched = True
+
+        # Gather support points: (B, M, K) -> (B, M, K, 3)
+        support_points = self._retrieve_support_points(points, support_idxs)
+        valid_mask = (support_idxs != -1) # Mask out invalid indices with -1; shape (B, M, K)
+
+        # Center support points: (B, M, K, 3) - (B, M, 1, 3)
+        s_centered = support_points - q_points.unsqueeze(2) # (B, M, K, 3)
+        if self.angles is not None:
+            s_centered = self.rotate(s_centered) # (B, M, G, K, 3), where G is the number of GIBs, we rotate each GIB separately according to their respective angles
+        else:
+            s_centered = s_centered.unsqueeze(2).expand(-1, -1, self.num_gibs, -1, -1) # (B, M, G, K, 3), expand the tensor to maintain the same shape as the angles tensor
         
 
+        return s_centered, valid_mask, batched
 
+
+    def _validate_and_sum(self, weights:torch.Tensor, valid_mask:torch.Tensor) -> torch.Tensor:
+        """
+        Validates the weights and sums them up.
+        """
+        valid_mask = valid_mask.unsqueeze(2).expand_as(weights)
+        weights = weights * valid_mask.float()
+
+        weights = self.sum_zero(weights) # (B, M, K)
+        q_output = torch.sum(weights, dim=-1) # (B, M)
+        return q_output
    
 
 if __name__ == "__main__":
