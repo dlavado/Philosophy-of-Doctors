@@ -1,7 +1,8 @@
 
 
 import torch
-from GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS
+
+from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS
 
 
 class Disk(GIB_Stub):
@@ -240,12 +241,30 @@ class DiskCollection(GIBCollection):
         return self.intensity * torch.exp((x_norm**2) * (-1 / (2*(self.radius + self.epsilon)**2))) # Kx1
     
     def compute_integral(self) -> torch.Tensor:
-        mc_weights = self.gaussian(self.montecarlo_points[..., :2]).squeeze()
-        mc_weights = mc_weights * torch.relu(self.width - torch.abs(self.montecarlo_points[..., 2])) # Zero out weights outside the disk's width
-        print(f"{mc_weights.shape=}")
-        for g in range(self.num_gibs):
-            self._plot_integral(mc_weights[g])
-        return torch.sum(mc_weights)    
+        mc_weights = self._compute_gib_weights(self.montecarlo_points)
+        # print(f"{mc_weights.shape=}")
+        # for g in range(self.num_gibs):
+        #     self._plot_integral(mc_weights[g])
+        return torch.sum(mc_weights, dim=-1) # (G, K)
+    
+    
+    def _compute_gib_weights(self, s_centered: torch.Tensor) -> torch.Tensor:
+        """
+        Computes the weights of the support points for each GIB in the collection.
+
+        Parameters
+        ----------
+        `s_centered` - torch.Tensor:
+            Tensor of shape (..., K, 3), representing the centered support points.
+
+        Returns
+        -------
+        `weights` - torch.Tensor:
+            Tensor of shape (..., G, K), representing the weights of the support points for each GIB.
+        """
+        weights = self.gaussian(s_centered[..., :2])
+        weights = weights * torch.relu(self.width - torch.abs(s_centered[..., 2]))   
+        return weights
     
     
     def forward(self, points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor) -> torch.Tensor:
@@ -273,11 +292,8 @@ class DiskCollection(GIBCollection):
         ##### prep for GIB computation #####
         s_centered, valid_mask, batched = self._prep_support_vectors(points, q_points, support_idxs)
         
-        
         # Compute GIB weights; (B, M, K, 2) -> (B, M, K)
-        weights = self.gaussian(s_centered[..., :2])
-        weights = weights * torch.relu(self.width - torch.abs(s_centered[..., 2])) # Zero out weights outside the disk's width
-        # weights = weights * (s_centered[..., 2] <= self.width).float() # Zero out weights outside the disk's width
+        weights = self._compute_gib_weights(s_centered)
         
         ### Post Processing ###
         q_output = self._validate_and_sum(weights, valid_mask) # (B, M, G)
@@ -289,11 +305,6 @@ class DiskCollection(GIBCollection):
 
 
 if __name__ == '__main__':
-    import sys
-    sys.path.insert(0, '..')
-    sys.path.insert(1, '../..')
-    sys.path.insert(2, '../../..')
-    sys.path.insert(3, '../../../..')
     from core.neighboring.radius_ball import keops_radius_search
     from core.neighboring.knn import torch_knn
     from core.pooling.fps_pooling import fps_sampling

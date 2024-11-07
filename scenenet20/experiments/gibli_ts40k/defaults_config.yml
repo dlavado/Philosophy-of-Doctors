@@ -43,20 +43,20 @@ model:
   value: 'gibli'
 # --- GiBs config
 cylinder:
-  value: 160
+  value: 16
 disk:
-  value: 160
+  value: 16
 cone:
-  value: 160
+  value: 16
 ellipsoid:
-  value: 160
+  value: 16
 num_observers:
-  value: 100
+  value: 50
 kernel_size:
   value: 0.1
 # --- GIBLi config
 num_levels:
-  value: 3
+  value: 4
   description: 'Number of levels in the model'
 out_gib_channels:
   value: 16

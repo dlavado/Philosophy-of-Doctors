@@ -1,12 +1,6 @@
 
 import torch
-import sys
-
-sys.path.insert(0, '..')
-sys.path.insert(1, '../..')
-sys.path.insert(2, '../../..')
-sys.path.insert(3, '../../../..')
-from GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS, NON_TRAINABLE, KERNEL_REACH
+from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS, NON_TRAINABLE, KERNEL_REACH
 
 class Ellipsoid(GIB_Stub):
 
@@ -237,13 +231,29 @@ class EllipsoidCollection(GIBCollection):
         `integral` - torch.Tensor:
             Tensor of shape (G,) representing the integral of the gaussian function within the kernel reach for each gib in the collection;
         """
-        # print(f"{self.montecarlo_points.shape=}")
-        mc_weights = self.gaussian(self.montecarlo_points) # (G, K)
+        mc_weights = self._compute_gib_weights(self.montecarlo_points)
         # print(f"{mc_weights.shape=}")
         # for g in range(self.num_gibs):
         #     self._plot_integral(mc_weights[g], plot_valid=True)
         return torch.sum(mc_weights, dim=-1)
-        
+    
+    
+    def _compute_gib_weights(self, s_centered: torch.Tensor) -> torch.Tensor:
+        """
+        Computes the gaussian function of the Ellipsoid GIB for the input tensor.
+
+        Parameters
+        ----------
+        `s_centered` - torch.Tensor:
+            Tensor of shape (..., G, K, 3) representing the centered support points for each query point.
+
+        Returns
+        -------
+        `weights` - torch.Tensor:
+            Tensor of shape (..., G, K) representing the gaussian function of the input tensor.
+        """
+        weights = self.gaussian(s_centered)
+        return weights
     
     
     def forward(self, points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor) -> torch.Tensor:
@@ -273,7 +283,7 @@ class EllipsoidCollection(GIBCollection):
         
         # print(f"{s_centered.shape=}")   
         # Compute GIB weights; (B, M, G, K, 3) -> (B, M, G, K)
-        weights = self.gaussian(s_centered)
+        weights = self._compute_gib_weights(s_centered)
         # print(f"{weights.shape=}")
         
         ### Post Processing ###
@@ -291,6 +301,11 @@ class EllipsoidCollection(GIBCollection):
 
 
 if __name__ == "__main__":
+    import sys
+    sys.path.insert(0, '..')
+    sys.path.insert(1, '../..')
+    sys.path.insert(2, '../../..')
+    sys.path.insert(3, '../../../..')
     from core.neighboring.radius_ball import keops_radius_search
     from core.neighboring.knn import torch_knn
     from core.pooling.fps_pooling import fps_sampling

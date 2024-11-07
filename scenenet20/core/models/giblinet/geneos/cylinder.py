@@ -1,11 +1,5 @@
 
 import torch
-
-import sys
-sys.path.insert(0, '..')
-sys.path.insert(1, '../..')
-sys.path.insert(2, '../../..')
-sys.path.insert(3, '../../../..')
 from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS, NON_TRAINABLE
 
 
@@ -207,11 +201,28 @@ class CylinderCollection(GIBCollection):
        `integral` - torch.Tensor:
             Tensor of shape (G,) representing the integral of the gaussian function within the kernel reach for each gib in the collection;
         """
-        mc_weights = self.gaussian(self.montecarlo_points[..., :2]) # shape (G, Big_N)
+        mc_weights = self._compute_gib_weights(self.montecarlo_points)
         # for g in range(self.num_gibs):
         #     self._plot_integral(mc_weights[g], plot_valid=True)
         integral = torch.sum(mc_weights, dim=-1) # shape (G,)
         return integral
+    
+    
+    def _compute_gib_weights(self, s_centered: torch.Tensor) -> torch.Tensor:
+        """
+        Computes the weights of the Cylinder GIBs for the input tensor.
+
+        Parameters
+        ----------
+        `s_centered` - torch.Tensor:
+            Tensor of shape (..., G, K, 3) representing the centered support points for each GIB.
+
+        Returns
+        -------
+        `weights` - torch.Tensor:
+            Tensor of shape (..., G, K) representing the weights of the Cylinder GIBs for the input tensor.
+        """
+        return self.gaussian(s_centered[..., :2])
 
     def forward(self, points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor) -> torch.Tensor:
         """
@@ -238,7 +249,7 @@ class CylinderCollection(GIBCollection):
         s_centered, valid_mask, batched = self._prep_support_vectors(points, q_points, support_idxs)
 
         # Compute GIB weights; (B, M, G, K, 2) -> (B, M, G, K)
-        weights = self.gaussian(s_centered[..., :2])
+        weights = self._compute_gib_weights(s_centered)
         #print(f"{weights.shape=}")
         
         q_output = self._validate_and_sum(weights, valid_mask) # (B, M, G)
@@ -250,6 +261,11 @@ class CylinderCollection(GIBCollection):
 
 
 if __name__ == "__main__":
+    import sys
+    sys.path.insert(0, '..')
+    sys.path.insert(1, '../..')
+    sys.path.insert(2, '../../..')
+    sys.path.insert(3, '../../../..')
     from core.neighboring.radius_ball import keops_radius_search
     from core.neighboring.knn import torch_knn
     from core.pooling.fps_pooling import fps_sampling

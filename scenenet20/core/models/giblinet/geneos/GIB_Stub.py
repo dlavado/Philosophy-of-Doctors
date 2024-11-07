@@ -4,11 +4,6 @@
 from abc import abstractmethod
 import torch
 
-import sys
-sys.path.insert(0, '..')
-sys.path.insert(1, '../..')
-sys.path.insert(2, '../../..')
-
 
 GIB_PARAMS = "gib_params"
 NON_TRAINABLE = "non_trainable"
@@ -25,12 +20,8 @@ def to_parameter(value):
     """
     Converts the input value to a torch.nn.Parameter.
     """
-    if isinstance(value, torch.Tensor):
-        return torch.nn.Parameter(value, requires_grad=True)
-    elif isinstance(value, int) or isinstance(value, float):
-        return torch.nn.Parameter(torch.tensor(value, dtype=torch.float), requires_grad=True)
-    
-    raise ValueError("Input value must be a torch.Tensor")
+    t = to_tensor(value)
+    return torch.nn.Parameter(t)    
     
 def to_tensor(value):
     """
@@ -242,7 +233,8 @@ class GIB_Stub(torch.nn.Module):
             return points
         
         from core.models.giblinet.geneos.diff_rotation_transform import rotate_points
-        angles = torch.tanh(self.angles) # convert to range [-1, 1]
+        angles = self.angles % 2 # rotations higher than 2\pi are equivalent to rotations within 2\pi
+        angles = 2 - torch.relu(-angles) # convert negative angles to positive
         return rotate_points(angles, points)
     
     
@@ -319,7 +311,8 @@ class GIBCollection(torch.nn.Module):
         Returns a random GENEO configuration
         """
         config = {
-            KERNEL_REACH: kernel_reach   
+            KERNEL_REACH: kernel_reach,
+            NUM_GIBS : num_gibs
         }
         gib_params = {
             'intensity' : torch.randint(5, 10, (num_gibs, 1))/5, # float \in [0, 1]
@@ -421,8 +414,13 @@ class GIBCollection(torch.nn.Module):
             return points
         
         from core.models.giblinet.geneos.diff_rotation_transform import rotate_points_batch
-        angles = torch.tanh(self.angles) # convert to range [-1, 1]
-        return rotate_points_batch(angles, points)
+        # convert self.angles to an acceptable range [0, 2]:
+        # this is equivalent to angles = self.angles % 2
+        angles = torch.fmod(self.angles, 2) # rotations higher than 2\pi are equivalent to rotations within 2\pi
+        # angles = angles + (angles < 0).float() * 2 
+        
+        angles = 2 - torch.relu(-angles) # convert negative angles to positive
+        return rotate_points_batch(self.angles, points)
     
     
     def _prep_support_vectors(self, points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor):
@@ -446,9 +444,15 @@ class GIBCollection(torch.nn.Module):
             s_centered = self.rotate(s_centered) # (B, M, G, K, 3), where G is the number of GIBs, we rotate each GIB separately according to their respective angles
         else:
             s_centered = s_centered.unsqueeze(2).expand(-1, -1, self.num_gibs, -1, -1) # (B, M, G, K, 3), expand the tensor to maintain the same shape as the angles tensor
-        
 
         return s_centered, valid_mask, batched
+    
+    
+    @abstractmethod
+    def _compute_gib_weights(self, s_centered:torch.Tensor) -> torch.Tensor:
+        """
+        Computes the weights of the GIB kernel        
+        """
 
 
     def _validate_and_sum(self, weights:torch.Tensor, valid_mask:torch.Tensor) -> torch.Tensor:
@@ -464,21 +468,38 @@ class GIBCollection(torch.nn.Module):
    
 
 if __name__ == "__main__":
-
-    from core.neighboring.radius_ball import k_radius_ball
+    import sys
+    sys.path.insert(0, '..')
+    sys.path.insert(1, '../..')
+    sys.path.insert(2, '../../..')
+    sys.path.insert(3, '../../../..')
+    from core.neighboring.radius_ball import keops_radius_search
     from core.neighboring.knn import torch_knn
-    from core.sampling.FPS import Farthest_Point_Sampling
+    from core.pooling.fps_pooling import fps_sampling
     from core.models.giblinet.geneos import cylinder, disk, cone, ellipsoid
     
-    # # generate some points, query points, and neighbors. For the neighbors, I want to test two scenarios: 
-    # # 1) where the neighbors are at radius distance from the query points
-    # # 2) where the neighbors are very distance fromt the query points, at least 2*radius distance
-    # points = torch.rand((100_000, 3), device='cuda')
-    # query_idxs = farthest_point_pooling(points, 20)
-    # q_points = points[query_idxs]
-    # num_neighbors = 20
-    # # neighbors = k_radius_ball(q_points, points, 0.2, 10, loop=True)
-    # _, neighbors_idxs = torch_knn(q_points, points, num_neighbors)
+    
+    ### test rotate
+    angles = torch.tensor([[0.5, 0.0, 0.0]]) # rotate around z-axis by \pi radians
+    gib    = GIBCollection(kernel_reach=1.0, num_gibs=1, angles=angles)
+    points = torch.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+    rotated_points = gib.rotate(points)
+    print(rotated_points)
+    # do an assert of the rotated points
+    assert torch.allclose(rotated_points, torch.tensor([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]]), atol=1e-6)
+    input("Press Enter to continue...")
+    
+    ##################################
+    
+    # generate some points, query points, and neighbors. For the neighbors, I want to test two scenarios: 
+    # 1) where the neighbors are at radius distance from the query points
+    # 2) where the neighbors are very distance fromt the query points, at least 2*radius distance
+    points = torch.rand((3, 100_000, 3))
+    q_points = fps_sampling(points, num_points=1_000)
+    print(f"{q_points.shape=}")
+    num_neighbors = 16
+    # neighbors_idxs = keops_radius_search(q_points, points, 0.2, num_neighbors, loop=True)
+    _, neighbors_idxs = torch_knn(q_points, q_points, num_neighbors)
 
     # # print(points.device, q_points.device, neighbors_idxs.device)
 
@@ -521,10 +542,9 @@ if __name__ == "__main__":
     # max dist between points:
     # c_dist = torch.cdist(pcd, pcd)
     # print(torch.max(c_dist), torch.min(c_dist), torch.mean(c_dist)) # tensor(1.5170, device='cuda:0') tensor(0., device='cuda:0') tensor(0.4848, device='cuda:0')
-    fps = Farthest_Point_Sampling(num_points=num_query_points)
-    query_idxs = fps(pcd, num_query_points)
+    query_idxs = fps_sampling(pcd, num_points=num_query_points)
     # support_idxs = torch_knn(pcd[query_idxs], pcd[query_idxs], num_neighbors)[1]
-    support_idxs = k_radius_ball(pcd[query_idxs], pcd, kernel_reach, num_neighbors, loop=False)
+    support_idxs = keops_radius_search(pcd[query_idxs], pcd, kernel_reach, num_neighbors, loop=False)
 
     gib_setup = {
         'cy': 1,

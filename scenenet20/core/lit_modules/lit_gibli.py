@@ -71,7 +71,8 @@ class LitGIBLi(LitWrapperModel):
     
     
     def evaluate(self, batch, stage=None, metric=None, prog_bar=True, logger=True):
-        
+        torch.autograd.set_detect_anomaly(True)
+
         if isinstance(batch, dict):
             x = batch["coords"]
             y = batch["sem_labels"]
@@ -94,6 +95,14 @@ class LitGIBLi(LitWrapperModel):
         
         logits = self.model(x, graph_pyramid)
         
+        if torch.isnan(logits).any():
+            print("Nan in logits")
+            print(logits)
+            print(x)
+            print(y)
+            print(graph_pyramid)
+            raise ValueError("Nan in logits")
+        
         del graph_pyramid
         torch.cuda.empty_cache()
         
@@ -103,6 +112,8 @@ class LitGIBLi(LitWrapperModel):
         # print(f"{logits.shape=}, {y.shape=}")
         
         loss = self.criterion(logits, y) + self.elastic_loss()
+        
+        assert not torch.isnan(loss), f"Loss is NaN df:{self.criterion(logits, y)} and elastic:{self.elastic_loss()}"
         preds = self.prediction(logits)
         
         if stage:
@@ -120,8 +131,7 @@ class LitGIBLi(LitWrapperModel):
         return loss, preds, y
     
     def on_after_backward(self) -> None:
-        
-        # run logic right before the optimizer step
+                
         # for name, param in self.model.named_parameters():
         #     if 'gib_params' in name or 'lambdas' in name:
         #         print(f"{name=},  {param=},  {param.grad=}")

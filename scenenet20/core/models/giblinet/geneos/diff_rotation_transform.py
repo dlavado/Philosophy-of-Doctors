@@ -14,10 +14,10 @@ def build_rotarion_matrix(angles:torch.Tensor) -> torch.Tensor:
     ----------
     `angles` - torch.Tensor:
         Tensor of shape (3,) containing rotation angles for the x, y, and z axes.
-        These are normalized in the range [-1, 1] and represent angles_normalized = angles / pi.
+        These are normalized in the range [0, 2] and represent their fraction of pi.
     """
 
-    angles = angles * 180 # convert to degrees
+    angles = angles * torch.pi
     t_x, t_y, t_z = angles
 
     cos_tx, sin_tx = torch.cos(t_x), torch.sin(t_x)
@@ -70,7 +70,7 @@ def build_rotation_matrices(angles: torch.Tensor) -> torch.Tensor:
     ----------
     `angles` - torch.Tensor:
         Tensor of shape (G, 3) containing rotation angles for the x, y, and z axes for G rotations.
-        These are normalized in the range [-1, 1] and represent angles_normalized = angles / pi.
+        These are normalized in the range [0, 2] and represent their fraction of pi.
     
     Returns
     -------
@@ -78,7 +78,7 @@ def build_rotation_matrices(angles: torch.Tensor) -> torch.Tensor:
         Tensor of shape (G, 3, 3) containing G rotation matrices.
     """
     
-    angles = angles * 180  # convert to degrees
+    angles = angles * torch.pi
     t_x, t_y, t_z = angles[:, 0], angles[:, 1], angles[:, 2]
 
     cos_tx, sin_tx = torch.cos(t_x), torch.sin(t_x)
@@ -102,7 +102,7 @@ def rotate_points_batch(angles: torch.Tensor, points: torch.Tensor) -> torch.Ten
     ----------
     `angles` - torch.Tensor:
         Tensor of shape (G, 3) containing rotation angles for the x, y, and z axes for G rotations.
-        These are normalized in the range [-1, 1] and represent angles_normalized = angles / pi.
+        These are normalized in a range [0, 2] and represent their fraction of pi.
 
     `points` - torch.Tensor:
         Tensor of shape (..., N, 3) representing the 3D points to rotate.
@@ -114,7 +114,7 @@ def rotate_points_batch(angles: torch.Tensor, points: torch.Tensor) -> torch.Ten
     """
     R = build_rotation_matrices(angles).contiguous() # shape (G, 3, 3)
     points = points.unsqueeze(-3)  # (..., 1, N, 3)
-    return torch.matmul(points, R.transpose(-1, -2))  # (..., 1, N, 3) x (G, 3, 3) -> (..., G, N, 3)
+    return torch.matmul(points, R.transpose(-1, -2))  # (..., G, N, 3)
 
 
 if __name__ == '__main__':

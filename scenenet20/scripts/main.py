@@ -430,7 +430,7 @@ def main():
         enable_model_summary=True,
         enable_checkpointing=True,
         enable_progress_bar=True,
-        # overfit_batches=0.2, # overfit on 10 batches
+        overfit_batches=0.2, # overfit on 10 batches
         accumulate_grad_batches = wandb.config.accumulate_grad_batches,
     )
 

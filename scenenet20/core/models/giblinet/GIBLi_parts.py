@@ -7,7 +7,7 @@ import sys
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 
-from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, NON_TRAINABLE, GIB_PARAMS, to_parameter, to_tensor
+from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, NON_TRAINABLE, GIB_PARAMS, to_parameter, to_tensor
 from core.models.giblinet.geneos import cylinder, disk, cone, ellipsoid
 from core.models.giblinet.GIBLi_utils import PointBatchNorm
 from core.unpooling.nearest_interpolation import interpolation
@@ -73,8 +73,67 @@ class GIB_Operator(nn.Module):
             Tensor of shape (M,) representing the output of the GIB on the query points.
         """
         return self.gib(points, q_coords, support_idxs)
+    
+    
+class GIB_Operator_Collection(nn.Module):
+    
+    def __init__(self, gib_class:GIBCollection, num_gibs, kernel_reach:float=None, **kwargs):
+        super(GIB_Operator_Collection, self).__init__()
+        
+        self.gib_class = gib_class
+        self.kernel_reach = kernel_reach
+        self.num_gibs = num_gibs
+        # self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
+        if len(kwargs) > 0:
+            self.gib_params = self.init_from_kwargs(kwargs)
+        else:
+            self.gib_params = self.random_init(num_gibs, kernel_reach)
+
+        self.gib = self.gib_class(kernel_reach=self.kernel_reach, num_gibs=num_gibs, **self.gib_params)
+        
+        
+    def random_init(self, num_gibs, kernel_reach):
+        config = self.gib_class.gib_random_config(num_gibs, kernel_reach)
+        gib_params = {}
+
+        for param_name in config[GIB_PARAMS]:
+            t_param = to_tensor(config[GIB_PARAMS][param_name])
+            gib_params[param_name] = nn.Parameter(t_param, requires_grad = not param_name in config[NON_TRAINABLE])
+
+        return nn.ParameterDict(gib_params)
 
 
+    def init_from_kwargs(self, kwargs):
+        gib_params = {}
+        for param_name in self.gib_class.mandatory_parameters():
+            gib_params[param_name] = to_parameter(kwargs[param_name])
+
+        return nn.ParameterDict(gib_params)
+        
+        
+    def forward(self, points:torch.Tensor, q_coords:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
+        """
+        Computes the output of the GIB on the query points given the support points.
+
+        Parameters
+        ----------
+        `points` - torch.Tensor:
+            Tensor of shape (N, 3) representing the point cloud.
+
+        `q_coords` - torch.Tensor:
+            Tensor of shape (M, 3) representing the query points.
+
+        `supports_idxs` - torch.Tensor[int]:
+            Tensor of shape (M, K) representing the indices of the support points for each query point. With K <= N.
+
+        Returns
+        -------
+        `q_output` - torch.Tensor:
+            Tensor of shape (M, G) representing the output of the GIB on the query points, where G is the number of GIBs.
+        """
+        return self.gib(points, q_coords, support_idxs)
+        
 class GIB_Layer(nn.Module):
 
     def __init__(self, gib_dict:dict, kernel_reach:int, num_observers:int=1):
@@ -191,38 +250,129 @@ class GIB_Layer(nn.Module):
         q_outputs = self._compute_gib_outputs(points, q_coords, support_idxs) # shape (M, num_gibs)
         q_outputs = self._compute_observers(q_outputs) # shape (M, num_observers)
         return q_outputs
-    
 
-    # def forward_batch(self, points:torch.Tensor, q_coords:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
-    #     """
-    #     Computes the output of the GIB-Layer on the query points given the support points.
+class GIB_Layer_Coll(nn.Module):
 
-    #     Parameters
-    #     ----------
-    #     `points` - torch.Tensor:
-    #         Tensor of shape (B, N, 3) representing the batch of point clouds.
+    def __init__(self, gib_dict:dict, kernel_reach:int, num_observers:int=1):
+        """
+        Instantiates a GIB-Layer Module with GIBs and their cvx coefficients.
 
-    #     `q_coords` - torch.Tensor:
-    #         Tensor of shape (B, M, 3) representing the batch of query points; M <= N.
+        Parameters
+        ----------
+        `gib_dict` - dict[str, int]:
+            Mappings that contain the number of GIBs of each kind (the key) to initialize;
+            keys \in ['cy', 'cone', 'disk', 'ellip']
 
-    #     `supports_idxs` - torch.Tensor[int]:
-    #         Tensor of shape (B, M, K) representing the indices of the support points for each query point. With K <= N.
+        `kernel_reach` - int:
+            The kernel's neighborhood reach in Geometric space.
 
-    #     Returns
-    #     -------
-    #     `q_outputs` - torch.Tensor:
-    #         Tensor of shape (B, M, num_observers) representing the output of the GIB-Layer on the query points.
-    #     """
-    #     B, M, _ = q_coords.shape
-    #     q_outputs = torch.zeros((B, M, len(self.gibs)), dtype=points.dtype, device=points.device)
+        `num_observers` - int:
+            number os GENEO observers to form the output of the Module
         
-    #     for i, gib_key in enumerate(self.gibs):
-    #         for b in range(B):
-    #             q_outputs[b, :, i] = self.gibs[gib_key](points[b], q_coords[b], support_idxs[b])
+        """
+        super(GIB_Layer_Coll, self).__init__()
+        
+        if gib_dict is None or gib_dict == {}:
+            geneo_keys = ['cy', 'cone', 'disk', 'ellip']
+            self.gib_dict = {
+                g : torch.randint(1, 64, (1,))[0] for g in geneo_keys
+            }
+        else:
+            self.gib_dict = gib_dict
 
-    #     q_outputs = q_outputs @ self.lambdas
-    #     return q_outputs
+        # self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.num_observers = num_observers
+        self.total_gibs = 0
+
+        self.gibs:Mapping[str, GIB_Operator_Collection] = nn.ModuleDict()
+
+        # --- Initializing GIBs ---
+        for key in self.gib_dict:
+            if key == 'cy':
+                g_class = cylinder.CylinderCollection
+            elif key == 'disk':
+                g_class = disk.DiskCollection
+            elif key == 'cone':
+                g_class = cone.ConeCollection
+            elif key == 'ellip':
+                g_class = ellipsoid.EllipsoidCollection
+            else:
+                raise ValueError(f"Invalid GIB Type: `{key}`, must be one of ['cy', 'cone', 'disk', 'ellip']")
+            
+            num_gibs = self.gib_dict[key]
+            if num_gibs > 0:
+                self.gibs[key] = GIB_Operator_Collection(g_class, num_gibs=num_gibs, kernel_reach=kernel_reach)
+                self.total_gibs += num_gibs
+
+            # for i in range(self.gib_dict[key]):
+            #     self.gibs[f'{key}_{i}'] = GIB_Operator(g_class, kernel_reach=kernel_reach)#.to(self.device)
+
+
+        # --- Initializing Convex Coefficients ---
+        self.lambdas = torch.randn((self.total_gibs, num_observers)) # shape (num_gibs, num_observers)
+        self.maintain_convexity() # make sure the coefficients are convex
+        self.lambdas = to_parameter(self.lambdas)
+
+    def maintain_convexity(self):
+        self.lambdas = to_parameter(torch.softmax(self.lambdas, dim=0))
+
+    def get_cvx_coefficients(self) -> torch.Tensor:
+        return self.lambdas
+
+    def get_num_total_params(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)
     
+
+    def _compute_gib_outputs(self, coords:torch.Tensor, q_points:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
+        
+        batched = coords.dim() == 3
+        
+        if coords.dim() == 2:
+            coords = coords.unsqueeze(0)
+            q_points = q_points.unsqueeze(0)
+            support_idxs = support_idxs.unsqueeze(0)  
+        
+        q_outputs = []
+        for _, gib_coll in self.gibs.items():
+            gib_outputs = gib_coll(coords, q_points, support_idxs) # shape ([B], Q, G[key]))
+            q_outputs.append(gib_outputs)
+            
+        q_outputs = torch.cat(q_outputs, dim=-1) # shape ([B], Q, num_gibs)
+            
+        if not batched:
+            q_outputs = q_outputs.squeeze(0)
+
+        return q_outputs
+    
+    def _compute_observers(self, q_outputs:torch.Tensor) -> torch.Tensor:
+        # --- Convex Combination ---
+        # for each query point, compute the convex combination of the outputs of the GIBs
+        return q_outputs @ self.lambdas # shape (M, num_gibs) @ (num_gibs, num_observers) = (M, num_observers)
+    
+    
+    def forward(self, points:torch.Tensor, q_coords:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
+        """
+        Computes the output of the GIB-Layer on the query points given the support points.
+
+        Parameters
+        ----------
+        `points` - torch.Tensor:
+            Tensor of shape (N, 3) representing the point cloud.
+
+        `q_coords` - torch.Tensor:
+            Tensor of shape (M, 3) representing the query points; M <= N.
+
+        `supports_idxs` - torch.Tensor[int]:
+            Tensor of shape (M, K) representing the indices of the support points for each query point. With K <= N.
+
+        Returns
+        -------
+        `q_outputs` - torch.Tensor:
+            Tensor of shape (M, num_observers) representing the output of the GIB-Layer on the query points.
+        """
+        q_outputs = self._compute_gib_outputs(points, q_coords, support_idxs) # shape (M, num_gibs)
+        q_outputs = self._compute_observers(q_outputs) # shape (M, num_observers)
+        return q_outputs
     
 
 ###############################################################
@@ -234,7 +384,7 @@ class GIB_Block(nn.Module):
     def __init__(self, gib_dict, feat_channels, num_observers, kernel_size, out_channels=None, strided=False) -> None:
         super(GIB_Block, self).__init__()
 
-        self.gib = GIB_Layer(gib_dict, kernel_size, num_observers)
+        self.gib = GIB_Layer_Coll(gib_dict, kernel_size, num_observers)
         self.gib_norm = PointBatchNorm(num_observers)
         self.strided = strided
 
@@ -424,6 +574,14 @@ class Unpool_wSkip(nn.Module):
                 2, upsampling_idxs.unsqueeze(-1).expand(B, N, K, C)  # Gather features (B, N, K, C)
             ) # shape (B, N, K, C)
             inter_feats = torch.max(inter_feats, dim=2)[0] # shape (B, N, C) # max pooling
+            
+        if torch.isnan(inter_feats).any():
+            print("Unpooling")
+            print(f"{inter_feats=}")
+            print(f"{curr_points[0].shape=}, {skip_points[0].shape=}, {upsampling_idxs.shape=}")
+            print(f"{curr_points[1].shape=}, {skip_points[1].shape=}")
+            print(f"{inter_feats.shape=}")
+            sys.exit(0)
         
         inter_feats = self.proj(inter_feats) # (B, N, out_channels)
         # print(f"{inter_feats.shape=}")
@@ -498,6 +656,13 @@ class Decoder(nn.Module):
             Tensor of shape (B, N, out_channels) representing the output of the Decoder
         """
         out = self.unpool(curr_points, skip_points, upsampling_idxs) # output shape: (B, N, 3 + 2*out_channels)
+        
+        if torch.isnan(out).any():
+            print("Decoder")
+            print(f"{out=}")
+            print(f"{curr_points[0].shape=}, {skip_points[0].shape=}, {upsampling_idxs.shape=}")
+            print(f"{curr_points[1].shape=}, {skip_points[1].shape=}")
+            print(f"{out.shape=}")
         
         out_coords, out_feats = out[..., :3], out[..., 3:]
         

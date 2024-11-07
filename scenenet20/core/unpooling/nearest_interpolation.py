@@ -39,8 +39,14 @@ def interpolation(curr_points, skip_points, upsampling_idxs):
 
     dist = torch.norm(skip_coords.unsqueeze(2) - neighbor_coords, dim=-1)  # (B, N, K)
     dist_recip = 1.0 / (dist + 1e-8)  # Avoid division by zero
+    # if torch.isnan(dist_recip).any():
+    #     print("interpolation")
+    #     print(f"{dist_recip=}")
     norm = torch.sum(dist_recip, dim=-1, keepdim=True)  # (B, N, 1)
     weight = dist_recip / norm  # (B, N, K)
+    # if torch.isnan(weight).any():
+    #     print("interpolation")
+    #     print(f"{weight=}")
 
     # Compute the weighted sum of neighbor features
     new_feat = torch.sum(neighbor_feat * weight.unsqueeze(-1), dim=2)  # (B, N, C)
