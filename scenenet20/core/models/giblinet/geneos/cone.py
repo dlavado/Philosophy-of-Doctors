@@ -201,7 +201,7 @@ class ConeCollection(GIBCollection):
         
     
     def mandatory_parameters():
-        return ['radius','inc', 'cylinder_radius']
+        return ['radius', 'inc']
 
     def gib_parameters():
         return ConeCollection.mandatory_parameters() + ['intensity']

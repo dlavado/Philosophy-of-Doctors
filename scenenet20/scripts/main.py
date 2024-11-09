@@ -91,7 +91,6 @@ def init_callbacks(ckpt_dir):
                 monitor=f"val_{metric}",
                 mode="max",
                 save_top_k=1,
-                save_last=False,
                 every_n_epochs=wandb.config.checkpoint_every_n_epochs,
                 every_n_train_steps=wandb.config.checkpoint_every_n_steps,
                 verbose=True,
@@ -320,11 +319,27 @@ def resume_from_checkpoint(ckpt_path, model:pl.LightningModule, class_weights=No
 
 
 def init_criterion(class_weights=None):
+    from core.criterions.seg_losses import SegLossWrapper
+    from core.criterions.joint_loss import JointLoss
     
     print("Loss function: ", wandb.config.criterion)
     print(f"{'='*5}> Class weights: {class_weights}")
     criterion = torch.nn.CrossEntropyLoss(ignore_index=wandb.config.ignore_index,
                                           weight=class_weights) # default criterion; idx zero is noise
+    
+    
+    seg_losses = wandb.config.segmentation_losses
+    
+    for loss_name in seg_losses:
+        loss = SegLossWrapper(loss_name, ignore_index=wandb.config.ignore_index)
+        seg_losses[loss_name] = (loss, seg_losses[loss_name]) # store the loss function and its weight in a tuple
+    
+    seg_losses['cross_entropy'] = (criterion, 1.0) # add cross entropy loss to the list of losses
+    
+    print(f"{'='*5}> Segmentation losses:\n {seg_losses}")
+    
+    criterion = JointLoss(*[loss[0] for loss in seg_losses.values()], weights=[loss[1] for loss in seg_losses.values()])
+    
     return criterion
 
 def main():
@@ -430,7 +445,7 @@ def main():
         enable_model_summary=True,
         enable_checkpointing=True,
         enable_progress_bar=True,
-        overfit_batches=0.2, # overfit on 10 batches
+        overfit_batches=0.1, # overfit on 10 batches
         accumulate_grad_batches = wandb.config.accumulate_grad_batches,
     )
 

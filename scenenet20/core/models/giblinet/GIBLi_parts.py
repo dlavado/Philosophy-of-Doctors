@@ -110,6 +110,12 @@ class GIB_Operator_Collection(nn.Module):
             gib_params[param_name] = to_parameter(kwargs[param_name])
 
         return nn.ParameterDict(gib_params)
+    
+    def get_gib_params(self) -> List[torch.Tensor]:
+        params = []
+        for param in self.gib_class.mandatory_parameters():
+            params.append(self.gib_params[param])
+        return params
         
         
     def forward(self, points:torch.Tensor, q_coords:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
@@ -318,6 +324,12 @@ class GIB_Layer_Coll(nn.Module):
 
     def get_cvx_coefficients(self) -> torch.Tensor:
         return self.lambdas
+    
+    def get_gib_params(self) -> List[torch.Tensor]:
+        params = []
+        for _, gib_coll in self.gibs.items():
+            params.extend(gib_coll.get_gib_params())
+        return params
 
     def get_num_total_params(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
@@ -400,6 +412,9 @@ class GIB_Block(nn.Module):
         
     def get_cvx_coefficients(self) -> torch.Tensor:
         return self.gib.get_cvx_coefficients()
+    
+    def get_gib_params(self) -> List[torch.Tensor]:
+        return self.gib.get_gib_params()
 
     def forward(self, points, q_points, neighbor_idxs) -> torch.Tensor:
         """
@@ -475,6 +490,12 @@ class GIB_Sequence(nn.Module):
     def maintain_convexity(self):
         for gib_block in self.gib_blocks:
             gib_block.maintain_convexity()
+            
+    def get_gib_params(self) -> List[torch.Tensor]:
+        params = []
+        for gib_block in self.gib_blocks:
+            params.extend(gib_block.get_gib_params())
+        return params
             
     def get_cvx_coefficients(self) -> List[torch.Tensor]:
         return [gib_block.get_cvx_coefficients() for gib_block in self.gib_blocks]
@@ -628,6 +649,9 @@ class Decoder(nn.Module):
         
     def get_cvx_coefficients(self) -> List[torch.Tensor]:
         return self.gib_seq.get_cvx_coefficients()
+    
+    def get_gib_params(self) -> List[torch.Tensor]:
+        return self.gib_seq.get_gib_params()
    
         
     def forward(self, curr_points, skip_points, upsampling_idxs, skip_neigh_idxs):

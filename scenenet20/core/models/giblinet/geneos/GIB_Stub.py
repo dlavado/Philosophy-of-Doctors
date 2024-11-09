@@ -269,8 +269,8 @@ class GIBCollection(torch.nn.Module):
         # variables to compute the integral of the GIB function within the kernel reach
         self.n_samples = 1e4
         self.ndims = 3
-        self.montecarlo_points = torch.rand((int(self.n_samples), self.ndims)) * 2 * self.kernel_reach - self.kernel_reach
-        mask_inside = torch.norm(self.montecarlo_points, dim=-1) <= self.kernel_reach # (G, Big_N)
+        self.montecarlo_points = torch.rand((int(self.n_samples), self.ndims)) * 2 * self.kernel_reach - self.kernel_reach # \in [-kernel_reach, kernel_reach]
+        mask_inside = torch.norm(self.montecarlo_points, dim=-1) <= self.kernel_reach # (G, Big_N) 
         self.montecarlo_points = self.montecarlo_points[mask_inside]
         self.montecarlo_points = self.montecarlo_points.unsqueeze(0).expand(self.num_gibs, -1, -1)
         self.epsilon = 1e-8 # small value to avoid division by zero        
@@ -320,7 +320,7 @@ class GIBCollection(torch.nn.Module):
         }
 
         for param in GIB_Stub.gib_parameters():
-            gib_params[param] = torch.randint(0, 10, (num_gibs,))[0]/5 # float \in [0, 2]
+            gib_params[param] = torch.randint(0, 10, (num_gibs,1))/5 # float \in [0, 2]
 
         config[GIB_PARAMS] = gib_params
         config[NON_TRAINABLE] = []

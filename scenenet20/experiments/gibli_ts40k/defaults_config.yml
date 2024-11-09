@@ -43,23 +43,23 @@ model:
   value: 'gibli'
 # --- GiBs config
 cylinder:
-  value: 16
+  value: 8
 disk:
-  value: 16
+  value: 8
 cone:
-  value: 16
+  value: 8
 ellipsoid:
-  value: 16
+  value: 8
 num_observers:
-  value: 50
+  value: 10
 kernel_size:
   value: 0.1
 # --- GIBLi config
 num_levels:
-  value: 4
+  value: 3
   description: 'Number of levels in the model'
 out_gib_channels:
-  value: 16
+  value: 8
   description: 'Number of output channels for GIB'
 skip_connections:
   value: True
@@ -109,12 +109,12 @@ early_stop_metric:
 # ------------------ #
 criterion:
   value: 'cross_entropy'
-geneo_criterion:
-  value: True
-  description: 'If True, uses the geneo wrapper criterion, otherwise uses the standard criterion'
 class_weights:
   value: True
   description: 'Use class weights in the loss function'
+segmentation_losses:
+  value: {'focal': 0.2, 'tversky': 0.2}
+  description: 'Additional losses for segmentation'
 # ------------------ #
 # Lit Trainer config
 # ------------------ #

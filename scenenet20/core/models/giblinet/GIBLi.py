@@ -112,6 +112,21 @@ class GIBLiNet(nn.Module):
                 self.decoders[i].maintain_convexity()
                 
                 
+    def get_gib_parameters(self) -> List[torch.Tensor]:
+        gib_params = []
+        for i in range(self.num_levels):
+            gib_params.extend(self.gib_neigh_encoders[i].get_gib_params())
+
+            if i < self.num_levels - 1:
+                gib_params.extend(self.gib_pooling_encoders[i].get_gib_params())
+                gib_params.extend(self.decoders[i].get_gib_params())
+                
+                
+        # print(f"GIB parameters:\n {gib_params}")
+                
+        return gib_params
+                
+                
     def get_cvx_coefficients(self) -> List[torch.Tensor]:
         # get the convex coefficients for every GIB layer
         cvx_coefs = []
@@ -149,7 +164,7 @@ class GIBLiNet(nn.Module):
         for i in range(self.num_levels): # encoding phase
             
             if i > 0: ###### Pooling phase ######
-                print(f"Pooling {i}...")
+                # print(f"Pooling {i}...")
                 # print(f"\tfeats.shape={tuple(feats.shape)} \n\tpoint_list[{i}].shape={tuple(point_list[i].shape)} \n\tsubsampling_idxs_list[{i-1}].shape={tuple(subsampling_idxs_list[i-1].shape)}")
                 feats = self.gib_pooling_encoders[i - 1]((coords, feats), point_list[i], subsampling_idxs_list[i - 1]) # pooling
                 # print(f"\t{feats.shape}\n")
@@ -163,7 +178,7 @@ class GIBLiNet(nn.Module):
                 coords = point_list[i] # update the coordinates
             
             ###### Encoding phase ######
-            print(f"Encoding {i}...")
+            # print(f"Encoding {i}...")
             # print(f"\tfeats.shape={tuple(feats.shape)} \n\tpoint_list[{i}].shape={tuple(point_list[i].shape)} \n\tneighbors_idxs_list[{i}].shape={tuple(neighbors_idxs_list[i].shape)}")
             feats = self.gib_neigh_encoders[i]((coords, feats), point_list[i], neighbors_idxs_list[i])
             if torch.isnan(feats).any():
@@ -182,7 +197,7 @@ class GIBLiNet(nn.Module):
         ###### Decoding phase ######
         for i in reversed(range(len(upsampling_idxs_list))): # there are num_levels - 1 unpooling layers
             skip_coords, skip_feats, skip_neighbors_idxs = point_list[i], level_feats[i], neighbors_idxs_list[i]
-            print(f"Decoding {i + 1}...")
+            # print(f"Decoding {i + 1}...")
             # print(f"\tcurr_coords.shape={tuple(curr_coords.shape)} \n\tcurr_latent_feats.shape={tuple(curr_latent_feats.shape)} \n\tskip_coords.shape={tuple(skip_coords.shape)} \n\tskip_feats.shape={tuple(skip_feats.shape)} \n\tupsampling_idxs_list[{i}].shape={tuple(upsampling_idxs_list[i].shape)}")
             curr_latent_feats = self.decoders[i]((curr_coords, curr_latent_feats), (skip_coords, skip_feats), upsampling_idxs_list[i], skip_neighbors_idxs)
             curr_coords = skip_coords

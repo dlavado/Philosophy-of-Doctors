@@ -13,10 +13,6 @@ import cloudpickle
 
 sys.path.insert(0, '..')
 
-from core.criterions.dice_loss import BinaryDiceLoss, BinaryDiceLoss_BCE
-from core.criterions.tversky_loss import FocalTverskyLoss, TverskyLoss
-from core.criterions.w_mse import WeightedMSE
-
 
 class ParseKwargs(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
@@ -43,29 +39,11 @@ def main_arg_parser():
 
     parser.add_argument('--dataset', type=str, default='ts40k', help='Dataset to use')
 
-    parser.add_argument('--model', type=str, default='scenenet', help='Model to use')
-
+    parser.add_argument('--model', type=str, default='gibli', help='Model to use')
+    
     parser.add_argument('--predict', action='store_true', default=False, help='If True, the script is in prediction mode')
 
     return parser
-
-
-
-
-def resolve_criterion_class(criterion_name) -> torch.nn.Module:
-    criterion_name = criterion_name.lower()
-    if criterion_name == 'mse':
-        return WeightedMSE
-    elif criterion_name == 'dice':
-        return BinaryDiceLoss
-    elif criterion_name == 'dice_bce':
-        return BinaryDiceLoss_BCE
-    elif criterion_name == 'tversky':
-        return TverskyLoss
-    elif criterion_name == 'focal_tversky':
-        return FocalTverskyLoss
-    else:
-        raise NotImplementedError(f'Criterion {criterion_name} not implemented')
     
 
 def resolve_optimizer(optimizer_name:str, model, learning_rate) -> torch.optim.Optimizer:
