@@ -388,7 +388,7 @@ def main():
     model = init_model(wandb.config.model, criterion, pyramid_builder)
     input_size = (wandb.config.batch_size, wandb.config.num_points, wandb.config.in_channels)
     print(f"{'='*30} Model initialized {'='*30}")
-    summary(model, input_size=input_size)
+    # summary(model, input_size=input_size)
     
     if wandb.config.resume_from_checkpoint:
         ckpt_path = replace_variables(ckpt_path)
@@ -404,7 +404,7 @@ def main():
             data_path = C.TS40K_FULL_PREPROCESSED_PATH
         else:
             data_path = C.TS40K_FULL_PATH
-        data_module = init_ts40k(data_path, wandb.config.preprocessed, pyramid_builder)
+        data_module = init_ts40k(data_path, wandb.config.preprocessed, pyramid_builder=pyramid_builder)
     # elif dataset_name == 'labelec':
     #     if wandb.config.preprocessed:
     #         data_path  = C.LABELEC_RGB_PREPROCESSED
@@ -445,7 +445,7 @@ def main():
         enable_model_summary=True,
         enable_checkpointing=True,
         enable_progress_bar=True,
-        overfit_batches=0.1, # overfit on 10 batches
+        # overfit_batches=0.1, # overfit on 10 batches
         accumulate_grad_batches = wandb.config.accumulate_grad_batches,
     )
 

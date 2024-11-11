@@ -319,7 +319,7 @@ class GIBCollection(torch.nn.Module):
             'angles'    : torch.randn((num_gibs, 3))
         }
 
-        for param in GIB_Stub.gib_parameters():
+        for param in GIBCollection.gib_parameters():
             gib_params[param] = torch.randint(0, 10, (num_gibs,1))/5 # float \in [0, 2]
 
         config[GIB_PARAMS] = gib_params
@@ -372,6 +372,8 @@ class GIBCollection(torch.nn.Module):
         F = points.shape[-1]
 
         flat_supports_idxs = supports_idxs.reshape(B, -1) # (B, M*K)
+        # illegal indices are -1, we need to mask them out
+        flat_supports_idxs = torch.where(flat_supports_idxs == -1, torch.zeros_like(flat_supports_idxs), flat_supports_idxs)
 
         # Gather the points (B, M*K, 3)
         # the expanded tensor lets us gather the points at the indices in flat_supports_idxs
@@ -410,9 +412,6 @@ class GIBCollection(torch.nn.Module):
         `points` - torch.Tensor:
             Tensor of shape (G, N, 3) containing the rotated
         """
-        if self.angles is None:
-            return points
-        
         from core.models.giblinet.geneos.diff_rotation_transform import rotate_points_batch
         # convert self.angles to an acceptable range [0, 2]:
         # this is equivalent to angles = self.angles % 2
@@ -420,7 +419,7 @@ class GIBCollection(torch.nn.Module):
         # angles = angles + (angles < 0).float() * 2 
         
         angles = 2 - torch.relu(-angles) # convert negative angles to positive
-        return rotate_points_batch(self.angles, points)
+        return rotate_points_batch(angles, points)
     
     
     def _prep_support_vectors(self, points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor):

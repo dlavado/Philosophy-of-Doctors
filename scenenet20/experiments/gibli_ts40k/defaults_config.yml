@@ -27,7 +27,7 @@ add_normals:
 num_classes:
   value: 6
 batch_size:
-  value: 1
+  value: 2
 ignore_index:
   value: -1 # noise
 num_workers: 
@@ -43,13 +43,13 @@ model:
   value: 'gibli'
 # --- GiBs config
 cylinder:
-  value: 8
+  value: 4
 disk:
-  value: 8
+  value: 4
 cone:
-  value: 8
+  value: 4
 ellipsoid:
-  value: 8
+  value: 4
 num_observers:
   value: 10
 kernel_size:
@@ -91,7 +91,7 @@ voxel_size:
 optimizer:
   value: 'adam' #'adam' 
 learning_rate:
-  value: 0.001
+  value: 0.0001
 max_epochs:
   value: 100 # -1 for infinite
 accelerator:

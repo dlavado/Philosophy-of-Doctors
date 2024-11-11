@@ -2,7 +2,6 @@
 
 
 import torch
-import torch.nn.functional as F
 
 
 def build_rotarion_matrix(angles:torch.Tensor) -> torch.Tensor: 
@@ -126,4 +125,4 @@ if __name__ == '__main__':
     
     rotated_points = rotate_points_batch(angles, points)
     
-    print(rotated_points.shape)  # torch.Size([4, 4, 3, 10, 3])
+    # print(rotated_points.shape)  # torch.Size([4, 4, 3, 10, 3])

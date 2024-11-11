@@ -1,9 +1,7 @@
-from ast import Tuple
-from typing import List, Mapping, Dict
-from git import Union
+from typing import List
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import gc
 
 import sys
 
@@ -153,6 +151,12 @@ class GIBLiNet(nn.Module):
         # Build the graph pyramid
         if graph_pyramid_dict is None:
             graph_pyramid_dict = self.pyramid_builder(coords)
+            
+        # for key, val in graph_pyramid_dict.items():
+        #     print(f"{key=}...", end="")
+        #     for t in val:
+        #        print(f"{t.shape=}", end="")
+        #     print()
 
         point_list = graph_pyramid_dict['points_list'] # shape of 0th element: (batch, num_points, 3)
         neighbors_idxs_list = graph_pyramid_dict['neighbors_idxs_list'] # shape of 0th element: (B, Q[0], neighborhood_size[0]) idxs from points[0]
@@ -219,6 +223,11 @@ class GIBLiNet(nn.Module):
             print(f"seg_logits.shape={seg_logits.shape}")
             sys.exit(0)
         # print(seg_logits.shape)
+        
+        del graph_pyramid_dict
+        gc.collect()
+        
+        
         return seg_logits
 
 

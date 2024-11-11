@@ -2,9 +2,11 @@
 
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader, random_split
-
+import torch
 
 from core.datasets.TS40K import build_data_samples, TS40K_FULL, TS40K_FULL_Preprocessed
+
+from core.neighboring.conversions import _list_to_pack_tensor
 
 
 class LitTS40K_FULL(pl.LightningDataModule):
@@ -96,6 +98,52 @@ class LitTS40K_FULL(pl.LightningDataModule):
     
 
 
+
+
+def collate_fn_pyramids(batch):
+    # batch is a dict with  'pointcloud', 'sem_labels', 'graph_pyramid'
+    # it returns the same dict but with the batch dim and point dim collapsed, i.e, (B*N, ...)
+    # plus, it returns the lengths of each sample in the batch
+    
+    x = [b["pointcloud"] for b in batch]
+    y = [b["sem_labels"] for b in batch]
+    graph_pyramids = [b["graph_pyramid"] for b in batch]  
+    
+    
+    batched_graph_pyramids = {
+        'points_list': [],
+        'neighbors_idxs_list': [],
+        'subsampling_idxs_list': [],
+        'upsampling_idxs_list': []
+    }
+    
+    lenghts_graph_pyramids = {
+        'points_list': [],
+        'neighbors_idxs_list': [],
+        'subsampling_idxs_list': [],
+        'upsampling_idxs_list': [],
+    }
+
+    for key in batched_graph_pyramids.keys(): # for each type of pyramid
+        for i in range(len(graph_pyramids[0][key])): # for each level of the pyramid
+            b_t = [gp[key][i] for gp in graph_pyramids]
+            b_t, b_l = _list_to_pack_tensor(b_t)
+            batched_graph_pyramids[key].append(b_t)
+            lenghts_graph_pyramids[key].append(b_l)            
+    
+    x, x_lengths = _list_to_pack_tensor(x)
+    y = torch.cat(y, dim=0)
+    
+    return {
+        'pointcloud': x,
+        'sem_labels': y,
+        'lengths': x_lengths, # lengths for x and y 
+        'graph_pyramid': batched_graph_pyramids,
+        'lengths_graph_pyramid': lenghts_graph_pyramids, # lengths of each level of the pyramid
+    }
+ 
+    
+
 class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
 
     def __init__(self, 
@@ -141,14 +189,22 @@ class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
 
             if self.pyramid_builder is not None:
                 self.predict_ds._build_pyramid(self.pyramid_builder)
+                
+                
+    def train_dataloader(self):
+        return DataLoader(self.train_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, pin_memory=True, shuffle=True, collate_fn=collate_fn_pyramids)
     
-    def test_dataloader(self):
-        if self.use_full_test_set:
-            batch_size = 1 # point clouds do not have the same number of points; thus they cannot be stacked.
-        else:
-            batch_size = self.hparams.batch_size
+    def val_dataloader(self):
+        return DataLoader(self.val_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=True, collate_fn=collate_fn_pyramids)
+         
 
-        return DataLoader(self.test_ds, batch_size=batch_size, num_workers=self.hparams.num_workers, shuffle=False)
+    # def test_dataloader(self):
+    #     if self.use_full_test_set:
+    #         batch_size = 1 # point clouds do not have the same number of points; thus they cannot be stacked.
+    #     else:
+    #         batch_size = self.hparams.batch_size
+
+    #     return DataLoader(self.test_ds, batch_size=batch_size, num_workers=self.hparams.num_workers, shuffle=False, collate_fn=collate_fn_pyramids)
 
 
       

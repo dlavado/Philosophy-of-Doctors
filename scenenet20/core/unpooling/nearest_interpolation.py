@@ -21,18 +21,25 @@ def interpolation(curr_points, skip_points, upsampling_idxs):
     # Extract the coordinates and features from the input points
     curr_coords, curr_feat = curr_points[..., :3], curr_points[..., 3:]  # (B, M, 3), (B, M, C)
     skip_coords = skip_points[..., :3]  # (B, N, 3)
+    
+    mask = upsampling_idxs == -1
+    upsampling_idxs[mask] = 0
 
     # Gather neighbor features using the upsampling_idxs
     neighbor_feat = torch.gather(
         curr_feat.unsqueeze(1).expand(B, N, M, C),  # Expand current features to (B, N, M, C)
         2, upsampling_idxs.unsqueeze(-1).expand(B, N, K, C)  # Gather features (B, N, K, C)
     )  # (B, N, K, C)
+    
+    neighbor_feat[mask.unsqueeze(-1).expand(B, N, K, C)] = 0
 
     # Compute distances between skip points and their neighbors
     neighbor_coords = torch.gather(
         curr_coords.unsqueeze(1).expand(B, N, M, 3),  # Expand current coords to (B, N, M, 3)
         2, upsampling_idxs.unsqueeze(-1).expand(B, N, K, 3)  # Gather coords (B, N, K, 3)
     )  # (B, N, K, 3)
+    
+    neighbor_coords[mask.unsqueeze(-1).expand(B, N, K, 3)] = 0
     
     # print("\n\n\n")
     # print(f"{neighbor_coords.shape=} {neighbor_feat.shape=} {skip_coords.shape=}")

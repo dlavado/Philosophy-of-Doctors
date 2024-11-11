@@ -12,7 +12,7 @@ from core.criterions.elastic_net_reg import ElasticNetRegularization
 from core.criterions.geneo_loss import GENEORegularizer
 
 
-
+from core.neighboring.conversions import pack_to_batch, _pack_tensor_to_batch
 
 class LitGIBLi(LitWrapperModel):
     """
@@ -78,34 +78,39 @@ class LitGIBLi(LitWrapperModel):
         torch.autograd.set_detect_anomaly(True)
 
         if isinstance(batch, dict):
-            x = batch["coords"]
+            x = batch["pointcloud"]
             y = batch["sem_labels"]
+            lengths = batch["lengths"]
             graph_pyramid = batch["graph_pyramid"]
+            pyramid_lengths = batch["lengths_graph_pyramid"]    
         else:
             x, y = batch
             graph_pyramid = None
+        
+        x, _ = pack_to_batch(x, lengths)  
+        pyramid = {}
+        for key, val in graph_pyramid.items():
+            # print(f"{key=}...", end="")
+            # print(f"{len(val)=}")
+            # print("pack mode...")
+            # for t in val:
+            #     print(f"{t.shape=}")  
+            pyramid[key] = [_pack_tensor_to_batch(t, l) for t, l in zip(val, pyramid_lengths[key])]
+            # pyramid[key] = [pack_to_batch(t, l)[0] for t, l in zip(val, pyramid_lengths[key])]
+            # print("batched mode...")
+            # for t in pyramid[key]:
+            #     print(f"{t.shape=}")
+        
+        # for key, val in graph_pyramid.items():
+        #     print(f"{key=}...", end="")
+        #     for t in val:
+        #        print(f"{t.shape=}", end="")
+        #     print()
             
-        # total_mem = 0
-        # if graph_pyramid is not None:
-        #     for _, val in graph_pyramid.items():
-        #         total_mem += sum([self.tensor_memory_in_mb(t) for t in val])
-                
+        # input("Press Enter to continue...")
         
-        # print(f"Memory occupied by input: {self.tensor_memory_in_mb(x) + self.tensor_memory_in_mb(y)} MB")
-        # print(f"Memory occupied by graph pyramid: {total_mem} MB")
-        # print(f"Memory before backward: {torch.cuda.memory_allocated() / (1024 ** 2)} MB")
         
-        # print(torch.cuda.memory_stats())
-        
-        logits = self.model(x, graph_pyramid)
-        
-        # if torch.isnan(logits).any():
-        #     print("Nan in logits")
-        #     print(logits)
-        #     print(x)
-        #     print(y)
-        #     print(graph_pyramid)
-        #     raise ValueError("Nan in logits")
+        logits = self.model(x, pyramid)
         
         del graph_pyramid
         torch.cuda.empty_cache()

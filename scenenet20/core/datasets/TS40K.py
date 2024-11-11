@@ -930,13 +930,23 @@ class TS40K_FULL_Preprocessed(Dataset):
             
     def _build_pyramid(self, pyramid_builder):
         self.pyramids = []
-        for i in tqdm(range(len(self)), desc="Building Dataset pyramids..."):
-            coords = self[i][0]
-            coords = coords[..., :3].cuda()
-            pyramid_dict = pyramid_builder(coords)
-            for key, val in pyramid_dict.items():
-                pyramid_dict[key] = [t.cpu() for t in val]
-            self.pyramids.append(pyramid_dict)
+        batch_size = 256
+        num_batches = (len(self) + batch_size - 1) // batch_size
+
+        for batch_idx in tqdm(range(num_batches), desc="Building Dataset pyramids..."):
+            batch_start = batch_idx * batch_size
+            batch_end = min((batch_idx + 1) * batch_size, len(self))
+            batch_coords = [self[i][0][..., :3].cuda() for i in range(batch_start, batch_end)]
+            batch_coords = torch.stack(batch_coords, dim=0)
+                    
+            pyramid_dict = pyramid_builder(batch_coords)            
+            
+            for i in range(batch_coords.shape[0]):
+                i_pyramid = {key: [t[i].cpu() for t in val] for key, val in pyramid_dict.items()}
+                self.pyramids.append(i_pyramid)
+                
+            del pyramid_dict, batch_coords
+            gc.collect()
 
         self.pyramids_built = True  
 
@@ -970,17 +980,10 @@ class TS40K_FULL_Preprocessed(Dataset):
         if self.transform:
             pt = self.transform(pt)
             #print(f"Transformed sample: {sample[0].shape}, {sample[1].shape}, {sample[2].shape}")
-            
-            
-        for pyramid in self.pyramids:
-            for key, l in pyramid.items():
-               for i, t in enumerate(l):
-                   assert pyramid[key][i].device == torch.device('cpu'), f"Pyramid {key} {i} is not on cpu" 
         
-          
         if self.pyramids_built:
             return {
-                'coords' : pt[0],
+                'pointcloud' : pt[0],
                 'sem_labels' : pt[1],
                 'graph_pyramid' : self.pyramids[idx]
             }
