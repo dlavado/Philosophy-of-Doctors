@@ -61,22 +61,8 @@ def rotate_points(angles:torch.Tensor, points:torch.Tensor) -> torch.Tensor:
 # Multiple Angles
 
 
+@torch.jit.script
 def build_rotation_matrices(angles: torch.Tensor) -> torch.Tensor:
-    """
-    Build rotation matrices from the given angles for a batch of rotations.
-    
-    Parameters
-    ----------
-    `angles` - torch.Tensor:
-        Tensor of shape (G, 3) containing rotation angles for the x, y, and z axes for G rotations.
-        These are normalized in the range [0, 2] and represent their fraction of pi.
-    
-    Returns
-    -------
-    `R` - torch.Tensor:
-        Tensor of shape (G, 3, 3) containing G rotation matrices.
-    """
-    
     angles = angles * torch.pi
     t_x, t_y, t_z = angles[:, 0], angles[:, 1], angles[:, 2]
 
@@ -92,7 +78,7 @@ def build_rotation_matrices(angles: torch.Tensor) -> torch.Tensor:
 
     return R
 
-
+@torch.jit.script
 def rotate_points_batch(angles: torch.Tensor, points: torch.Tensor) -> torch.Tensor:
     """
     Rotate a batch of tensors along the x, y, and z axes by the given angles.

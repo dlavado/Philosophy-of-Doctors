@@ -240,13 +240,6 @@ class DiskCollection(GIBCollection):
         x_norm = torch.linalg.norm(x, dim=-1) # shape (..., G, K)
         return self.intensity * torch.exp((x_norm**2) * (-1 / (2*(self.radius + self.epsilon)**2))) # Kx1
     
-    def compute_integral(self) -> torch.Tensor:
-        mc_weights = self._compute_gib_weights(self.montecarlo_points)
-        # print(f"{mc_weights.shape=}")
-        # for g in range(self.num_gibs):
-        #     self._plot_integral(mc_weights[g])
-        return torch.sum(mc_weights, dim=-1) # (G, K)
-    
     
     def _compute_gib_weights(self, s_centered: torch.Tensor) -> torch.Tensor:
         """
@@ -265,6 +258,7 @@ class DiskCollection(GIBCollection):
         weights = self.gaussian(s_centered[..., :2])
         weights = weights * torch.relu(self.width - torch.abs(s_centered[..., 2]))   
         return weights
+        
     
     
     def forward(self, points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor) -> torch.Tensor:
@@ -292,16 +286,10 @@ class DiskCollection(GIBCollection):
         ##### prep for GIB computation #####
         s_centered, valid_mask, batched = self._prep_support_vectors(points, q_points, support_idxs)
         
-        # Compute GIB weights; (B, M, K, 2) -> (B, M, K)
-        weights = self._compute_gib_weights(s_centered)
+        q_output = self._prepped_forward(s_centered, valid_mask, batched)
         
-        ### Post Processing ###
-        q_output = self._validate_and_sum(weights, valid_mask) # (B, M, G)
-
-        if not batched:
-            q_output = q_output.squeeze(0)
-
         return q_output
+        
 
 
 if __name__ == '__main__':

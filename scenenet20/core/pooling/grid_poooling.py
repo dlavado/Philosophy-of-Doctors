@@ -33,7 +33,7 @@ class GridPooling:
         `aggregated_points` : torch.Tensor
             Tensor of shape ([B], M, 3 + C) where M is the number of unique voxels.
         """
-        from core.neighboring.conversions import batch_to_pack, pack_to_batch
+        from core.models.giblinet.conversions import batch_to_pack, pack_to_batch
         
         if x.dim() == 2:
             points = x
@@ -47,9 +47,10 @@ class GridPooling:
         s_points, s_lengths = grid_pooling_pack_mode(points, lengths, self.voxel_size[0].item())
         
         if is_batched:
-            s_points = pack_to_batch(s_points, s_lengths)[0]
+            s_points = pack_to_batch(s_points, s_lengths)[0]            
+            
         # print(f"{s_points.shape=}")
-        return s_points
+        return s_points.contiguous()
         
         # return grid_pooling_batch(x, self.voxel_size, None, self.feat_mapping)[0]
     
@@ -305,7 +306,6 @@ def grid_pooling_batch(points: torch.Tensor, voxel_size:Union[None, torch.Tensor
             clusters = torch.cat([clusters, cluster.unsqueeze(0)], dim=0)
 
     return agg_points, clusters
-
 
 
 def grid_pooling_pack_mode(points, lengths, voxel_size):

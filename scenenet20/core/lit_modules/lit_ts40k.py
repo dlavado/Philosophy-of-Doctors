@@ -6,7 +6,7 @@ import torch
 
 from core.datasets.TS40K import build_data_samples, TS40K_FULL, TS40K_FULL_Preprocessed
 
-from core.neighboring.conversions import _list_to_pack_tensor
+from core.models.giblinet.conversions import list_tensor_to_batch
 
 
 class LitTS40K_FULL(pl.LightningDataModule):
@@ -117,32 +117,18 @@ def collate_fn_pyramids(batch):
         'upsampling_idxs_list': []
     }
     
-    lenghts_graph_pyramids = {
-        'points_list': [],
-        'neighbors_idxs_list': [],
-        'subsampling_idxs_list': [],
-        'upsampling_idxs_list': [],
-    }
-
     for key in batched_graph_pyramids.keys(): # for each type of pyramid
         for i in range(len(graph_pyramids[0][key])): # for each level of the pyramid
             b_t = [gp[key][i] for gp in graph_pyramids]
-            b_t, b_l = _list_to_pack_tensor(b_t)
+            b_t = list_tensor_to_batch(b_t, pad_value=-1)
             batched_graph_pyramids[key].append(b_t)
-            lenghts_graph_pyramids[key].append(b_l)            
-    
-    x, x_lengths = _list_to_pack_tensor(x)
-    y = torch.cat(y, dim=0)
-    
+            
     return {
-        'pointcloud': x,
-        'sem_labels': y,
-        'lengths': x_lengths, # lengths for x and y 
+        'pointcloud': torch.stack(x, dim=0),
+        'sem_labels': torch.stack(y, dim=0),
         'graph_pyramid': batched_graph_pyramids,
-        'lengths_graph_pyramid': lenghts_graph_pyramids, # lengths of each level of the pyramid
     }
- 
-    
+
 
 class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
 
@@ -160,7 +146,7 @@ class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
 
         super().__init__(data_dir, batch_size, sample_types, None, transform, transform_test, num_workers, val_split, None, load_into_memory)
         
-        self.fit_split = 0.1 # split of the data to use, for testing purposes
+        self.fit_split = 0.01 # split of the data to use, for testing purposes
 
         self.use_full_test_set = use_full_test_set
         self.pyramid_builder = _pyramid_builder
@@ -171,7 +157,7 @@ class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
         if stage == 'fit':
             self.fit_ds = TS40K_FULL_Preprocessed(self.data_dir, split="fit", sample_types=self.sample_types, transform=self.transform, load_into_memory=self.load_into_memory)
             
-            self.fit_ds.data_files = self.fit_ds.data_files[:int(len(self.fit_ds) * self.fit_split)]
+            # self.fit_ds.data_files = self.fit_ds.data_files[:int(len(self.fit_ds) * self.fit_split)]
             
             if self.pyramid_builder is not None:
                 self.fit_ds._build_pyramid(self.pyramid_builder)
@@ -192,10 +178,10 @@ class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
                 
                 
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, pin_memory=True, shuffle=True, collate_fn=collate_fn_pyramids)
+        return DataLoader(self.train_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=True, pin_memory=True, collate_fn=collate_fn_pyramids)
     
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=True, collate_fn=collate_fn_pyramids)
+        return DataLoader(self.val_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=True, pin_memory=True, collate_fn=collate_fn_pyramids)
          
 
     # def test_dataloader(self):
@@ -206,6 +192,3 @@ class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
 
     #     return DataLoader(self.test_ds, batch_size=batch_size, num_workers=self.hparams.num_workers, shuffle=False, collate_fn=collate_fn_pyramids)
 
-
-      
-    

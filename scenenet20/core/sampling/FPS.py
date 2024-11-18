@@ -39,7 +39,7 @@ class Farthest_Point_Sampling:
         q_points = x[fps_indices]
 
         if B is not None:
-            q_points = q_points.reshape(B, -1, q_points.shape[-1])
+            q_points = q_points.reshape(B, -1, q_points.shape[-1]).contiguous()
             # fps_indices = fps_indices.view(B, -1)
 
         return q_points

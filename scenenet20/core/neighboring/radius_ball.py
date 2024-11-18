@@ -7,7 +7,6 @@ import sys
 sys.path.append('../')
 sys.path.append('../../')
 
-from core.neighboring.conversions import batch_to_pack, lengths_to_batchvector, pack_to_batch
 from core.neighboring.knn import keops_knn
 
 
@@ -33,7 +32,7 @@ class RadiusBall_Neighboring:
         graph - torch.Tensor
             support points of shape (B, Q, k)
         """
-        return keops_radius_search(q_points, support, self.radius, self.k, self.pad_value)
+        return keops_radius_search(q_points, support, self.radius, self.k, self.pad_value).contiguous()
         
 
 

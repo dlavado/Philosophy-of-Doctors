@@ -222,22 +222,6 @@ class EllipsoidCollection(GIBCollection):
         return self.intensity * gauss_dist
     
     
-    def compute_integral(self) -> torch.Tensor:
-        """
-        Computes an integral approximation of the gaussian function within the kernel_reach.
-
-        Returns
-        -------
-        `integral` - torch.Tensor:
-            Tensor of shape (G,) representing the integral of the gaussian function within the kernel reach for each gib in the collection;
-        """
-        mc_weights = self._compute_gib_weights(self.montecarlo_points)
-        # print(f"{mc_weights.shape=}")
-        # for g in range(self.num_gibs):
-        #     self._plot_integral(mc_weights[g], plot_valid=True)
-        return torch.sum(mc_weights, dim=-1)
-    
-    
     def _compute_gib_weights(self, s_centered: torch.Tensor) -> torch.Tensor:
         """
         Computes the gaussian function of the Ellipsoid GIB for the input tensor.
@@ -281,17 +265,8 @@ class EllipsoidCollection(GIBCollection):
         ##### prep for GIB computation #####
         s_centered, valid_mask, batched = self._prep_support_vectors(points, q_points, support_idxs)
         
-        # print(f"{s_centered.shape=}")   
-        # Compute GIB weights; (B, M, G, K, 3) -> (B, M, G, K)
-        weights = self._compute_gib_weights(s_centered)
-        # print(f"{weights.shape=}")
+        q_output = self._prepped_forward(s_centered, valid_mask, batched)
         
-        ### Post Processing ###
-        q_output = self._validate_and_sum(weights, valid_mask) # (B, M, G)
-
-        if not batched:
-            q_output = q_output.squeeze(0)
-
         return q_output
     
     

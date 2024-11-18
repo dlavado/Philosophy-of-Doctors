@@ -31,7 +31,7 @@ batch_size:
 ignore_index:
   value: -1 # noise
 num_workers: 
-  value: 0
+  value: 12
 val_split:
   value: 0.1
 num_points:
@@ -59,7 +59,7 @@ num_levels:
   value: 3
   description: 'Number of levels in the model'
 out_gib_channels:
-  value: 8
+  value: 4
   description: 'Number of output channels for GIB'
 skip_connections:
   value: True
@@ -93,7 +93,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 100 # -1 for infinite
+  value: 1 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -113,7 +113,7 @@ class_weights:
   value: True
   description: 'Use class weights in the loss function'
 segmentation_losses:
-  value: {'focal': 0.2, 'tversky': 0.2}
+  value: {'focal': 0.1, 'tversky': 0.1}
   description: 'Additional losses for segmentation'
 # ------------------ #
 # Lit Trainer config
@@ -128,7 +128,7 @@ auto_lr_find:
 auto_scale_batch_size:
   value: False
 profiler:
-  value: False # 'simple' or 'advanced'
+  value: 'advanced' # 'simple' or 'advanced'
   description: 'PyTorch Lightning profiler'
 accumulate_grad_batches:
   value: 1

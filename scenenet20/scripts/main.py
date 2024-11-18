@@ -113,7 +113,7 @@ def init_callbacks(ckpt_dir):
     callbacks.extend(model_ckpts)
 
     if wandb.config.auto_scale_batch_size:
-        batch_finder = BatchSizeFinder(mode='power')
+        batch_finder = BatchSizeFinder(mode='binsearch')
         callbacks.append(batch_finder)
 
     # early_stop_callback = EarlyStopping(monitor=wandb.config.early_stop_metric, 
@@ -325,7 +325,8 @@ def init_criterion(class_weights=None):
     print("Loss function: ", wandb.config.criterion)
     print(f"{'='*5}> Class weights: {class_weights}")
     criterion = torch.nn.CrossEntropyLoss(ignore_index=wandb.config.ignore_index,
-                                          weight=class_weights) # default criterion; idx zero is noise
+                                          weight=class_weights,
+                                          label_smoothing=0.1) # label smoothing to prevent 
     
     
     seg_losses = wandb.config.segmentation_losses
@@ -385,6 +386,7 @@ def main():
     ### PYRAMID BUILDER
     pyramid_builder = init_pyramid_builder()
 
+    # val_MulticlassJaccardIndex: tensor([0.4354, 0.6744, 0.4973, 0.3322, 0.3667, 0.8061], device='cuda:0'); mean: 0.5187
     model = init_model(wandb.config.model, criterion, pyramid_builder)
     input_size = (wandb.config.batch_size, wandb.config.num_points, wandb.config.in_channels)
     print(f"{'='*30} Model initialized {'='*30}")
@@ -496,9 +498,10 @@ if __name__ == '__main__':
     # --------------------------------
     su.fix_randomness()
     warnings.filterwarnings("ignore")
-    torch.set_float32_matmul_precision('high')
+    torch.set_float32_matmul_precision('medium')
     torch.autograd.set_detect_anomaly(True)
     os.environ['TORCH_CUDA_ARCH_LIST'] = '8.9'
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
     # --------------------------------
 
 

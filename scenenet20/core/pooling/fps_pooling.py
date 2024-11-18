@@ -75,7 +75,8 @@ class FPSPooling:
             pooled_points = torch.cat([pooled_coords, pooled_points], dim=-1)
 
         return torch.cat([q_points, pooled_points], dim=-1)
-    
+
+@torch.jit.script
 def fps_sampling(x:torch.Tensor, pooling_factor=None, num_points=None) -> torch.Tensor:
         """
         Parameters

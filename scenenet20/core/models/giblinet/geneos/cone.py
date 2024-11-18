@@ -224,24 +224,7 @@ class ConeCollection(GIBCollection):
         x_norm = torch.linalg.norm(x, dim=-1)
         # print(f"{x_norm.shape=} {rad.shape=}")
         return self.intensity * torch.exp((x_norm**2) * (-1 / (2*(rad + self.epsilon)**2)))
-    
-    
-    def compute_integral(self) -> torch.Tensor:
-        """
-        Computes an integral approximation of the gaussian function within the kernel_reach.
 
-        Returns
-        -------
-        `integral` - torch.Tensor:
-            Tensor of shape (G,) representing the integral of the gaussian function within the kernel reach for each gib in the collection;
-        """
-        # here rotating the montecarlo points is not necessary since any rotation will result in the same integral
-        mc_weights = self._compute_gib_weights(self.montecarlo_points) # (B, M, G, K)
-        # print(f"{mc_weights.shape=}")
-        # for g in range(self.num_gibs):
-        #     self._plot_integral(mc_weights[g], plot_valid=True)
-        integral = torch.sum(mc_weights, dim=-1)
-        return integral
     
     
     def _compute_gib_weights(self, s_centered: torch.Tensor) -> torch.Tensor:
@@ -258,17 +241,19 @@ class ConeCollection(GIBCollection):
         `weights` - torch.Tensor:
             Tensor of shape ([B], M, G, K), representing the weights of the GIBs for each query point.
         """
-        cone_inc = torch.fmod(self.inc, 0.499)
-        cone_inc = cone_inc + (cone_inc < 0).float() * 0.499 # \in [0, 0.499]; tan is not defined for 90 degrees
+        cone_inc = torch.remainder(self.inc, 0.499)
+        cone_inc += (cone_inc < 0).float() * 0.499
 
-        s_height = s_centered[..., 2]  # (B, M, G, K)
-        s_height = torch.relu(-s_height) # only consider the positive heights
-        
-        radius = self.radius * s_height * torch.tan(cone_inc * torch.pi)  # S; cone's radius at the height of the support point
-        radius = torch.relu(radius) # only consider the positive radii
-        
-        weights = self.gaussian(s_centered[..., :2], rad=radius)  # Kx1;
+        s_xy = s_centered[..., :2]  # (B, M, G, K, 2)
+        s_height = torch.relu(-s_centered[..., 2])  # (B, M, G, K)
+
+        tangent = torch.tan(cone_inc * torch.pi)
+        radius = torch.relu(self.radius * s_height * tangent)
+
+        # Compute weights with Gaussian
+        weights = self.gaussian(s_xy, rad=radius) 
         return weights
+        
     
     def forward(self, points:torch.Tensor, q_points:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
         """
@@ -295,16 +280,8 @@ class ConeCollection(GIBCollection):
         ##### prep for GIB computation #####
         s_centered, valid_mask, batched = self._prep_support_vectors(points, q_points, support_idxs)
         
-        # Compute GIB weights; (B, M, G, K, 3) -> (B, M, G, K)
-        weights = self._compute_gib_weights(s_centered) # (B, M, G, K)
-        #print(f"{weights.shape=}")
+        q_output = self._prepped_forward(s_centered, valid_mask, batched)
         
-        ### Post Processing ###
-        q_output = self._validate_and_sum(weights, valid_mask) # (B, M, G)
-
-        if not batched:
-            q_output = q_output.squeeze(0)
-
         return q_output
         
     

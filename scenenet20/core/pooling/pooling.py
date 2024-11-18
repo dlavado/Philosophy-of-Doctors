@@ -2,7 +2,7 @@
 
 import torch
 
-
+@torch.jit.script
 def _gather_points(x, indices):
     """
     Specific case of torch.gather for support-point indices.
@@ -46,7 +46,36 @@ def _gather_points(x, indices):
         
     return support_points
 
-def local_pooling(feats, neighbor_idxs, feat_mapping='max'):
+@torch.jit.script
+def local_pooling(feats, neighbor_idxs):
+    """
+    Max pooling from neighbors
+
+    Parameters
+    ----------
+
+    `feats` : torch.Tensor
+        Tensor of shape ([B], N, C) representing the input features.
+
+    `neighbor_idxs` : torch.Tensor
+        Tensor of shape ([B], M, k) containing the indices of the k neighbors of each point and M is the number of query points (M <= N).
+
+    Returns
+    -------
+    `pooled_feats` : torch.Tensor
+        Tensor of shape ([B], M, C) representing the pooled features.
+    """
+    pool_dim = 2 if feats.dim() == 3 else 1
+    neighbor_feats = _gather_points(feats, neighbor_idxs)  # shape: ([B], M, k, C)
+    # print(f"{neighbor_feats.shape=}")
+    pooled_feats = neighbor_feats.max(dim=pool_dim)[0]
+
+    return pooled_feats
+
+
+
+
+def naive_local_pooling(feats, neighbor_idxs, feat_mapping='max'):
     """
     Max pooling from neighbors
 
@@ -82,4 +111,3 @@ def local_pooling(feats, neighbor_idxs, feat_mapping='max'):
         pooled_feats = neighbor_feats.sum(dim=pool_dim)
 
     return pooled_feats
-

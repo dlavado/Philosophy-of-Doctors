@@ -192,21 +192,6 @@ class CylinderCollection(GIBCollection):
         x_norm = torch.linalg.norm(x, dim=-1) # shape (..., G, K)
         return self.intensity * torch.exp((x_norm**2) * (-1 / (2*(self.radius + self.epsilon)**2))) # Kx1
     
-    def compute_integral(self) -> torch.Tensor:
-        """
-        Computes an integral approximation of the gaussian function within the kernel_reach.
-
-        Returns
-        -------
-       `integral` - torch.Tensor:
-            Tensor of shape (G,) representing the integral of the gaussian function within the kernel reach for each gib in the collection;
-        """
-        mc_weights = self._compute_gib_weights(self.montecarlo_points)
-        # for g in range(self.num_gibs):
-        #     self._plot_integral(mc_weights[g], plot_valid=True)
-        integral = torch.sum(mc_weights, dim=-1) # shape (G,)
-        return integral
-    
     
     def _compute_gib_weights(self, s_centered: torch.Tensor) -> torch.Tensor:
         """
@@ -223,6 +208,7 @@ class CylinderCollection(GIBCollection):
             Tensor of shape (..., G, K) representing the weights of the Cylinder GIBs for the input tensor.
         """
         return self.gaussian(s_centered[..., :2])
+    
 
     def forward(self, points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor) -> torch.Tensor:
         """
@@ -244,20 +230,14 @@ class CylinderCollection(GIBCollection):
         -------
         `q_outputs` - torch.Tensor:
             Tensor of shape ([B], M, G), representing the output of the Cylinder GIB Collection on the query points.
+            where G is the number of GIBs in the collection.
         """
         ##### prep for GIB computation #####
         s_centered, valid_mask, batched = self._prep_support_vectors(points, q_points, support_idxs)
 
-        # Compute GIB weights; (B, M, G, K, 2) -> (B, M, G, K)
-        weights = self._compute_gib_weights(s_centered)
-        #print(f"{weights.shape=}")
+        q_outputs = self._prepped_forward(s_centered, valid_mask, batched)
         
-        q_output = self._validate_and_sum(weights, valid_mask) # (B, M, G)
-
-        if not batched:
-            q_output = q_output.squeeze(0)  # Shape becomes (M)
-
-        return q_output
+        return q_outputs
 
 
 if __name__ == "__main__":

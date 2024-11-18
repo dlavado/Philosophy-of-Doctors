@@ -1,7 +1,8 @@
 import torch
-import torch.nn.functional as F
-from torch.autograd import Function
+# import torch.nn.functional as F
+# from torch.autograd import Function
 
+@torch.jit.script
 def interpolation(curr_points, skip_points, upsampling_idxs):
     """
     Performs interpolation from current points to skip points using neighbor indices.
@@ -29,7 +30,7 @@ def interpolation(curr_points, skip_points, upsampling_idxs):
     neighbor_feat = torch.gather(
         curr_feat.unsqueeze(1).expand(B, N, M, C),  # Expand current features to (B, N, M, C)
         2, upsampling_idxs.unsqueeze(-1).expand(B, N, K, C)  # Gather features (B, N, K, C)
-    )  # (B, N, K, C)
+    ).contiguous()  # (B, N, K, C)
     
     neighbor_feat[mask.unsqueeze(-1).expand(B, N, K, C)] = 0
 
@@ -37,7 +38,7 @@ def interpolation(curr_points, skip_points, upsampling_idxs):
     neighbor_coords = torch.gather(
         curr_coords.unsqueeze(1).expand(B, N, M, 3),  # Expand current coords to (B, N, M, 3)
         2, upsampling_idxs.unsqueeze(-1).expand(B, N, K, 3)  # Gather coords (B, N, K, 3)
-    )  # (B, N, K, 3)
+    ).contiguous()  # (B, N, K, 3)
     
     neighbor_coords[mask.unsqueeze(-1).expand(B, N, K, 3)] = 0
     

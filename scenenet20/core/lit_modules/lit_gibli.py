@@ -12,7 +12,7 @@ from core.criterions.elastic_net_reg import ElasticNetRegularization
 from core.criterions.geneo_loss import GENEORegularizer
 
 
-from core.neighboring.conversions import pack_to_batch, _pack_tensor_to_batch
+from core.models.giblinet.conversions import pack_to_batch, _pack_tensor_to_batch
 
 class LitGIBLi(LitWrapperModel):
     """
@@ -58,7 +58,7 @@ class LitGIBLi(LitWrapperModel):
             self.val_metrics = metric_initializer(num_classes=num_classes)
             self.test_metrics = metric_initializer(num_classes=num_classes)
             
-        self.elastic_reg = ElasticNetRegularization(alpha=0.001, l1_ratio=0.5)
+        self.elastic_reg = ElasticNetRegularization(alpha=0.0001, l1_ratio=0.5)
         self.geneo_reg = GENEORegularizer(rho=0.01)
             
             
@@ -80,41 +80,15 @@ class LitGIBLi(LitWrapperModel):
         if isinstance(batch, dict):
             x = batch["pointcloud"]
             y = batch["sem_labels"]
-            lengths = batch["lengths"]
             graph_pyramid = batch["graph_pyramid"]
-            pyramid_lengths = batch["lengths_graph_pyramid"]    
         else:
             x, y = batch
             graph_pyramid = None
         
-        x, _ = pack_to_batch(x, lengths)  
-        pyramid = {}
-        for key, val in graph_pyramid.items():
-            # print(f"{key=}...", end="")
-            # print(f"{len(val)=}")
-            # print("pack mode...")
-            # for t in val:
-            #     print(f"{t.shape=}")  
-            pyramid[key] = [_pack_tensor_to_batch(t, l) for t, l in zip(val, pyramid_lengths[key])]
-            # pyramid[key] = [pack_to_batch(t, l)[0] for t, l in zip(val, pyramid_lengths[key])]
-            # print("batched mode...")
-            # for t in pyramid[key]:
-            #     print(f"{t.shape=}")
+        logits = self.model(x, graph_pyramid)
         
-        # for key, val in graph_pyramid.items():
-        #     print(f"{key=}...", end="")
-        #     for t in val:
-        #        print(f"{t.shape=}", end="")
-        #     print()
-            
-        # input("Press Enter to continue...")
-        
-        
-        logits = self.model(x, pyramid)
-        
-        del graph_pyramid
-        torch.cuda.empty_cache()
-        
+        logits = torch.clamp(min=-15, max=15)
+                
         logits = logits.reshape(-1, logits.shape[-1])
         y = y.to(torch.long).reshape(-1)
                 

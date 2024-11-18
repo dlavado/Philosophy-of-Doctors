@@ -12,6 +12,7 @@ from core.models.giblinet.geneos import cylinder, disk, cone, ellipsoid
 from core.models.giblinet.GIBLi_utils import PointBatchNorm
 from core.unpooling.nearest_interpolation import interpolation
 from core.pooling.pooling import local_pooling
+from core.models.giblinet.conversions import compute_centered_support_points
 
 ###############################################################
 #                          GIB Layer                          #
@@ -90,7 +91,7 @@ class GIB_Operator_Collection(nn.Module):
         else:
             self.gib_params = self.random_init(num_gibs, kernel_reach)
 
-        self.gib = self.gib_class(kernel_reach=self.kernel_reach, num_gibs=num_gibs, **self.gib_params)
+        self.gib:GIBCollection = self.gib_class(kernel_reach=self.kernel_reach, num_gibs=num_gibs, **self.gib_params)
         
         
     def random_init(self, num_gibs, kernel_reach):
@@ -98,7 +99,7 @@ class GIB_Operator_Collection(nn.Module):
         gib_params = {}
 
         for param_name in config[GIB_PARAMS]:
-            t_param = to_tensor(config[GIB_PARAMS][param_name])
+            t_param = to_tensor(config[GIB_PARAMS][param_name]).contiguous()
             gib_params[param_name] = nn.Parameter(t_param, requires_grad = not param_name in config[NON_TRAINABLE])
 
         return nn.ParameterDict(gib_params)
@@ -116,6 +117,10 @@ class GIB_Operator_Collection(nn.Module):
         for param in self.gib_class.mandatory_parameters():
             params.append(self.gib_params[param])
         return params
+    
+    
+    def _prepped_forward(self, s_centered, valid_mask, batched):
+        return self.gib._prepped_forward(s_centered, valid_mask, batched)
         
         
     def forward(self, points:torch.Tensor, q_coords:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
@@ -334,23 +339,26 @@ class GIB_Layer_Coll(nn.Module):
     def get_num_total_params(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
     
-
-    def _compute_gib_outputs(self, coords:torch.Tensor, q_points:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
-        
-        batched = coords.dim() == 3
-        
+    
+    def _compute_gib_outputs(self, coords: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor) -> torch.Tensor:
+        # Ensure tensors are batched
         if coords.dim() == 2:
             coords = coords.unsqueeze(0)
             q_points = q_points.unsqueeze(0)
-            support_idxs = support_idxs.unsqueeze(0)  
-        
-        q_outputs = []
-        for _, gib_coll in self.gibs.items():
-            gib_outputs = gib_coll(coords, q_points, support_idxs) # shape ([B], Q, G[key]))
-            q_outputs.append(gib_outputs)
-            
-        q_outputs = torch.cat(q_outputs, dim=-1) # shape ([B], Q, num_gibs)
-            
+            support_idxs = support_idxs.unsqueeze(0)
+
+        # Prepare support vectors
+        s_centered, valid_mask, batched = compute_centered_support_points(coords, q_points, support_idxs)
+
+        q_outputs = torch.empty((q_points.shape[0], q_points.shape[1], self.total_gibs), device=coords.device).contiguous()
+
+        offset = 0
+        for gib_coll in self.gibs.values():
+            gib_output_dim = gib_coll.num_gibs
+            gib_outputs = gib_coll._prepped_forward(s_centered, valid_mask, batched)  # ([B], Q, output_dim)
+            q_outputs[:, :, offset : offset + gib_output_dim] = gib_outputs
+            offset += gib_output_dim
+
         if not batched:
             q_outputs = q_outputs.squeeze(0)
 
@@ -438,7 +446,12 @@ class GIB_Block(nn.Module):
         # print(f"{gib_out.shape=}")
         gib_out = self.act(self.gib_norm(gib_out)) # (B, Q, num_observers)
 
-        if self.strided: # if the query points are 
+        if self.strided: # if the query poin # if torch.isnan(out).any():
+        #     print("Decoder")
+        #     print(f"{out=}")
+        #     print(f"{curr_points[0].shape=}, {skip_points[0].shape=}, {upsampling_idxs.shape=}")
+        #     print(f"{curr_points[1].shape=}, {skip_points[1].shape=}")
+        #     print(f"{out.shape=}")ts are 
             feats = local_pooling(feats, neighbor_idxs)
         else:
             feats = feats
@@ -596,13 +609,13 @@ class Unpool_wSkip(nn.Module):
             ) # shape (B, N, K, C)
             inter_feats = torch.max(inter_feats, dim=2)[0] # shape (B, N, C) # max pooling
             
-        if torch.isnan(inter_feats).any():
-            print("Unpooling")
-            print(f"{inter_feats=}")
-            print(f"{curr_points[0].shape=}, {skip_points[0].shape=}, {upsampling_idxs.shape=}")
-            print(f"{curr_points[1].shape=}, {skip_points[1].shape=}")
-            print(f"{inter_feats.shape=}")
-            sys.exit(0)
+        # if torch.isnan(inter_feats).any():
+        #     print("Unpooling")
+        #     print(f"{inter_feats=}")
+        #     print(f"{curr_points[0].shape=}, {skip_points[0].shape=}, {upsampling_idxs.shape=}")
+        #     print(f"{curr_points[1].shape=}, {skip_points[1].shape=}")
+        #     print(f"{inter_feats.shape=}")
+        #     sys.exit(0)
         
         inter_feats = self.proj(inter_feats) # (B, N, out_channels)
         # print(f"{inter_feats.shape=}")
@@ -681,12 +694,12 @@ class Decoder(nn.Module):
         """
         out = self.unpool(curr_points, skip_points, upsampling_idxs) # output shape: (B, N, 3 + 2*out_channels)
         
-        if torch.isnan(out).any():
-            print("Decoder")
-            print(f"{out=}")
-            print(f"{curr_points[0].shape=}, {skip_points[0].shape=}, {upsampling_idxs.shape=}")
-            print(f"{curr_points[1].shape=}, {skip_points[1].shape=}")
-            print(f"{out.shape=}")
+        # if torch.isnan(out).any():
+        #     print("Decoder")
+        #     print(f"{out=}")
+        #     print(f"{curr_points[0].shape=}, {skip_points[0].shape=}, {upsampling_idxs.shape=}")
+        #     print(f"{curr_points[1].shape=}, {skip_points[1].shape=}")
+        #     print(f"{out.shape=}")
         
         out_coords, out_feats = out[..., :3], out[..., 3:]
         

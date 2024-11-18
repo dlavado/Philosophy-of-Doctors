@@ -946,7 +946,7 @@ class TS40K_FULL_Preprocessed(Dataset):
                 self.pyramids.append(i_pyramid)
                 
             del pyramid_dict, batch_coords
-            gc.collect()
+            # gc.collect()
 
         self.pyramids_built = True  
 
@@ -965,6 +965,13 @@ class TS40K_FULL_Preprocessed(Dataset):
             return self.ts40k_full[idx]
 
         if self.load_into_memory:
+            if self.pyramids_built:
+                return {
+                    'pointcloud' : self.data[idx][0],
+                    'sem_labels' : self.data[idx][1],
+                    'graph_pyramid' : self.pyramids[idx]
+                }
+            # else return the data    
             return self.data[idx]
 
         if torch.is_tensor(idx):

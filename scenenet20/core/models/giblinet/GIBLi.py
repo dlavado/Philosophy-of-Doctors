@@ -172,12 +172,6 @@ class GIBLiNet(nn.Module):
                 # print(f"\tfeats.shape={tuple(feats.shape)} \n\tpoint_list[{i}].shape={tuple(point_list[i].shape)} \n\tsubsampling_idxs_list[{i-1}].shape={tuple(subsampling_idxs_list[i-1].shape)}")
                 feats = self.gib_pooling_encoders[i - 1]((coords, feats), point_list[i], subsampling_idxs_list[i - 1]) # pooling
                 # print(f"\t{feats.shape}\n")
-                if torch.isnan(feats).any():
-                    print("NaNs in pooling")
-                    print(f"feats.shape={feats.shape}")
-                    print(f"point_list[{i}].shape={point_list[i].shape}")
-                    print(f"subsampling_idxs_list[{i-1}].shape={subsampling_idxs_list[i-1].shape}")
-                    sys.exit(0)
                 
                 coords = point_list[i] # update the coordinates
             
@@ -185,12 +179,6 @@ class GIBLiNet(nn.Module):
             # print(f"Encoding {i}...")
             # print(f"\tfeats.shape={tuple(feats.shape)} \n\tpoint_list[{i}].shape={tuple(point_list[i].shape)} \n\tneighbors_idxs_list[{i}].shape={tuple(neighbors_idxs_list[i].shape)}")
             feats = self.gib_neigh_encoders[i]((coords, feats), point_list[i], neighbors_idxs_list[i])
-            if torch.isnan(feats).any():
-                print("NaNs in encoding")
-                print(f"feats.shape={feats.shape}")
-                print(f"point_list[{i}].shape={point_list[i].shape}")
-                print(f"neighbors_idxs_list[{i}].shape={neighbors_idxs_list[i].shape}")
-                sys.exit(0)
             # print(f"\t {feats.shape=}\n")
             level_feats.append(feats) # save the features for skip connections
 
@@ -205,27 +193,14 @@ class GIBLiNet(nn.Module):
             # print(f"\tcurr_coords.shape={tuple(curr_coords.shape)} \n\tcurr_latent_feats.shape={tuple(curr_latent_feats.shape)} \n\tskip_coords.shape={tuple(skip_coords.shape)} \n\tskip_feats.shape={tuple(skip_feats.shape)} \n\tupsampling_idxs_list[{i}].shape={tuple(upsampling_idxs_list[i].shape)}")
             curr_latent_feats = self.decoders[i]((curr_coords, curr_latent_feats), (skip_coords, skip_feats), upsampling_idxs_list[i], skip_neighbors_idxs)
             curr_coords = skip_coords
-            if torch.isnan(curr_latent_feats).any():
-                print("NaNs in decoding")
-                print(f"curr_latent_feats.shape={curr_latent_feats.shape}")
-                print(f"curr_coords.shape={curr_coords.shape}")
-                print(f"skip_coords.shape={skip_coords.shape}")
-                print(f"skip_feats.shape={skip_feats.shape}")
-                print(f"upsampling_idxs_list[{i}].shape={upsampling_idxs_list[i].shape}")
-                print(f"skip_neighbors_idxs.shape={skip_neighbors_idxs.shape}")
-                sys.exit(0)
             #print(f"\t{curr_latent_feats.shape=}\n")
 
         ###### Segmentation phase ######
         seg_logits = self.seg_head(curr_latent_feats)
-        if torch.isnan(seg_logits).any():
-            print("NaNs in seg_logits")
-            print(f"seg_logits.shape={seg_logits.shape}")
-            sys.exit(0)
         # print(seg_logits.shape)
         
-        del graph_pyramid_dict
-        gc.collect()
+        # del graph_pyramid_dict
+        # gc.collect()
         
         
         return seg_logits
