@@ -1,7 +1,6 @@
 from typing import List
 import torch
 import torch.nn as nn
-import gc
 
 import sys
 
@@ -10,7 +9,7 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 
-from core.models.giblinet.GIBLi_parts import GIB_Sequence, PointBatchNorm, Unpool_wSkip, Decoder
+from core.models.giblinet.GIBLi_parts import GIB_Sequence, PointBatchNorm, Decoder
 from core.models.giblinet.GIBLi_utils import BuildGraphPyramid
 
 
@@ -189,6 +188,8 @@ class GIBLiNet(nn.Module):
         ###### Decoding phase ######
         for i in reversed(range(len(upsampling_idxs_list))): # there are num_levels - 1 unpooling layers
             skip_coords, skip_feats, skip_neighbors_idxs = point_list[i], level_feats[i], neighbors_idxs_list[i]
+            # print(f"{skip_coords.dtype=}, {skip_feats.dtype=}, {skip_neighbors_idxs.dtype=}")
+            # print(f"{curr_coords.dtype=}, {curr_latent_feats.dtype=}, {upsampling_idxs_list[i].dtype=}")
             # print(f"Decoding {i + 1}...")
             # print(f"\tcurr_coords.shape={tuple(curr_coords.shape)} \n\tcurr_latent_feats.shape={tuple(curr_latent_feats.shape)} \n\tskip_coords.shape={tuple(skip_coords.shape)} \n\tskip_feats.shape={tuple(skip_feats.shape)} \n\tupsampling_idxs_list[{i}].shape={tuple(upsampling_idxs_list[i].shape)}")
             curr_latent_feats = self.decoders[i]((curr_coords, curr_latent_feats), (skip_coords, skip_feats), upsampling_idxs_list[i], skip_neighbors_idxs)
@@ -199,9 +200,8 @@ class GIBLiNet(nn.Module):
         seg_logits = self.seg_head(curr_latent_feats)
         # print(seg_logits.shape)
         
-        # del graph_pyramid_dict
-        # gc.collect()
-        
+        del graph_pyramid_dict, point_list, neighbors_idxs_list, subsampling_idxs_list, upsampling_idxs_list, level_feats, feats, curr_latent_feats, curr_coords
+        torch.cuda.empty_cache()
         
         return seg_logits
 

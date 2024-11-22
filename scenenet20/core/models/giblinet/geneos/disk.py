@@ -237,8 +237,8 @@ class DiskCollection(GIBCollection):
         `gaussian` - torch.Tensor:
             Tensor of shape (..., G, K) representing the gaussian function of the input tensor.
         """
-        x_norm = torch.linalg.norm(x, dim=-1) # shape (..., G, K)
-        return self.intensity * torch.exp((x_norm**2) * (-1 / (2*(self.radius + self.epsilon)**2))) # Kx1
+        #x_norm = torch.linalg.norm(x, dim=-1) # shape (..., G, K)
+        return self.intensity * torch.exp((torch.linalg.norm(x, dim=-1)**2) * (-1 / (2*(self.radius + self.epsilon)**2))) # Kx1
     
     
     def _compute_gib_weights(self, s_centered: torch.Tensor) -> torch.Tensor:
@@ -255,8 +255,7 @@ class DiskCollection(GIBCollection):
         `weights` - torch.Tensor:
             Tensor of shape (..., G, K), representing the weights of the support points for each GIB.
         """
-        weights = self.gaussian(s_centered[..., :2])
-        weights = weights * torch.relu(self.width - torch.abs(s_centered[..., 2]))   
+        weights = self.gaussian(s_centered[..., :2]) * torch.relu(self.width - torch.abs(s_centered[..., 2]))  # Zero out weights outside the disk's width
         return weights
         
     
@@ -285,9 +284,7 @@ class DiskCollection(GIBCollection):
 
         ##### prep for GIB computation #####
         s_centered, valid_mask, batched = self._prep_support_vectors(points, q_points, support_idxs)
-        
         q_output = self._prepped_forward(s_centered, valid_mask, batched)
-        
         return q_output
         
 

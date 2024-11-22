@@ -207,17 +207,10 @@ class EllipsoidCollection(GIBCollection):
           r3r1  r3r2  r3^2  
         ]
         """
-        cov_matrix = torch.diag_embed((self.radii + self.epsilon)** 2) # (G, 3, 3)
-        precision_matrix = torch.inverse(cov_matrix) # (G, 3, 3)
-        # print(f"{precision_matrix.shape=}")
-        
-        # exponent = torch.matmul(x, precision_matrix) # (..., G, K, 3) @ (G, 3, 3) -> (..., G, K, 3)
-        # exponent = torch.matmul(exponent, x.transpose(-1, -2)) # (..., G, K, 3) @ (..., G, 3, K) -> (..., G, K, K)
-        # exponent = -0.5 * torch.sum(exponent, dim=-1) # (..., G, K)
-        exponent = -0.5 * torch.einsum('...gki,gij,...gkj->...gk', x, precision_matrix, x) # (..., G, K)
-        # exponent = -0.5 * torch.sum(x * torch.matmul(x, precision_matrix), dim=-1) # (..., G, K)
-        
-        gauss_dist = torch.exp(exponent)
+        #cov_matrix = torch.diag_embed((self.radii + self.epsilon)** 2) # (G, 3, 3)
+        precision_matrix = torch.inverse(torch.diag_embed((self.radii + self.epsilon)**2))
+        #exponent = -0.5 * torch.einsum('...gki,gij,...gkj->...gk', x, cov_matrix, x) # (..., G, K)
+        gauss_dist = torch.exp(-0.5 * torch.einsum('...gki,gij,...gkj->...gk', x, precision_matrix, x))
 
         return self.intensity * gauss_dist
     
@@ -236,8 +229,7 @@ class EllipsoidCollection(GIBCollection):
         `weights` - torch.Tensor:
             Tensor of shape (..., G, K) representing the gaussian function of the input tensor.
         """
-        weights = self.gaussian(s_centered)
-        return weights
+        return self.gaussian(s_centered)
     
     
     def forward(self, points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor) -> torch.Tensor:
@@ -264,9 +256,7 @@ class EllipsoidCollection(GIBCollection):
         
         ##### prep for GIB computation #####
         s_centered, valid_mask, batched = self._prep_support_vectors(points, q_points, support_idxs)
-        
         q_output = self._prepped_forward(s_centered, valid_mask, batched)
-        
         return q_output
     
     

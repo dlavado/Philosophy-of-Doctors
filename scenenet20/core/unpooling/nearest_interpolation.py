@@ -3,7 +3,7 @@ import torch
 # from torch.autograd import Function
 
 @torch.jit.script
-def interpolation(curr_points, skip_points, upsampling_idxs):
+def interpolation(curr_points:torch.Tensor, skip_points:torch.Tensor, upsampling_idxs:torch.Tensor):
     """
     Performs interpolation from current points to skip points using neighbor indices.
     
@@ -17,48 +17,27 @@ def interpolation(curr_points, skip_points, upsampling_idxs):
     """
     B, M, _ = curr_points.shape
     B, N, K = upsampling_idxs.shape
-    C = curr_points.shape[-1] - 3  # Number of features (excluding coordinates)
-    
-    # Extract the coordinates and features from the input points
-    curr_coords, curr_feat = curr_points[..., :3], curr_points[..., 3:]  # (B, M, 3), (B, M, C)
-    skip_coords = skip_points[..., :3]  # (B, N, 3)
-    
+        
     mask = upsampling_idxs == -1
-    upsampling_idxs[mask] = 0
-
-    # Gather neighbor features using the upsampling_idxs
-    neighbor_feat = torch.gather(
-        curr_feat.unsqueeze(1).expand(B, N, M, C),  # Expand current features to (B, N, M, C)
-        2, upsampling_idxs.unsqueeze(-1).expand(B, N, K, C)  # Gather features (B, N, K, C)
-    ).contiguous()  # (B, N, K, C)
+    upsampling_idxs[mask] = 0 # -1 is used to ignore non-existing neighbors, but when gathering, it should be 0
     
-    neighbor_feat[mask.unsqueeze(-1).expand(B, N, K, C)] = 0
+    neighbors = torch.gather(
+        curr_points.unsqueeze(1).expand(B, N, M, curr_points.shape[-1]), 
+        2, upsampling_idxs.to(dtype=torch.long).unsqueeze(-1).expand(B, N, K, curr_points.shape[-1])
+    ).contiguous().to(curr_points.dtype)  # (B, N, K, 3 + C)
+    
+    # print(f"{neighbors.dtype=} {skip_points.dtype=} {curr_points.dtype=}")
+    
+    # mask non-existing neighbors
+    neighbors[mask.unsqueeze(-1).expand(B, N, K, curr_points.shape[-1])] = 0
 
     # Compute distances between skip points and their neighbors
-    neighbor_coords = torch.gather(
-        curr_coords.unsqueeze(1).expand(B, N, M, 3),  # Expand current coords to (B, N, M, 3)
-        2, upsampling_idxs.unsqueeze(-1).expand(B, N, K, 3)  # Gather coords (B, N, K, 3)
-    ).contiguous()  # (B, N, K, 3)
-    
-    neighbor_coords[mask.unsqueeze(-1).expand(B, N, K, 3)] = 0
-    
-    # print("\n\n\n")
-    # print(f"{neighbor_coords.shape=} {neighbor_feat.shape=} {skip_coords.shape=}")
-
-    dist = torch.norm(skip_coords.unsqueeze(2) - neighbor_coords, dim=-1)  # (B, N, K)
-    dist_recip = 1.0 / (dist + 1e-8)  # Avoid division by zero
-    # if torch.isnan(dist_recip).any():
-    #     print("interpolation")
-    #     print(f"{dist_recip=}")
-    norm = torch.sum(dist_recip, dim=-1, keepdim=True)  # (B, N, 1)
-    weight = dist_recip / norm  # (B, N, K)
-    # if torch.isnan(weight).any():
-    #     print("interpolation")
-    #     print(f"{weight=}")
-
+    dist = torch.norm(skip_points[..., :3].unsqueeze(2) - neighbors[..., :3], dim=-1)  # (B, N, K)
+    dist = 1.0 / (dist + 1e-8)  # Avoid division by zero   
+    weight = dist / torch.sum(dist, dim=-1, keepdim=True)  # (B, N, K)
     # Compute the weighted sum of neighbor features
-    new_feat = torch.sum(neighbor_feat * weight.unsqueeze(-1), dim=2)  # (B, N, C)
-
+    new_feat = torch.sum(neighbors[..., 3:] * weight.unsqueeze(-1), dim=2, dtype=curr_points.dtype)  # (B, N, C)
+    
     return new_feat # (B, N, C)
 
 

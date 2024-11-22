@@ -189,8 +189,8 @@ class CylinderCollection(GIBCollection):
         `gaussian` - torch.Tensor:
             Tensor of shape (..., G, K) representing the gaussian function of the input tensor.
         """
-        x_norm = torch.linalg.norm(x, dim=-1) # shape (..., G, K)
-        return self.intensity * torch.exp((x_norm**2) * (-1 / (2*(self.radius + self.epsilon)**2))) # Kx1
+        # x_norm = torch.linalg.norm(x, dim=-1) # shape (..., G, K)
+        return self.intensity * torch.exp((torch.linalg.norm(x, dim=-1)**2) * (-1 / (2*(self.radius + self.epsilon)**2))) # Kx1
     
     
     def _compute_gib_weights(self, s_centered: torch.Tensor) -> torch.Tensor:

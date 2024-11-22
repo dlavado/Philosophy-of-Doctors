@@ -150,7 +150,7 @@ class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
 
         self.use_full_test_set = use_full_test_set
         self.pyramid_builder = _pyramid_builder
-
+        self.collate_fn = None if self.pyramid_builder is None else collate_fn_pyramids
 
     def setup(self, stage:str=None):
         # build dataset
@@ -178,10 +178,11 @@ class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
                 
                 
     def train_dataloader(self):
-        return DataLoader(self.train_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=True, pin_memory=True, collate_fn=collate_fn_pyramids)
+        
+        return DataLoader(self.train_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=True, pin_memory=True, collate_fn=self.collate_fn)
     
     def val_dataloader(self):
-        return DataLoader(self.val_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=True, pin_memory=True, collate_fn=collate_fn_pyramids)
+        return DataLoader(self.val_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=True, pin_memory=True, collate_fn=self.collate_fn)
          
 
     # def test_dataloader(self):

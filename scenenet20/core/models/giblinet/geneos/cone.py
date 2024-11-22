@@ -241,17 +241,16 @@ class ConeCollection(GIBCollection):
         `weights` - torch.Tensor:
             Tensor of shape ([B], M, G, K), representing the weights of the GIBs for each query point.
         """
-        cone_inc = torch.remainder(self.inc, 0.499)
-        cone_inc += (cone_inc < 0).float() * 0.499
-
-        s_xy = s_centered[..., :2]  # (B, M, G, K, 2)
+        cone_inc = torch.fmod(self.inc, 0.499) # cone inclination is in range [0, 0.499]
+        #cone_inc = torch.remainder(self.inc, 0.499) # cone inclination is in range [0, 0.499]
+        # cone_inc += (cone_inc < 0).float() * 0.499  # 
+        cone_inc.mul_(torch.pi)
+        
         s_height = torch.relu(-s_centered[..., 2])  # (B, M, G, K)
-
-        tangent = torch.tan(cone_inc * torch.pi)
-        radius = torch.relu(self.radius * s_height * tangent)
+        radius = torch.relu(self.radius * s_height * cone_inc)
 
         # Compute weights with Gaussian
-        weights = self.gaussian(s_xy, rad=radius) 
+        weights = self.gaussian(s_centered[..., :2], rad=radius) 
         return weights
         
     

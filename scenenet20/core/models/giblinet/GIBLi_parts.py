@@ -119,8 +119,8 @@ class GIB_Operator_Collection(nn.Module):
         return params
     
     
-    def _prepped_forward(self, s_centered, valid_mask, batched):
-        return self.gib._prepped_forward(s_centered, valid_mask, batched)
+    def _prepped_forward(self, s_centered, valid_mask, batched, mc_points) -> torch.Tensor:
+        return self.gib._prepped_forward(s_centered, valid_mask, batched, mc_points)
         
         
     def forward(self, points:torch.Tensor, q_coords:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
@@ -294,7 +294,7 @@ class GIB_Layer_Coll(nn.Module):
         # self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.num_observers = num_observers
         self.total_gibs = 0
-
+        
         self.gibs:Mapping[str, GIB_Operator_Collection] = nn.ModuleDict()
 
         # --- Initializing GIBs ---
@@ -315,17 +315,20 @@ class GIB_Layer_Coll(nn.Module):
                 self.gibs[key] = GIB_Operator_Collection(g_class, num_gibs=num_gibs, kernel_reach=kernel_reach)
                 self.total_gibs += num_gibs
 
-            # for i in range(self.gib_dict[key]):
-            #     self.gibs[f'{key}_{i}'] = GIB_Operator(g_class, kernel_reach=kernel_reach)#.to(self.device)
-
 
         # --- Initializing Convex Coefficients ---
-        self.lambdas = torch.randn((self.total_gibs, num_observers)) # shape (num_gibs, num_observers)
-        self.maintain_convexity() # make sure the coefficients are convex
-        self.lambdas = to_parameter(self.lambdas)
+        if num_observers > 1:
+            self.lambdas = torch.randn((self.total_gibs, num_observers)) # shape (num_gibs, num_observers)
+            self.maintain_convexity() # make sure the coefficients are convex
+            self.lambdas = to_parameter(self.lambdas)
+        elif num_observers == 0: # no cvx comb, only a linear combination of the GIBs
+            self.lambdas = nn.Linear(self.total_gibs, self.total_gibs, bias=False)
+        else: # no observers, only the output of the GIBs
+            self.lambdas = to_tensor(0.0)   
 
     def maintain_convexity(self):
-        self.lambdas = to_parameter(torch.softmax(self.lambdas, dim=0))
+        if self.num_observers > 1:
+            self.lambdas = to_parameter(torch.softmax(self.lambdas, dim=0))
 
     def get_cvx_coefficients(self) -> torch.Tensor:
         return self.lambdas
@@ -340,7 +343,7 @@ class GIB_Layer_Coll(nn.Module):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
     
     
-    def _compute_gib_outputs(self, coords: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor) -> torch.Tensor:
+    def _compute_gib_outputs(self, coords: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor, mc_points) -> torch.Tensor:
         # Ensure tensors are batched
         if coords.dim() == 2:
             coords = coords.unsqueeze(0)
@@ -350,14 +353,22 @@ class GIB_Layer_Coll(nn.Module):
         # Prepare support vectors
         s_centered, valid_mask, batched = compute_centered_support_points(coords, q_points, support_idxs)
 
-        q_outputs = torch.empty((q_points.shape[0], q_points.shape[1], self.total_gibs), device=coords.device).contiguous()
+        ###### time efficient sol; mem inefficient due to empty alloc ######
+        # q_outputs = torch.empty((q_points.shape[0], q_points.shape[1], self.total_gibs), device=coords.device).contiguous()
 
-        offset = 0
+        # offset = 0
+        # for gib_coll in self.gibs.values():
+        #     gib_output_dim = gib_coll.num_gibs
+        #     gib_outputs = gib_coll._prepped_forward(s_centered, valid_mask, batched, mc_points)  # ([B], Q, output_dim)
+        #     q_outputs[:, :, offset : offset + gib_output_dim] = gib_outputs
+        #     offset += gib_output_dim
+            
+        ###### mem efficient sol; time inefficient due to cat ######
+        q_outputs_list = []
         for gib_coll in self.gibs.values():
-            gib_output_dim = gib_coll.num_gibs
-            gib_outputs = gib_coll._prepped_forward(s_centered, valid_mask, batched)  # ([B], Q, output_dim)
-            q_outputs[:, :, offset : offset + gib_output_dim] = gib_outputs
-            offset += gib_output_dim
+            gib_outputs = gib_coll._prepped_forward(s_centered, valid_mask, batched, mc_points)  # ([B], Q, output_dim)
+            q_outputs_list.append(gib_outputs)
+        q_outputs = torch.cat(q_outputs_list, dim=-1)  # ([B], Q, total_gibs)
 
         if not batched:
             q_outputs = q_outputs.squeeze(0)
@@ -370,7 +381,7 @@ class GIB_Layer_Coll(nn.Module):
         return q_outputs @ self.lambdas # shape (M, num_gibs) @ (num_gibs, num_observers) = (M, num_observers)
     
     
-    def forward(self, points:torch.Tensor, q_coords:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
+    def forward(self, points:torch.Tensor, q_coords:torch.Tensor, support_idxs:torch.Tensor, mc_points) -> torch.Tensor:
         """
         Computes the output of the GIB-Layer on the query points given the support points.
 
@@ -384,14 +395,18 @@ class GIB_Layer_Coll(nn.Module):
 
         `supports_idxs` - torch.Tensor[int]:
             Tensor of shape (M, K) representing the indices of the support points for each query point. With K <= N.
+            
+        `mc_points` - torch.Tensor:
+            Tensor of shape (None, Big_N, 3) representing the Monte Carlo points for integral approximation.
 
         Returns
         -------
         `q_outputs` - torch.Tensor:
             Tensor of shape (M, num_observers) representing the output of the GIB-Layer on the query points.
         """
-        q_outputs = self._compute_gib_outputs(points, q_coords, support_idxs) # shape (M, num_gibs)
-        q_outputs = self._compute_observers(q_outputs) # shape (M, num_observers)
+        q_outputs = self._compute_gib_outputs(points, q_coords, support_idxs, mc_points) # shape (M, num_gibs)
+        if self.num_observers > 1:
+            q_outputs = self._compute_observers(q_outputs) # shape (M, num_observers)
         return q_outputs
     
 
@@ -405,6 +420,7 @@ class GIB_Block(nn.Module):
         super(GIB_Block, self).__init__()
 
         self.gib = GIB_Layer_Coll(gib_dict, kernel_size, num_observers)
+        num_observers = self.gib.total_gibs if num_observers == -1 else num_observers
         self.gib_norm = PointBatchNorm(num_observers)
         self.strided = strided
 
@@ -424,7 +440,7 @@ class GIB_Block(nn.Module):
     def get_gib_params(self) -> List[torch.Tensor]:
         return self.gib.get_gib_params()
 
-    def forward(self, points, q_points, neighbor_idxs) -> torch.Tensor:
+    def forward(self, points, q_points, neighbor_idxs, mc_points) -> torch.Tensor:
         """
         Parameters
         ----------
@@ -439,10 +455,13 @@ class GIB_Block(nn.Module):
 
         `neighbor_idxs` - torch.Tensor[int]:
             Tensor of shape (B, Q, K) representing the indices of the neighbors of each query point in the tensor `coords`
+            
+        `mc_points` - torch.Tensor:
+            Tensor of shape (None, Big_N, 3) representing the Monte Carlo points for integral approximation.
         """
         coords, feats = points
 
-        gib_out = self.gib(coords, q_points, neighbor_idxs) # (B, Q, num_observers)
+        gib_out = self.gib(coords, q_points, neighbor_idxs, mc_points) # (B, Q, num_observers)
         # print(f"{gib_out.shape=}")
         gib_out = self.act(self.gib_norm(gib_out)) # (B, Q, num_observers)
 
@@ -484,6 +503,9 @@ class GIB_Sequence(nn.Module):
 
         if isinstance(num_observers, int):
             num_observers = [num_observers] * num_layers
+            
+        if num_observers == -1: # if -1, then the number of observers is equal to the number of GIBs
+            num_observers = sum([gib_dict[k] for k in gib_dict])
         
         out_channels = feat_channels + num_observers if out_channels is None else out_channels
         if isinstance(out_channels, int):
@@ -500,6 +522,15 @@ class GIB_Sequence(nn.Module):
 
             feat_channels = out_c
             
+            
+        # --- Initializing Monte Carlo Points ---
+        # These points are used for integral approximation for each GIB in the Sequence.
+        num_samples = 1000 # number of Monte Carlo points
+        self.montecarlo_points = torch.rand((int(num_samples), 3)) * 2 * kernel_size - kernel_size # \in [-kernel_reach, kernel_reach]
+        self.montecarlo_points = self.montecarlo_points[torch.norm(self.montecarlo_points, dim=-1) <= kernel_size]
+        self.montecarlo_points = to_parameter(self.montecarlo_points, requires_grad=False) # shape (num_samples, 3)
+
+
     def maintain_convexity(self):
         for gib_block in self.gib_blocks:
             gib_block.maintain_convexity()
@@ -520,7 +551,7 @@ class GIB_Sequence(nn.Module):
 
         for gib_block in self.gib_blocks:
             # 1st it: feats = (B, Q, feat_channels + num_observers)
-            feats = gib_block((coords, feats), q_coords, neighbor_idxs)
+            feats = gib_block((coords, feats), q_coords, neighbor_idxs, self.montecarlo_points)
 
         return feats # shape (B, Q, out_channels)
     
@@ -590,11 +621,12 @@ class Unpool_wSkip(nn.Module):
         """
 
         # Extract the coordinates and features from the input points
-        curr_coords, curr_feats = curr_points
+        curr_coords, inter_feats = curr_points
         skip_coords, skip_feats = skip_points
 
-        curr_points = torch.cat([curr_coords, curr_feats], dim=-1) # (B, M, 3 + C)
-        skip_points = torch.cat([skip_coords, skip_feats], dim=-1) # (B, N, 3 + C)
+        curr_points = torch.cat([curr_coords, inter_feats], dim=-1).to(curr_coords.dtype) # (B, M, 3 + C)
+        skip_points = torch.cat([skip_coords, skip_feats], dim=-1).to(skip_coords.dtype) # (B, N, 3 + C)
+        
 
         if self.backend == 'interp':
             # print(f"{curr_points.shape=}, {skip_points.shape=}, {upsampling_idxs.shape=}")
@@ -604,30 +636,23 @@ class Unpool_wSkip(nn.Module):
             B, N, K = upsampling_idxs.shape
             C = curr_points.shape[-1] - 3
             inter_feats = torch.gather(
-                curr_feats.unsqueeze(1).expand(B, N, M, C),  # Expand current features to (B, N, M, C)
+                inter_feats.unsqueeze(1).expand(B, N, M, C),  # Expand current features to (B, N, M, C)
                 2, upsampling_idxs.unsqueeze(-1).expand(B, N, K, C)  # Gather features (B, N, K, C)
             ) # shape (B, N, K, C)
             inter_feats = torch.max(inter_feats, dim=2)[0] # shape (B, N, C) # max pooling
             
-        # if torch.isnan(inter_feats).any():
-        #     print("Unpooling")
-        #     print(f"{inter_feats=}")
-        #     print(f"{curr_points[0].shape=}, {skip_points[0].shape=}, {upsampling_idxs.shape=}")
-        #     print(f"{curr_points[1].shape=}, {skip_points[1].shape=}")
-        #     print(f"{inter_feats.shape=}")
-        #     sys.exit(0)
-        
-        inter_feats = self.proj(inter_feats) # (B, N, out_channels)
-        # print(f"{inter_feats.shape=}")
-        # print(f"{self.proj_skip(skip_feats).shape=}")
+
+        # print(f"{curr_points.dtype=}, {skip_points.dtype=}, {upsampling_idxs.dtype=} {inter_feats.dtype=}")
+        inter_feats = self.proj(inter_feats).to(inter_feats.dtype) # (B, N, out_channels)
+       
         
         if self.skip:
             # summing or concatenating the skip features? Herein lies the question
-            skip_feats = self.proj_skip(skip_feats)
+            skip_feats = self.proj_skip(skip_feats).to(inter_feats.dtype) # (B, N, out_channels)
             if self.concat:
-                inter_feats = torch.cat([skip_feats, inter_feats], dim=-1)
+                inter_feats = torch.cat([skip_feats, inter_feats], dim=-1) # (B, N, 2*out_channels)
             else:
-                inter_feats = inter_feats + self.proj_skip(skip_feats)
+                inter_feats = inter_feats + skip_feats
 
         return torch.cat([skip_coords, inter_feats], dim=-1) # (B, N, 3 + 2*out_channels) or (B, N, 3 + out_channels)
     
@@ -701,9 +726,8 @@ class Decoder(nn.Module):
         #     print(f"{curr_points[1].shape=}, {skip_points[1].shape=}")
         #     print(f"{out.shape=}")
         
-        out_coords, out_feats = out[..., :3], out[..., 3:]
-        
-        out = self.gib_seq((out_coords, out_feats), out_coords, skip_neigh_idxs) # output shape: (B, N, out_channels)
+        # intermediate features not used to save memory   
+        out = self.gib_seq((out[..., :3], out[..., 3:]), out[..., :3], skip_neigh_idxs) # output shape: (B, N, out_channels)
         
         return out # (B, N, out_channels)
     

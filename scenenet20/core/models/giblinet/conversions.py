@@ -80,7 +80,7 @@ def batch_to_pack(batch_tensor: Tensor, masks: Optional[Tensor] = None) -> Tuple
     """
     if masks is None:
         packed_tensor = batch_tensor.view(-1, batch_tensor.size(-1))
-        lengths = torch.full(size=(batch_tensor.shape[0],), fill_value=batch_tensor.shape[1], dtype=torch.long).cuda()
+        lengths = torch.full(size=(batch_tensor.shape[0],), fill_value=batch_tensor.shape[1], dtype=torch.long, device=batch_tensor.device)
         return packed_tensor, lengths
 
     packed_tensor = batch_tensor[masks]
@@ -205,7 +205,7 @@ def pack_to_batch(
         device=pack_tensor.device,
     )
     batch_tensor[tgt_indices] = pack_tensor
-    batch_tensor = batch_tensor.view(batch_size, max_length, num_channels)
+    batch_tensor = batch_tensor.view(batch_size, max_length, num_channels).contiguous()
 
     # Create masks
     masks = torch.zeros(
@@ -340,9 +340,6 @@ def list_tensor_to_batch(list_tensor: list[torch.Tensor], pad_value: float = -1.
     return batch_tensor
 
 
-
-
-
 @torch.jit.script
 def compute_centered_support_points(points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor):
     """
@@ -382,19 +379,20 @@ def compute_centered_support_points(points: torch.Tensor, q_points: torch.Tensor
 
     B, M, K = support_idxs.shape
     F = points.shape[-1]
+    
+    # print(f'points: {points.shape}, q_points: {q_points.shape}, support_idxs: {support_idxs.shape}')
+    # print(f'points: {points.dtype}, q_points: {q_points.dtype}, support_idxs: {support_idxs.dtype}')
 
+    valid_mask = support_idxs != -1
     # Flatten support indices to gather them in one step
-    flat_supports_idxs = support_idxs.reshape(B, -1)  # (B, M*K)
-    flat_supports_idxs = torch.where(flat_supports_idxs == -1, torch.zeros_like(flat_supports_idxs), flat_supports_idxs)
+    #flat_supports_idxs = support_idxs.reshape(B, -1).to(torch.long)  # (B, M*K)
+    flat_supports_idxs = torch.where(valid_mask, support_idxs, 0).reshape(B, -1).to(torch.long)  # (B, M*K)
+    # flat_supports_idxs = torch.where(flat_supports_idxs == -1, torch.zeros_like(flat_supports_idxs), flat_supports_idxs)
 
     # Gather the support points (B, M*K, 3)
-    gathered_support_points = torch.gather(points, 1, flat_supports_idxs.unsqueeze(-1).expand(-1, -1, F))
-
+    support_points = torch.gather(points, 1, flat_supports_idxs.unsqueeze(-1).expand(-1, -1, F)).to(points.dtype)
     # Reshape back to (B, M, K, 3)
-    support_points = gathered_support_points.reshape(B, M, K, F)
-
-    # Create valid mask: (B, M, K)
-    valid_mask = (support_idxs != -1)  # Mask out invalid indices with -1
+    support_points = support_points.reshape(B, M, K, F).contiguous()
 
     # Center the support points: (B, M, K, 3) - (B, M, 1, 3)
     s_centered = support_points - q_points.unsqueeze(2)  # (B, M, K, 3)

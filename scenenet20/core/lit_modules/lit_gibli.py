@@ -75,7 +75,6 @@ class LitGIBLi(LitWrapperModel):
     
     
     def evaluate(self, batch, stage=None, metric=None, prog_bar=True, logger=True):
-        torch.autograd.set_detect_anomaly(True)
 
         if isinstance(batch, dict):
             x = batch["pointcloud"]
@@ -84,20 +83,33 @@ class LitGIBLi(LitWrapperModel):
         else:
             x, y = batch
             graph_pyramid = None
+            
+        # import torch.profiler
+        # with torch.profiler.profile(
+        #     activities=[
+        #         torch.profiler.ProfilerActivity.CPU,
+        #         torch.profiler.ProfilerActivity.CUDA,
+        #     ],
+        #     profile_memory=True,
+        #     record_shapes=True
+        # ) as prof:
+        logits = self.model(x.to(torch.float16), graph_pyramid)
         
-        logits = self.model(x, graph_pyramid)
+        #print(prof.key_averages().table(sort_by="cuda_memory_usage", row_limit=10))
         
-        logits = torch.clamp(min=-15, max=15)
+        # print("Logits stats:", logits.min().item(), logits.max().item(), logits.mean().item(), logits.dtype)
+        
+        #logits = torch.clamp(logits, -1e1, 1e1)
                 
         logits = logits.reshape(-1, logits.shape[-1])
         y = y.to(torch.long).reshape(-1)
                 
         # print(f"{logits.shape=}, {y.shape=}")
         elastic_loss = self.elastic_loss()
-        geneo_loss = self.geneo_loss()
+        # geneo_loss = self.geneo_loss()
         data_fidelity_loss = self.criterion(logits, y)
         
-        loss = data_fidelity_loss + elastic_loss + geneo_loss
+        loss = data_fidelity_loss + elastic_loss #+ geneo_loss
         preds = self.prediction(logits)
         
         if stage:
@@ -105,7 +117,7 @@ class LitGIBLi(LitWrapperModel):
             self.log(f"{stage}_loss", loss, on_epoch=True, on_step=on_step, prog_bar=prog_bar, logger=logger)
             self.log(f"{stage}_data_fidelity_loss", data_fidelity_loss, on_epoch=True, on_step=on_step, prog_bar=prog_bar, logger=logger)
             self.log(f"{stage}_elastic_loss", elastic_loss, on_epoch=True, on_step=on_step, prog_bar=prog_bar, logger=logger)
-            self.log(f"{stage}_geneo_loss", geneo_loss, on_epoch=True, on_step=on_step, prog_bar=prog_bar, logger=logger)
+            # self.log(f"{stage}_geneo_loss", geneo_loss, on_epoch=True, on_step=on_step, prog_bar=prog_bar, logger=logger)
 
             if metric:
                 for metric_name, metric_val in metric.items():
@@ -114,17 +126,18 @@ class LitGIBLi(LitWrapperModel):
                         met = met.mean()
                     self.log(f"{stage}_{metric_name}", met, on_epoch=True, on_step=on_step, prog_bar=True, logger=True)
                     
-                    
+        torch.cuda.empty_cache()
         return loss, preds, y
-    
-    def on_after_backward(self) -> None:
-                
+
+        
+    def on_after_backward(self):
         # for name, param in self.model.named_parameters():
         #     if 'lambdas' in name or 'gib_params' in name:
         #         print(f"{name=},  {param=},  {param.grad=}")
         
         # print(f"Memory after backward: {torch.cuda.memory_allocated() / (1024 ** 2)} MB")
-        super().on_after_backward()
+        #print(torch.cuda.memory_summary())
+        return
     
     
     def optimizer_step(self, epoch, batch_idx, optimizer, optimizer_closure):

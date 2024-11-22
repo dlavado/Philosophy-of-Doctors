@@ -27,7 +27,7 @@ add_normals:
 num_classes:
   value: 6
 batch_size:
-  value: 2
+  value: 1
 ignore_index:
   value: -1 # noise
 num_workers: 
@@ -51,7 +51,7 @@ cone:
 ellipsoid:
   value: 4
 num_observers:
-  value: 10
+  value: -1
 kernel_size:
   value: 0.1
 # --- GIBLi config
@@ -121,7 +121,7 @@ segmentation_losses:
 fast_dev_run:
   value: True
 precision: # 16 or 32 FPU precision
-  value: 32
+  value: 'bf16'
   description: 'FPU precision'
 auto_lr_find:
   value: False
@@ -131,7 +131,7 @@ profiler:
   value: 'advanced' # 'simple' or 'advanced'
   description: 'PyTorch Lightning profiler'
 accumulate_grad_batches:
-  value: 1
+  value: 4
   description: 'Accumulate gradients on k batches before performing a backward pass'
 save_onnx:
   value: False

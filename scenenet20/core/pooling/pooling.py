@@ -30,16 +30,16 @@ def _gather_points(x, indices):
     B, M, K = indices.shape
     F = x.shape[-1]
 
-    flat_supports_idxs = indices.reshape(B, -1) # (B, M*K)
+    mask = indices == -1
+    #flat_supports_idxs = indices.reshape(B, -1).to(torch.long) # (B, M*K)
     # indices -1 are ignored
-    flat_supports_idxs[flat_supports_idxs == -1] = 0
-    gathered_support_points = torch.gather(x, 1, flat_supports_idxs.unsqueeze(-1).expand(-1, -1, F))
+    flat_supports_idxs = torch.where(mask, 0, indices).reshape(B, -1).to(torch.long).contiguous() # (B, M*K)
+    #flat_supports_idxs[flat_supports_idxs == -1] = 0
+    support_points = torch.gather(x, 1, flat_supports_idxs.unsqueeze(-1).expand(-1, -1, F)).to(x.dtype) # (B, M*K, F)
 
     # Reshape back to (B, M, K, F)
-    support_points = gathered_support_points.reshape(B, M, K, F)
-    
-    mask = indices == -1
-    support_points[mask] = 0
+    support_points = support_points.reshape(B, M, K, F).contiguous()
+    support_points[mask] = 0 # features of non-existing neighbors are set to 0
     
     if not batched:
         support_points = support_points.squeeze(0)

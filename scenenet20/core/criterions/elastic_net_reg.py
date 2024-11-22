@@ -30,7 +30,7 @@ class ElasticNetRegularization(nn.Module):
         """
         l1_reg = 0.0
         l2_reg = 0.0
-
+        
         for param in parameters:
             l1_reg += torch.norm(param, p=1)
             l2_reg += torch.norm(param, p=2)

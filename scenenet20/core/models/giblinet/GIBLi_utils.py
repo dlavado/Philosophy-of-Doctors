@@ -25,7 +25,7 @@ class PointBatchNorm(nn.Module):
         
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         
-        output = self.norm(input.permute(0, 2, 1).contiguous())
+        output = self.norm(input.contiguous().permute(0, 2, 1))
         return output.permute(0, 2, 1).contiguous()
         
         # if input.dim() == 3:

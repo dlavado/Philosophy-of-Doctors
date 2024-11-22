@@ -388,9 +388,10 @@ def main():
 
     # val_MulticlassJaccardIndex: tensor([0.4354, 0.6744, 0.4973, 0.3322, 0.3667, 0.8061], device='cuda:0'); mean: 0.5187
     model = init_model(wandb.config.model, criterion, pyramid_builder)
+    # model = torch.compile(model, mode="reduce-overhead")
     input_size = (wandb.config.batch_size, wandb.config.num_points, wandb.config.in_channels)
     print(f"{'='*30} Model initialized {'='*30}")
-    # summary(model, input_size=input_size)
+    summary(model, input_size=input_size)
     
     if wandb.config.resume_from_checkpoint:
         ckpt_path = replace_variables(ckpt_path)
@@ -432,7 +433,12 @@ def main():
                                name=wandb.run.name, 
                                config=wandb.config
                             )
-    
+    """
+    TODO:
+    1. Put MC Points in a higher layer shared by all levels;
+    2. Put angles and rotations in the GIB Layer to only call the trig funs and rotations once;
+    3. Make Precision 16 viable;
+    """
     trainer = pl.Trainer(
         logger=wandb_logger,
         callbacks=callbacks,
@@ -447,6 +453,7 @@ def main():
         enable_model_summary=True,
         enable_checkpointing=True,
         enable_progress_bar=True,
+        # gradient_clip_val=1.0,
         # overfit_batches=0.1, # overfit on 10 batches
         accumulate_grad_batches = wandb.config.accumulate_grad_batches,
     )

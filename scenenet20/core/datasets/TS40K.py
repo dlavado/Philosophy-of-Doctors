@@ -930,7 +930,7 @@ class TS40K_FULL_Preprocessed(Dataset):
             
     def _build_pyramid(self, pyramid_builder):
         self.pyramids = []
-        batch_size = 256
+        batch_size = 512
         num_batches = (len(self) + batch_size - 1) // batch_size
 
         for batch_idx in tqdm(range(num_batches), desc="Building Dataset pyramids..."):
@@ -942,12 +942,18 @@ class TS40K_FULL_Preprocessed(Dataset):
             pyramid_dict = pyramid_builder(batch_coords)            
             
             for i in range(batch_coords.shape[0]):
-                i_pyramid = {key: [t[i].cpu() for t in val] for key, val in pyramid_dict.items()}
+                i_pyramid = {}
+                for key, val in pyramid_dict.items():
+                    if 'idx' in key:
+                        i_pyramid[key] = [t[i].cpu().to(torch.int16) for t in val]
+                    else:
+                        i_pyramid[key] = [t[i].cpu().to(torch.float16) for t in val]
+                        
                 self.pyramids.append(i_pyramid)
                 
             del pyramid_dict, batch_coords
-            # gc.collect()
-
+            torch.cuda.empty_cache()
+            
         self.pyramids_built = True  
 
 
