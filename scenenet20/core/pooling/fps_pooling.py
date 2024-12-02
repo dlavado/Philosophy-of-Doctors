@@ -1,6 +1,8 @@
 
 
 import torch
+from torch_cluster import fps
+
 
 import sys
 sys.path.append('../')
@@ -77,7 +79,7 @@ class FPSPooling:
         return torch.cat([q_points, pooled_points], dim=-1)
 
 @torch.jit.script
-def fps_sampling(x:torch.Tensor, pooling_factor=None, num_points=None) -> torch.Tensor:
+def fps_sampling(x:torch.Tensor, pooling_factor:float=0.0, num_points:int=0) -> torch.Tensor:
         """
         Parameters
         ----------
@@ -89,8 +91,8 @@ def fps_sampling(x:torch.Tensor, pooling_factor=None, num_points=None) -> torch.
         q_points - torch.Tensor
             query points of shape (B, N/pooling_factor, 3)
         """
-        from torch_cluster import fps
-        assert pooling_factor is not None or num_points is not None, "Either pooling_factor or num_points must be provided."
+        
+        assert pooling_factor > 0.0 or num_points > 0, f"Either pooling_factor {pooling_factor} or num_points {num_points} must be provided."
 
         pointcloud = x[..., :3]
 
@@ -103,7 +105,7 @@ def fps_sampling(x:torch.Tensor, pooling_factor=None, num_points=None) -> torch.
             N = pointcloud.shape[0]
             batch_vector = None
 
-        if pooling_factor is None:
+        if pooling_factor == 0.0:
             ratio = num_points / N
         else:
             ratio = 1 / pooling_factor

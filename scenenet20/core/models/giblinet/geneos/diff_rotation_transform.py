@@ -97,18 +97,18 @@ def rotate_points_batch(angles: torch.Tensor, points: torch.Tensor) -> torch.Ten
     `points` - torch.Tensor:
         Tensor of shape (..., G, N, 3) containing the rotated points for G batches.
     """
-    R = build_rotation_matrices(angles) # shape (G, 3, 3)
+    R = build_rotation_matrices(angles.contiguous()) # shape (G, 3, 3)
     # points = points.unsqueeze(-3)  # (..., 1, N, 3)
     # points = torch.matmul(points, R.transpose(-1, -2))  # (..., G, N, 3)
     # print(points.shape)
     # return points
     # flat points
     points_shape = points.size()
-    points = points.view(-1, points_shape[-1])  # (*, 3)
+    points = points.view(-1, points_shape[-1]).contiguous()  # (*, 3)
     points = torch.matmul(points, R.transpose(-1, -2)) # (*, 3) x (G, 3, 3) -> (*, G, 3)
     # implictit shape recovery can be achieved but not in script mode
     points = points.view(points_shape[0], points_shape[1], R.size(0), points_shape[2], -1)  # (..., G, N, 3)
-    return points
+    return points.contiguous()
 
 
 if __name__ == '__main__':

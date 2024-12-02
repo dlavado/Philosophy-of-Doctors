@@ -222,21 +222,16 @@ def init_pyramid_builder():
 def init_ts40k(data_path, preprocessed=False, pyramid_builder=None):
     sample_types = 'all'
     if preprocessed:
-        if 'scenenet' in wandb.config.model or wandb.config.model == 'cnn':
-            vxg_size = ast.literal_eval(wandb.config.voxel_grid_size) # default is 64^3
-            vox_size = ast.literal_eval(wandb.config.voxel_size) # only use vox_size after training or with batch_size = 1
-            transform = Compose([
-                            tt.Voxelization_withPCD(keep_labels='all', vxg_size=vxg_size, vox_size=vox_size)
-                        ])
-        else:
-            transform = []
-            # transform = [
-            #         tt.Remove_Label(1), # GROUND
-            #         tt.Repeat_Points(10_000), # repeat points to 10k so that we can batchfy the data
-            # ]
+        
+        transform = []
+        # transform = [
+        #         tt.Remove_Label(1), # GROUND
+        #         tt.Repeat_Points(10_000), # repeat points to 10k so that we can batchfy the data
+        # ]
 
         if wandb.config.add_normals:
-            transform.append(tt.Add_Normal_Vector())
+            # transform.append(tt.Add_Normal_Vector())
+            data_path = C.TS40K_FULL_PREPROCESSED_NORMALS_PATH
 
         transform = Compose(transform)
     
@@ -253,21 +248,10 @@ def init_ts40k(data_path, preprocessed=False, pyramid_builder=None):
                         _pyramid_builder=pyramid_builder
                     )
 
-    if wandb.config.model == 'scenenet' or wandb.config.model == 'unet':
-        vxg_size = ast.literal_eval(wandb.config.voxel_grid_size) # default is 64^3
-        vox_size = ast.literal_eval(wandb.config.voxel_size) # only use vox_size after training or with batch_size = 1
-
-        voxel_method = tt.Voxelization_withPCD if wandb.config.model == 'scenenet' else tt.Voxelization
-
-        composed = Compose([
-                            tt.Farthest_Point_Sampling(wandb.config.fps_points),
-                            voxel_method(keep_labels='all', vxg_size=vxg_size, vox_size=vox_size)
-                        ])
-    else:
-        composed = Compose([
-                            tt.Normalize_PCD(),
-                            tt.Farthest_Point_Sampling(wandb.config.fps_points),
-                            tt.To(torch.float32),
+    composed = Compose([
+                        tt.Normalize_PCD(),
+                        tt.Farthest_Point_Sampling(wandb.config.fps_points),
+                        tt.To(torch.float32),
                         ])
     
     data_module = LitTS40K_FULL(
@@ -303,6 +287,8 @@ def resume_from_checkpoint(ckpt_path, model:pl.LightningModule, class_weights=No
     print(f"Loading model from checkpoint {ckpt_path}...\n\n")
     if wandb.config.class_weights and 'pointnet' not in ckpt_path.lower() and 'scenenet' not in ckpt_path.lower():
         checkpoint['state_dict']['criterion.weight'] = class_weights
+        
+    checkpoint['state_dict'] = {k: v for k, v in checkpoint['state_dict'].items() if 'montecarlo' not in k}
     model.load_state_dict(checkpoint['state_dict'])
     print(f"Model loaded from checkpoint {ckpt_path}")
     
@@ -326,7 +312,8 @@ def init_criterion(class_weights=None):
     print(f"{'='*5}> Class weights: {class_weights}")
     criterion = torch.nn.CrossEntropyLoss(ignore_index=wandb.config.ignore_index,
                                           weight=class_weights,
-                                          label_smoothing=0.1) # label smoothing to prevent 
+                                          label_smoothing=0.1,
+                                        )
     
     
     seg_losses = wandb.config.segmentation_losses
@@ -364,7 +351,7 @@ def main():
     # 1 INIT BASE CRITERION
     # ------------------------
     if wandb.config.class_weights:
-        alpha, epsilon = 3, 0.1
+        alpha, epsilon = 4, 0.1
         if wandb.config.dataset == 'labelec':
             class_densities = torch.tensor([0.0541, 0.0006, 0.3098, 0.6208, 0.0061, 0.0085], dtype=torch.float32)
         elif wandb.config.dataset == 'ts40k':
@@ -372,11 +359,12 @@ def main():
         class_weights = torch.max(1 - alpha*class_densities, torch.full_like(class_densities, epsilon))
         # class_weights = 1 / class_densities
         if wandb.config.ignore_index > -1:
-            class_weights[wandb.config.ignore_index] = 0.0 # ignore noise class
+            class_weights[wandb.config.ignore_index] = 0.0 #ignore noise class
         # class_weights = class_weights / class_weights.mean()
     else:
         class_weights = None
-
+    
+        
     criterion = init_criterion(class_weights)
 
     # ------------------------
@@ -435,9 +423,10 @@ def main():
                             )
     """
     TODO:
-    1. Put MC Points in a higher layer shared by all levels;
+    DONE: 1. Put MC Points in a higher layer shared by all levels;
     2. Put angles and rotations in the GIB Layer to only call the trig funs and rotations once;
-    3. Make Precision 16 viable;
+    DONE: 3. Make Precision 16 viable;
+    4. Use KeOps on the GIB Components;
     """
     trainer = pl.Trainer(
         logger=wandb_logger,
@@ -486,20 +475,17 @@ def main():
 
     if wandb.config.save_onnx:
         print("Saving ONNX model...")
-        onnx_file_path = os.path.join(ckpt_dir, f"{project_name}.onnx")
+        onnx_file_path = os.path.join(ckpt_dir, f"{run_name}.onnx")
         input_sample = next(iter(data_module.test_dataloader()))
         model.to_onnx(onnx_file_path, input_sample, export_params=True)
         wandb_logger.log({"onnx_model": wandb.File(onnx_file_path)})
 
 
-    
-    # test_results = trainer.test(model,
-    #                             datamodule=data_module,
-    #                             ckpt_path='best' if not prediction_mode else None,
-    #                         )
-    
+    test_results = trainer.test(model,
+                                datamodule=data_module,
+                                ckpt_path='best' if not prediction_mode else None,
+                            )
         
-
 
 if __name__ == '__main__':
     # --------------------------------
@@ -535,13 +521,15 @@ if __name__ == '__main__':
 
     print(f"\n\n{'='*50}")
     print("Entering main method...") 
+    
+    run_name = f"{project_name}_{model_name}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
     if main_parser.wandb_sweep: 
         #sweep mode
         print("wandb sweep.")
         wandb.init(project=project_name, 
                 dir = experiment_path,
-                name = f'{project_name}_{model_name}_{datetime.now().strftime("%Y%m%d-%H%M%S")}',
+                name = run_name,
         )
     else:
         # default mode
@@ -551,14 +539,15 @@ if __name__ == '__main__':
 
         wandb.init(project=project_name, 
                 dir = experiment_path,
-                name = f'{model_name}_{dataset_name}_{datetime.now().strftime("%Y%m%d-%H%M%S")}',
+                name = run_name,
                 config=sweep_config,
                 mode=main_parser.wandb_mode,
         )
 
 
     if wandb.config.add_normals:
-        wandb.config.update({'num_data_channels': wandb.config.num_data_channels + 3}, allow_val_change=True) # override data path
+        wandb.config.update({'in_channels': wandb.config.in_channels + 3}, allow_val_change=True) # override data path
+        print(f"Added Normals to Dataset; in_channels: {wandb.config.in_channels}")
 
     if main_parser.wandb_mode == 'disabled':
         ckpt_dir = C.get_checkpoint_dir(model_name, dataset_name)

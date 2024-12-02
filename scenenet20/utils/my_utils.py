@@ -46,10 +46,12 @@ def main_arg_parser():
     return parser
     
 
-def resolve_optimizer(optimizer_name:str, model, learning_rate) -> torch.optim.Optimizer:
+def resolve_optimizer(optimizer_name:str, model:torch.nn.Module, learning_rate) -> torch.optim.Optimizer:
     optimizer_name = optimizer_name.lower()
     if  optimizer_name == 'adam':
         return torch.optim.Adam(model.parameters(), lr=learning_rate)
+    elif optimizer_name == 'adamw':
+        return torch.optim.AdamW(model.parameters(), lr=learning_rate)
     elif optimizer_name == 'sgd':
         return torch.optim.SGD(model.parameters(), lr=learning_rate)
     elif optimizer_name == 'rmsprop':

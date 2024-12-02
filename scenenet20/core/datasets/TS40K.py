@@ -19,7 +19,7 @@ from tqdm import tqdm
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 import utils.pointcloud_processing as eda
-from core.datasets.torch_transforms import Normalize_PCD, To, Inverse_Density_Sampling
+import core.datasets.torch_transforms as tt
 from core.sampling.FPS import Farthest_Point_Sampling
 
 import os
@@ -398,10 +398,10 @@ def save_preprocessed_data(data_dir, save_dir):
                         # Voxelization(vxg_size=(64, 64, 64)),
                         # Normalize_PCD(),
                         # Farthest_Point_Sampling(fps_points, fps_labels=False),
-                        Inverse_Density_Sampling(10_000, 0.05),
                         # SMOTE_3D_Upsampling(k=5, sampling_strategy=0.6),
-                        Normalize_PCD(),
-                        To(torch.float32),
+                        # Normalize_PCD(),
+                        # To(torch.float32),
+                        tt.Add_Normal_Vector() 
                     ])
 
     # for sample_type in ['tower_radius', 'no_tower', '2_towers']:
@@ -417,19 +417,19 @@ def save_preprocessed_data(data_dir, save_dir):
             os.makedirs(save_type_path)
 
         for split in os.listdir(sample_type_path):
-            if split == 'test':
-                continue
-            #     transform = None
-            else:
-                transform = composed
+            # if split == 'test':
+            #     continue
+            # #     transform = None
+            # else:
+            transform = composed
             # split_path = os.path.join(sample_type_path, split)
             save_split_path = os.path.join(save_type_path, split)
 
             if not os.path.exists(save_split_path):
                 os.makedirs(save_split_path)
 
-            # dm = TS40K_FULL_Preprocessed(data_dir, split=split, sample_types=[sample_type], transform=transform, load_into_memory=True)
-            dm = TS40K_FULL(data_dir, split=split, sample_types=[sample_type], task='sem_seg', transform=composed, load_into_memory=False)
+            dm = TS40K_FULL_Preprocessed(data_dir, split=split, sample_types=[sample_type], transform=transform, load_into_memory=False)
+            # dm = TS40K_FULL(data_dir, split=split, sample_types=[sample_type], task='sem_seg', transform=composed, load_into_memory=False)
 
             # get folder count
             # folder_count = 0
@@ -477,7 +477,7 @@ def process_ts40k_for_mmlab_pcdet_framework(data_dir, save_dir, fps_points, norm
     composed = Compose([
                         # Normalize_PCD(),
                         # Farthest_Point_Sampling(fps_points, fps_labels=False),
-                        To(torch.float32),
+                        tt.To(torch.float32),
                         ]) 
     
     labels_path = os.path.join(save_dir, 'labels')
@@ -932,15 +932,21 @@ class TS40K_FULL_Preprocessed(Dataset):
         self.pyramids = []
         batch_size = 512
         num_batches = (len(self) + batch_size - 1) // batch_size
+        
+        placeholder_transform = self.transform
+        self.transform = None # we dont need to transform the data for the pyramid builder
 
         for batch_idx in tqdm(range(num_batches), desc="Building Dataset pyramids..."):
             batch_start = batch_idx * batch_size
             batch_end = min((batch_idx + 1) * batch_size, len(self))
-            batch_coords = [self[i][0][..., :3].cuda() for i in range(batch_start, batch_end)]
-            batch_coords = torch.stack(batch_coords, dim=0)
+            batch_coords = [self[i][0][..., :3] for i in range(batch_start, batch_end)]
+            # print(f"{batch_coords[0].shape=}")
+            batch_coords = torch.stack(batch_coords, dim=0).cuda()
+            # print(f"{batch_coords.shape=}")
                     
             pyramid_dict = pyramid_builder(batch_coords)            
             
+            # undo batch
             for i in range(batch_coords.shape[0]):
                 i_pyramid = {}
                 for key, val in pyramid_dict.items():
@@ -955,6 +961,7 @@ class TS40K_FULL_Preprocessed(Dataset):
             torch.cuda.empty_cache()
             
         self.pyramids_built = True  
+        self.transform = placeholder_transform
 
 
     def __len__(self):
@@ -992,7 +999,6 @@ class TS40K_FULL_Preprocessed(Dataset):
 
         if self.transform:
             pt = self.transform(pt)
-            #print(f"Transformed sample: {sample[0].shape}, {sample[1].shape}, {sample[2].shape}")
         
         if self.pyramids_built:
             return {
@@ -1039,10 +1045,14 @@ def main():
     # save_preprocessed_data(constants.TS40K_FULL_PREPROCESSED_PATH,
     #                        os.path.join(TS40K_DIR, "TS40K-FULL-Preprocessed-SMOTE"),
     #                     )
+    
+    save_preprocessed_data(constants.TS40K_FULL_PREPROCESSED_PATH,
+                           os.path.join(TS40K_DIR, "TS40K-FULL-Preprocessed-Normals"),
+                        )
 
-    process_ts40k_for_mmlab_pcdet_framework(os.path.join(TS40K_DIR, "TS40K-FULL"),
-                                            "/home/didi/VSCode/Philosophy-of-Doctors/OpenPCDet/data/ts40k/",
-                                            fps_points=10000)    
+    # process_ts40k_for_mmlab_pcdet_framework(os.path.join(TS40K_DIR, "TS40K-FULL"),
+    #                                         "/home/didi/VSCode/Philosophy-of-Doctors/OpenPCDet/data/ts40k/",
+    #                                         fps_points=10000)    
 
     # save_normalized_data(os.path.join(TS40K_DIR, "TS40K-FULL"),
     #                      os.path.join(TS40K_DIR, "TS40K-FULL-Normalized")
@@ -1071,9 +1081,9 @@ def main():
     composed = Compose([
                         # Farthest_Point_Sampling(10000),
                         # Random_Point_Sampling(10000),
-                        Inverse_Density_Sampling(10000, 0.5),
-                        Normalize_PCD(),
-                        To(torch.float32),
+                        # Inverse_Density_Sampling(10000, 0.5),
+                        tt.Normalize_PCD(),
+                        tt.To(torch.float32),
                     ])
     
     composed = None
@@ -1118,7 +1128,7 @@ def main():
 if __name__ == "__main__":
     from utils import constants
     from torchvision.transforms import Compose
-    from core.datasets.torch_transforms import Normalize_PCD, Farthest_Point_Sampling, Random_Point_Sampling, Inverse_Density_Sampling
+    # from core.datasets.torch_transforms import Normalize_PCD, Farthest_Point_Sampling
     
     main()
 

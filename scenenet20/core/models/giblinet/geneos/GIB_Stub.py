@@ -261,18 +261,17 @@ class GIBCollection(torch.nn.Module):
             tensor of shape (num_gibs, 3) containing rotation angles for the x, y, and z axes for each GIB;
         """
         super(GIBCollection, self).__init__()
-    
+                    
 
         self.kernel_reach = kernel_reach
         self.num_gibs = num_gibs
         
         # variables to compute the integral of the GIB function within the kernel reach
-        self.n_samples = 1e4
-        self.ndims = 3
         self.epsilon = 1e-8 # small value to avoid division by zero        
 
         self.intensity = intensity # intensity of the gaussian function
         self.angles = angles
+        
         
         
     def compute_integral(self, mc_points:torch.Tensor) -> torch.Tensor:
@@ -354,7 +353,7 @@ class GIBCollection(torch.nn.Module):
         integral = self.compute_integral(mc_points)
         # print(f"{integral.shape=}")
         # print(f"{tensor.shape=}")
-        return tensor - integral.unsqueeze(-1) / self.n_samples
+        return tensor - integral.unsqueeze(-1) / mc_points.shape[0]
     
     
     def _retrieve_support_points(points: torch.Tensor, support_idxs: torch.Tensor) -> torch.Tensor:
@@ -430,7 +429,7 @@ class GIBCollection(torch.nn.Module):
         else:
             s_centered = s_centered.unsqueeze(2).expand(-1, -1, self.num_gibs, -1, -1) # (B, M, G, K, 3), expand the tensor to maintain the same shape as the angles tensor
             
-        return s_centered
+        return s_centered.contiguous()
     
     
     
@@ -450,7 +449,6 @@ class GIBCollection(torch.nn.Module):
         # Center the support points around the query points
         s_centered = s_centered - q_points.unsqueeze(2) # (B, M, K, 3)
         
-        
         valid_mask = (support_idxs != -1) # Mask out invalid indices with -1; shape (B, M, K)
 
         return s_centered.contiguous(), valid_mask, batched
@@ -465,7 +463,7 @@ class GIBCollection(torch.nn.Module):
         
     def _prepped_forward(self, s_centered:torch.Tensor, valid_mask:torch.Tensor, batched:bool, mc_points:torch.Tensor) -> torch.Tensor:
         
-        s_centered = self.apply_rotations(s_centered)
+        s_centered = self.apply_rotations(s_centered.contiguous())
         
         # print(f"{s_centered.shape=}")   
         # Compute GIB weights; (B, M, G, K, 3) -> (B, M, G, K)
@@ -485,9 +483,8 @@ class GIBCollection(torch.nn.Module):
         """
         Validates the weights and sums them up.
         """
-        weights = weights * valid_mask.unsqueeze(2).expand_as(weights).float()
+        weights = weights * valid_mask.unsqueeze(2).expand_as(weights).to(torch.float16)
         weights = self.sum_zero(weights, mc_points) # (B, M, K)
-        
         weights = torch.sum(weights, dim=-1) # (B, M)
         return weights
    
@@ -509,7 +506,7 @@ if __name__ == "__main__":
     gib    = GIBCollection(kernel_reach=1.0, num_gibs=1, angles=angles)
     points = torch.tensor([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
     rotated_points = gib.rotate(points)
-    print(rotated_points)
+    # print(rotated_points)
     # do an assert of the rotated points
     assert torch.allclose(rotated_points, torch.tensor([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]]), atol=1e-6)
     input("Press Enter to continue...")
@@ -521,7 +518,7 @@ if __name__ == "__main__":
     # 2) where the neighbors are very distance fromt the query points, at least 2*radius distance
     points = torch.rand((3, 100_000, 3))
     q_points = fps_sampling(points, num_points=1_000)
-    print(f"{q_points.shape=}")
+    # print(f"{q_points.shape=}")
     num_neighbors = 16
     # neighbors_idxs = keops_radius_search(q_points, points, 0.2, num_neighbors, loop=True)
     _, neighbors_idxs = torch_knn(q_points, q_points, num_neighbors)

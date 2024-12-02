@@ -90,7 +90,7 @@ class GIB_Operator_Collection(nn.Module):
             self.gib_params = self.init_from_kwargs(kwargs)
         else:
             self.gib_params = self.random_init(num_gibs, kernel_reach)
-
+            
         self.gib:GIBCollection = self.gib_class(kernel_reach=self.kernel_reach, num_gibs=num_gibs, **self.gib_params)
         
         
@@ -310,10 +310,12 @@ class GIB_Layer_Coll(nn.Module):
             else:
                 raise ValueError(f"Invalid GIB Type: `{key}`, must be one of ['cy', 'cone', 'disk', 'ellip']")
             
+            
             num_gibs = self.gib_dict[key]
             if num_gibs > 0:
                 self.gibs[key] = GIB_Operator_Collection(g_class, num_gibs=num_gibs, kernel_reach=kernel_reach)
                 self.total_gibs += num_gibs
+                
 
 
         # --- Initializing Convex Coefficients ---
@@ -418,7 +420,6 @@ class GIB_Block(nn.Module):
 
     def __init__(self, gib_dict, feat_channels, num_observers, kernel_size, out_channels=None, strided=False) -> None:
         super(GIB_Block, self).__init__()
-
         self.gib = GIB_Layer_Coll(gib_dict, kernel_size, num_observers)
         num_observers = self.gib.total_gibs if num_observers == -1 else num_observers
         self.gib_norm = PointBatchNorm(num_observers)
@@ -471,9 +472,7 @@ class GIB_Block(nn.Module):
         #     print(f"{curr_points[0].shape=}, {skip_points[0].shape=}, {upsampling_idxs.shape=}")
         #     print(f"{curr_points[1].shape=}, {skip_points[1].shape=}")
         #     print(f"{out.shape=}")ts are 
-            feats = local_pooling(feats, neighbor_idxs)
-        else:
-            feats = feats
+            feats = local_pooling(feats, neighbor_idxs) # (B, Q, feat_channels)
 
         # print(f"{feats.shape=}, {gib_out.shape=}")
         mlp_out = torch.cat([feats, gib_out], dim=-1) # (B, Q, out_channels)
@@ -496,6 +495,7 @@ class GIB_Sequence(nn.Module):
                 ) -> None:
         
         super(GIB_Sequence, self).__init__()
+    
 
         self.gib_blocks = nn.ModuleList()
         self.feat_channels = feat_channels
@@ -516,7 +516,6 @@ class GIB_Sequence(nn.Module):
             out_c = out_channels[i]
             if i > 0:
                 strided = False # only the first layer of the Sequence is strided
-            
             gib_block = GIB_Block(gib_dict, feat_channels, num_obs, kernel_size, out_c, strided)
             self.gib_blocks.append(gib_block)
 
@@ -526,9 +525,10 @@ class GIB_Sequence(nn.Module):
         # --- Initializing Monte Carlo Points ---
         # These points are used for integral approximation for each GIB in the Sequence.
         num_samples = 1000 # number of Monte Carlo points
-        self.montecarlo_points = torch.rand((int(num_samples), 3)) * 2 * kernel_size - kernel_size # \in [-kernel_reach, kernel_reach]
+        self.montecarlo_points = torch.rand((int(num_samples), 3), device='cuda') * 2 * kernel_size - kernel_size # \in [-kernel_reach, kernel_reach]
         self.montecarlo_points = self.montecarlo_points[torch.norm(self.montecarlo_points, dim=-1) <= kernel_size]
-        self.montecarlo_points = to_parameter(self.montecarlo_points, requires_grad=False) # shape (num_samples, 3)
+        # this is not compatible with model saving/loading due to the random shape of the tensor
+        # self.montecarlo_points = to_parameter(self.montecarlo_points, requires_grad=False) # shape (num_samples, 3)
 
 
     def maintain_convexity(self):

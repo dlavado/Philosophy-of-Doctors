@@ -150,8 +150,6 @@ class CylinderCollection(GIBCollection):
 
         super().__init__(kernel_reach, num_gibs=num_gibs, angles=kwargs.get('angles', None), intensity=kwargs.get('intensity', 1))
         
-        print(self.angles)
-
         if kwargs.get('radius') is None:
             raise KeyError("Provide a radius for the cylinder in the kernel.")
 

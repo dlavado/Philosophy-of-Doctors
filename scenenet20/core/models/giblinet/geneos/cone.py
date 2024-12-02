@@ -221,9 +221,9 @@ class ConeCollection(GIBCollection):
 
     
     def gaussian(self, x:torch.Tensor, rad) -> torch.Tensor:
-        x_norm = torch.linalg.norm(x, dim=-1)
+        # x_norm = torch.linalg.norm(x, dim=-1)
         # print(f"{x_norm.shape=} {rad.shape=}")
-        return self.intensity * torch.exp((x_norm**2) * (-1 / (2*(rad + self.epsilon)**2)))
+        return self.intensity * torch.exp((torch.linalg.norm(x, dim=-1)**2) * (-1 / (2*(rad + self.epsilon)**2)))
 
     
     
@@ -247,10 +247,10 @@ class ConeCollection(GIBCollection):
         cone_inc.mul_(torch.pi)
         
         s_height = torch.relu(-s_centered[..., 2])  # (B, M, G, K)
-        radius = torch.relu(self.radius * s_height * cone_inc)
+        cone_inc = torch.relu(self.radius * s_height * cone_inc) # the radius of the cone at the height of the support point
 
         # Compute weights with Gaussian
-        weights = self.gaussian(s_centered[..., :2], rad=radius) 
+        weights = self.gaussian(s_centered[..., :2], rad=cone_inc) 
         return weights
         
     

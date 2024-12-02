@@ -1,7 +1,8 @@
 
 
 import torch
-
+import sys
+sys.path.append('../../../../')
 from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS
 
 
@@ -194,6 +195,7 @@ class DiskCollection(GIBCollection):
         
         super().__init__(kernel_reach, num_gibs=num_gibs, angles=kwargs.get('angles', None), intensity=kwargs.get('intensity', 1))
         
+        
         self.radius = kwargs.get('radius', None)
         self.width = kwargs.get('width', None)
         
@@ -202,6 +204,7 @@ class DiskCollection(GIBCollection):
         
         if self.width is None:
             raise KeyError("Provide a width for the disk in the kernel.")
+        
         
     def mandatory_parameters():
         return ['radius', 'width']
@@ -239,7 +242,6 @@ class DiskCollection(GIBCollection):
         """
         #x_norm = torch.linalg.norm(x, dim=-1) # shape (..., G, K)
         return self.intensity * torch.exp((torch.linalg.norm(x, dim=-1)**2) * (-1 / (2*(self.radius + self.epsilon)**2))) # Kx1
-    
     
     def _compute_gib_weights(self, s_centered: torch.Tensor) -> torch.Tensor:
         """
@@ -298,7 +300,7 @@ if __name__ == '__main__':
     # 1) where the neighbors are at radius distance from the query points
     # 2) where the neighbors are very distance fromt the query points, at least 2*radius distance
     points = torch.rand((3, 100_000, 3))
-    q_points = fps_sampling(points, num_points=1_000)
+    q_points = fps_sampling(points, num_points=1000)
     print(f"{q_points.shape=}")
     num_neighbors = 16
     # neighbors_idxs = keops_radius_search(q_points, points, 0.2, num_neighbors, loop=True)
@@ -309,11 +311,11 @@ if __name__ == '__main__':
     print(neighbors_idxs.shape)
     print(q_points.shape)
 
-    disk = Disk(0.2, radius=0.05, width=0.2)
+    # disk = Disk(0.2, radius=0.05, width=0.2)
 
-    disk_weights = disk.forward(points, q_points, neighbors_idxs)
-    print(disk_weights.shape)
-    print(disk_weights)
+    # disk_weights = disk.forward(points, q_points, neighbors_idxs)
+    # print(disk_weights.shape)
+    # print(disk_weights)
 
     # plot q_points + kernel
     import matplotlib.pyplot as plt
@@ -333,11 +335,15 @@ if __name__ == '__main__':
     
     radius = torch.tensor([0.5]).repeat(num_gibs, 1)
     width = torch.tensor([0.1]).repeat(num_gibs, 1)
+    intensity = torch.tensor([1.0]).repeat(num_gibs, 1)
     radius[1] = 0.1
     width[1] = 0.8
     
     
-    disk_collection = DiskCollection(0.2, num_gibs, radius=radius, width=width)
+    disk_collection = DiskCollection(0.2, num_gibs, radius=radius, width=width, intensity=intensity)
+    
+    x = torch.rand(5, 2)
+    print(disk_collection.gaussian(x.repeat(num_gibs, 1, 1)))
     
     disk_weights = disk_collection.forward(points, q_points, neighbors_idxs)
     

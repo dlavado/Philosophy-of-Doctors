@@ -154,6 +154,8 @@ class LitWrapperModel(pl.LightningModule):
         optimizer_name = optimizer_name.lower()
         if  optimizer_name == 'adam':
             return torch.optim.Adam(self.model.parameters(), lr=self.hparams.learning_rate)
+        elif optimizer_name == 'adamw':
+            return torch.optim.AdamW(self.model.parameters(), lr=self.hparams.learning_rate)
         elif optimizer_name == 'sgd':
             return torch.optim.SGD(self.model.parameters(), lr=self.hparams.learning_rate)
         elif optimizer_name == 'rmsprop':

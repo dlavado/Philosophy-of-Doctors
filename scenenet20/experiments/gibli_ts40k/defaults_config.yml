@@ -22,7 +22,7 @@ in_channels:
   value: 3
   description: 'Number of input data channels'
 add_normals:
-  value: False
+  value: True
   description: 'If True, adds normals to the input data'
 num_classes:
   value: 6
@@ -43,23 +43,23 @@ model:
   value: 'gibli'
 # --- GiBs config
 cylinder:
-  value: 4
+  value: 16
 disk:
-  value: 4
+  value: 16
 cone:
-  value: 4
+  value: 16
 ellipsoid:
-  value: 4
+  value: 16
 num_observers:
   value: -1
 kernel_size:
   value: 0.1
 # --- GIBLi config
 num_levels:
-  value: 3
+  value: 5
   description: 'Number of levels in the model'
 out_gib_channels:
-  value: 4
+  value: 16
   description: 'Number of output channels for GIB'
 skip_connections:
   value: True
@@ -89,11 +89,11 @@ voxel_size:
 # training config
 # ------------------ #
 optimizer:
-  value: 'adam' #'adam' 
+  value: 'adamw' #'adam' 
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 1 # -1 for infinite
+  value: 50 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -123,18 +123,16 @@ fast_dev_run:
 precision: # 16 or 32 FPU precision
   value: 'bf16'
   description: 'FPU precision'
-auto_lr_find:
-  value: False
 auto_scale_batch_size:
-  value: False
+  value: True
 profiler:
-  value: 'advanced' # 'simple' or 'advanced'
+  value: None # 'advanced' # 'simple' or 'advanced'
   description: 'PyTorch Lightning profiler'
 accumulate_grad_batches:
-  value: 4
+  value: 1
   description: 'Accumulate gradients on k batches before performing a backward pass'
 save_onnx:
-  value: False
+  value: True
   description: 'Save model in onnx format'
 # ------------------ #
 # Checkpoint config
@@ -142,9 +140,9 @@ save_onnx:
 resume_from_checkpoint:
   value: False
 checkpoint_dir:
-  value:  '${experiment_path}/wandb/'
+  value:  '${experiment_path}/checkpoints/'
 resume_checkpoint_name:
-  value: MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+  value: 'gibli_val_MulticlassJaccardIndex' # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:

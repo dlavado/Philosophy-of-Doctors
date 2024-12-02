@@ -36,7 +36,6 @@ class GIBLiNet(nn.Module):
         self.skip_connections = skip_connections
         self.num_levels = num_levels
 
-
         self.pyramid_builder = pyramid_builder
 
         # Build the GIB layers
@@ -100,6 +99,7 @@ class GIBLiNet(nn.Module):
         )
         
         
+        
     def maintain_convexity(self):
         for i in range(self.num_levels):
             self.gib_neigh_encoders[i].maintain_convexity()
@@ -140,12 +140,14 @@ class GIBLiNet(nn.Module):
     def forward(self, x:torch.Tensor, graph_pyramid_dict=None) -> torch.Tensor:
         # this assumes that the input is of shape (B, N, 3 + F), where N is the number of points and F is the number of features (F >= 0).
         # the batch_dim is necessary for now
-        
+       
         if x.shape[-1] > 3:
-            feats = x[..., 3:]
+            feats = x #x[..., 3:]
         else:
             feats = x # we consider the coords as features
         coords = x[..., :3]
+        
+        # print(f"{coords.shape=} --- {feats.shape=}")
 
         # Build the graph pyramid
         if graph_pyramid_dict is None:

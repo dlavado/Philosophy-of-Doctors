@@ -228,11 +228,13 @@ def estimate_normals(pcd:Union[np.ndarray, o3d.geometry.PointCloud]) -> np.ndarr
     `normals` - np.ndarray:
         the normals of the point cloud
     """
+    
 
     if type(pcd) == np.ndarray:
         pcd = np_to_ply(pcd[:, :3])
 
-    pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+    pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.5, max_nn=100))
+    # print(f"normals shape: {np.array(pcd.normals).shape}")
     return np.array(pcd.normals)
 
 

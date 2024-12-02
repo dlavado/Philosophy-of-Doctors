@@ -25,7 +25,7 @@ class KNN_Neighboring:
         """
         
         # return torch_knn(q_points, x, self.k)[1]
-        return keops_knn(q_points, x, self.k)[1]
+        return keops_knn(q_points.contiguous(), x.contiguous(), self.k)[1]
 
 
 def torch_knn(q_points: Tensor, s_points: Tensor, k: int) -> Tuple[Tensor, Tensor]:
