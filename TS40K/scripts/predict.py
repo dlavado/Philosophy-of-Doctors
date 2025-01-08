@@ -57,23 +57,33 @@ def predict(model:pl.LightningModule, data_module:pl.LightningDataModule):
 
     for i, batch in enumerate(test_loader):
         # batch to device
-        if i < 318:
-            continue # skip the first 42 batches
+        if i < 29:
+            continue
+        
         batch = tuple([s.to(consts.device) for s in batch])
     
         loss, pred, y = model.evaluate(batch, stage='test', metric=metrics)
+        
+        # skip samples with less whan 100 tower points, as they are not useful for evaluation
+        uq, counts = torch.unique(y, return_counts=True)
+        if 4 not in uq or counts[uq == 4] < 100:
+            print(torch.unique(y, return_counts=True)[1])
+            continue
+                    
+        
+      
+        pred = pred.reshape(y.shape) # reshape to match y
 
-        print(pred.shape)
-        print(pred.unique())
-
-        xyz = batch[-1] # pt_locs
+        xyz = batch[0][..., :3] # get xyz
 
         print(f"batch {i}; sample 0")
-
         print(f"Cross Entropy loss: {loss.item()}")
+        print(f"{xyz.shape=} {pred.shape=} {y.shape=}")
+        print(f"pred unique: {pred.unique()}")
+        print(f"y unique: {y.unique()}")
 
-        if loss.item() > 0.5:
-            continue
+        # if loss.item() > 0.5:
+        #     continue
 
         # print metrics:
         print(f"{'='*50} METRICS {'='*50}")
@@ -154,6 +164,12 @@ def main():
             elif smote_mode:
                 data_path = consts.TS40K_FULL_PREPROCESSED_SMOTE_PATH
         data_module = m.init_ts40k(data_path, wandb.config.preprocessed)
+    elif dataset_name == 'labelec':
+        if wandb.config.preprocessed:
+            data_path  = consts.LABELEC_RGB_PREPROCESSED
+        else:
+            data_path = consts.LABELEC_RGB_DIR
+        data_module = m.init_labelec(data_path, wandb.config.preprocessed)
     else:
         raise ValueError(f"Dataset {dataset_name} not supported.")
     
@@ -165,6 +181,7 @@ def main():
     
 
     ####### if Pytorch Lightning Trainer is not called, setup() needs to be called manually
+    data_module.setup('fit')
     data_module.setup('test')
     
 
@@ -215,5 +232,8 @@ if __name__ == "__main__":
             config=sweep_config,
             mode='disabled',
     ) 
+    
+    if wandb.config.add_normals:
+        wandb.config.update({'num_data_channels': wandb.config.num_data_channels + 3}, allow_val_change=True) # override data path
 
     main()       

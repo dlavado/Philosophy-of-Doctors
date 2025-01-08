@@ -50,7 +50,7 @@ in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input''${experiment_path}/wandb/ptv2_resume' # v2
 model_version:
-  value: 'v2' # 'v1' or 'v2' or 'v3'
+  value: 'v3' # 'v1' or 'v2' or 'v3'
   description: 'Point Transformer version'
 # ------------------ #
 # training config
@@ -105,13 +105,11 @@ save_onnx:
 # Checkpoint config
 # ------------------ #
 resume_from_checkpoint:
-  value: False
+  value: True
 checkpoint_dir:
-  value: '${experiment_path}/wandb/ptv2_resume' # v2
-  # value: '${experiment_path}/wandb/ptv1_resume/files/checkpoints/'
-  #value: '${experiment_path}/wandb/run-20240510_143031-p82umf3x/files/checkpoints/' # '${experiment_path}/wandb/ptv2_resume' # v2
+  value: '${experiment_path}/checkpoints/' # v2
 resume_checkpoint_name:
-  value: MulticlassJaccardIndex-v1 # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+  value: ptv3_normlas_val_MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:

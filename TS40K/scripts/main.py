@@ -32,7 +32,6 @@ import utils.constants as C
 import utils.my_utils as su
 import utils.pointcloud_processing as eda
 
-
 import core.lit_modules.lit_callbacks as lit_callbacks
 from core.lit_modules.lit_scenenet import LitSceneNet_multiclass
 from core.lit_modules.lit_ts40k import LitTS40K_FULL, LitTS40K_FULL_Preprocessed
@@ -518,7 +517,7 @@ def main():
     if wandb.config.class_weights:
         alpha, epsilon = 3, 0.1
         if wandb.config.dataset == 'labelec':
-            class_densities = torch.tensor([0.0541, 0.0006, 0.3098, 0.6208, 0.0061, 0.0085], dtype=torch.float32)
+            class_densities = torch.tensor([0.0541, 1.0, 1.0, 0.0006 +0.3098 + 0.6208, 0.0061, 0.0085], dtype=torch.float32)
         elif wandb.config.dataset == 'ts40k':
             class_densities = torch.tensor([0.0702, 0.3287, 0.4226, 0.1495, 0.0046, 0.0244], dtype=torch.float32)
         class_weights = torch.max(1 - alpha*class_densities, torch.full_like(class_densities, epsilon))
@@ -528,6 +527,8 @@ def main():
         # class_weights = class_weights / class_weights.mean()
     else:
         class_weights = None
+        
+    class_weights = class_weights**3 # cube the weights to increase the importance
 
     criterion = init_criterion(class_weights)
 
@@ -644,6 +645,8 @@ def main():
                                 datamodule=data_module,
                                 ckpt_path='best' if not prediction_mode else None,
                             )
+    
+    
     
     # test_preds = model.test_preds
 

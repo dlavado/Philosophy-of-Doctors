@@ -15,7 +15,7 @@ preprocessed:
   value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: False
+  value: True
 data_path:
   value: ''
 in_channels:
@@ -51,7 +51,7 @@ cone:
 ellipsoid:
   value: 16
 num_observers:
-  value: -1
+  value: 10
 kernel_size:
   value: 0.1
 # --- GIBLi config
@@ -93,7 +93,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 50 # -1 for infinite
+  value: 150 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:

@@ -12,7 +12,7 @@ output_dir:
 dataset:
   value: 'labelec'
 preprocessed:
-  value: False
+  value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
   value: False
@@ -30,7 +30,7 @@ num_data_channels:
   value: 6 # 3 for coords and 3 for rgb
   description: 'Number of channels in the dataset'
 batch_size:
-  value: 8
+  value: 1
 ignore_index:
   value: -1 # noise
 num_workers: 
@@ -48,7 +48,7 @@ in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input''${experiment_path}/wandb/ptv2_resume' # v2
 model_version:
-  value: 'v2' # 'v1' or 'v2' or 'v3'
+  value: 'v3' # 'v1' or 'v2' or 'v3'
   description: 'Point Transformer version'
 # ------------------ #
 # training config
@@ -58,7 +58,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 450 # -1 for infinite
+  value: 150 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -103,13 +103,11 @@ save_onnx:
 # Checkpoint config
 # ------------------ #
 resume_from_checkpoint:
-  value: False
+  value: True
 checkpoint_dir:
-  # value: '${experiment_path}/wandb/ptv2_resume' # v2
-  value: '${experiment_path}/wandb/ptv1_resume/files/checkpoints/'
-  #value: '${experiment_path}/wandb/run-20240510_143031-p82umf3x/files/checkpoints/' # '${experiment_path}/wandb/ptv2_resume' # v2
+  value: '${experiment_path}/checkpoints/'
 resume_checkpoint_name:
-  value: MulticlassJaccardIndex-v1 # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+  value: 'ptv3_rgb_normals_val_MulticlassJaccardIndex'
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:

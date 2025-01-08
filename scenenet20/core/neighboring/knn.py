@@ -95,3 +95,53 @@ def keops_knn(q_points: Tensor, s_points: Tensor, k: int) -> Tuple[Tensor, Tenso
     return knn_distances, knn_indices
 
 
+
+
+
+if __name__ == '__main__':
+    
+    import pointops as pops
+    
+    
+    # Define the point cloud
+    points = torch.rand((100_000, 3)).cuda()    
+    # offset = torch.tensor([points.size(0)]).cuda()
+    # offset = torch.tensor([1000]*100).cuda() # batched offset;
+    batch = torch.cat([torch.full((1000,), i, device=points.device) for i in range(100)], dim=0)
+    offset = pops.batch2offset(batch)
+    feats  = torch.rand((100_000, 1)).cuda()
+    print(f"{points.shape=} {offset.shape=} {feats.shape=}")
+    
+    q_points = torch.rand((1000, 3)).cuda()
+    q_batch = torch.cat([torch.full((10,), i, device=points.device) for i in range(100)], dim=0)
+    q_offset = pops.batch2offset(q_batch)
+    print(f"{q_points.shape=} {q_offset.shape=}")
+    
+    k = 100
+    
+    # Perform kNN
+    ref_idx, _ = pops.knn_query(k, points, offset, q_points, q_offset)
+    
+    print(f"{ref_idx.shape=} {points[ref_idx].shape=}")
+    
+    # knn and groups with features?
+    pts, idx = pops.knn_query_and_group(feats, points, offset, q_points, q_offset, nsample=k, with_xyz=False)
+    
+    print(f"{pts.shape=} {idx.shape=}")
+    
+    
+    #######
+    
+    fps_idxs = pops.farthest_point_sampling(points, offset, q_offset)
+    print(f"{fps_idxs.shape=} {points[fps_idxs].shape=}")
+    
+    # select the 1st pointcloud
+    fps_idxs = fps_idxs[q_batch == 0]
+    print(f"{fps_idxs.shape=} {points[fps_idxs].shape=}")
+    
+    ########
+    
+    
+    
+    
+    
