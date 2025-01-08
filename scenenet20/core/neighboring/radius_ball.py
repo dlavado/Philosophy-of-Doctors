@@ -7,6 +7,9 @@ import sys
 sys.path.append('../')
 sys.path.append('../../')
 
+import core.models.giblinet.conversions as conversions
+import pointops as pops
+
 from core.neighboring.knn import keops_knn
 
 
@@ -14,6 +17,7 @@ class RadiusBall_Neighboring:
 
     def __init__(self, radius, k, pad_value=-1) -> None:
         self.radius = radius
+        self.eps = 1e-3
         self.k = k
         self.pad_value = pad_value
 
@@ -34,6 +38,17 @@ class RadiusBall_Neighboring:
         """
         return keops_radius_search(q_points, support, self.radius, self.k, self.pad_value).contiguous()
         
+        # q_offset = conversions.get_offset_vector(q_points)
+        # support_offset = conversions.get_offset_vector(support)
+        
+        # B = q_points.size(0)
+        # q_points = q_points.view(-1, 3).contiguous()
+        # support = support.view(-1, 3).contiguous()
+        
+        # ball_idxs, _ = pops.random_ball_query(self.k, self.radius + self.eps, self.radius - self.eps, support, support_offset, q_points, q_offset)
+
+        # print(ball_idxs)
+        # return conversions.build_batch_tensor(ball_idxs, q_offset, support_offset)
 
 
 def keops_radius_search(q_points: torch.Tensor, s_points: torch.Tensor, radius: float, neighbor_limit: int, pad_value=-1):
@@ -62,68 +77,59 @@ if __name__ == "__main__":
     warnings.simplefilter("ignore")
 
     # # Example usage with a larger point cloud
-    # points = torch.tensor([
-    #     [0.0, 0.0, 0.0],
-    #     [0.1, 0.1, 0.1],
-    #     [0.15, 0.1, 0.1],
-    #     [0.2, 0.2, 0.2],
-    #     [0.25, 0.25, 0.25],
-    #     [0.3, 0.3, 0.3],
-    #     [0.35, 0.35, 0.35],
-    #     [0.4, 0.4, 0.4],
-    #     [0.45, 0.45, 0.45],
-    #     [0.5, 0.5, 0.5],
-    #     [0.55, 0.55, 0.55],
-    #     [0.6, 0.6, 0.6],
-    #     [0.65, 0.65, 0.65],
-    #     [0.7, 0.7, 0.7],
-    #     [0.75, 0.75, 0.75],
-    #     [0.8, 0.8, 0.8],
-    #     [0.85, 0.85, 0.85],
-    #     [0.9, 0.9, 0.9],
-    #     [0.95, 0.95, 0.95],
-    #     [1.0, 1.0, 1.0]
-    # ], device='cuda')
+    points = torch.tensor([
+        [0.0, 0.0, 0.0],
+        [0.1, 0.1, 0.1],
+        [0.15, 0.1, 0.1],
+        [0.2, 0.2, 0.2],
+        [0.25, 0.25, 0.25],
+        [0.3, 0.3, 0.3],
+        [0.35, 0.35, 0.35],
+        [0.4, 0.4, 0.4],
+        [0.45, 0.45, 0.45],
+        [0.5, 0.5, 0.5],
+        [0.55, 0.55, 0.55],
+        [0.6, 0.6, 0.6],
+        [0.65, 0.65, 0.65],
+        [0.7, 0.7, 0.7],
+        [0.75, 0.75, 0.75],
+        [0.8, 0.8, 0.8],
+        [0.85, 0.85, 0.85],
+        [0.9, 0.9, 0.9],
+        [0.95, 0.95, 0.95],
+        [1.0, 1.0, 1.0]
+    ], device='cuda')
 
-    # query_points = torch.tensor([
-    #     [0.1, 0.1, 0.1],
-    #     [0.2, 0.2, 0.2],
-    #     [0.3, 0.3, 0.3],
-    #     [0.4, 0.4, 0.4],
-    #     [0.5, 0.5, 0.5],
-    #     [0.6, 0.6, 0.6],
-    #     [0.7, 0.7, 0.7],
-    #     [0.8, 0.8, 0.8],
-    #     [0.9, 0.9, 0.9],
-    #     [1.0, 1.0, 1.0]
-    # ], device='cuda')
+    query_points = torch.tensor([
+        [0.1, 0.1, 0.1],
+        [0.2, 0.2, 0.2],
+        [0.3, 0.3, 0.3],
+        [0.4, 0.4, 0.4],
+        [0.5, 0.5, 0.5],
+        [0.6, 0.6, 0.6],
+        [0.7, 0.7, 0.7],
+        [0.8, 0.8, 0.8],
+        [0.9, 0.9, 0.9],
+        [1.0, 1.0, 1.0]
+    ], device='cuda')
 
-    # # points = points.reshape(2, 10, 3)
-    # # query_points = query_points.reshape(2, 5, 3)
-    # radius = 0.2
-    # neighbor_limit = 5
-
-    # k_graph = k_radius_ball(query_points, points, radius, neighbor_limit, loop=True)
-
-    # print(k_graph.shape)
-
-    # input("Press any key to continue...")
-
-    # points, p_lengths = batch_to_pack(points)
-    # query_points, q_lengths = batch_to_pack(query_points)
-
-    # q_batch_vector = lengths_to_batchvector(q_lengths)
-    # p_batch_vector = lengths_to_batchvector(p_lengths)
-    # print(q_batch_vector)
-
-   
-    # # graph = radius_search(query_points, points, radius, neighbor_limit, q_batch_vector, p_batch_vector, loop=True)
-
-    # # graph = pairs_to_tensor(graph)
-
-    # print(k_graph.shape)
-
-    # input("Press any key to continue...")
+    points = points.reshape(2, 10, 3)
+    query_points = query_points.reshape(2, 5, 3)
+    radius = 0.1
+    neighbor_limit = 3
+    
+    ball_neighboring = RadiusBall_Neighboring(radius, neighbor_limit)
+    pops_graph = ball_neighboring(query_points, points)
+    
+    print(pops_graph.shape)
+    print(pops_graph)
+    
+    keops_graph = keops_radius_search(query_points, points, radius, neighbor_limit)
+    
+    print(keops_graph.shape)
+    print(keops_graph)
+    
+    input("Press any key to continue...")
 
 
     ######

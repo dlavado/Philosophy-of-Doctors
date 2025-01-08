@@ -2,6 +2,11 @@ import torch
 from torch import Tensor
 from typing import Tuple
 
+import sys
+sys.path.append('../../')
+
+import core.models.giblinet.conversions as conversions
+import pointops as pops
 
 class KNN_Neighboring:
     def __init__(self, k:int) -> None:
@@ -23,9 +28,23 @@ class KNN_Neighboring:
         s_points - torch.Tensor
             support points of shape (B, Q, k)
         """
-        
         # return torch_knn(q_points, x, self.k)[1]
-        return keops_knn(q_points.contiguous(), x.contiguous(), self.k)[1]
+        # return keops_knn(q_points, x, self.k)[1]
+        
+        q_offset = conversions.get_offset_vector(q_points)
+        x_offset = conversions.get_offset_vector(x)
+        
+        B = q_points.size(0)
+        q_points = q_points.view(-1, 3)
+        x = x.view(-1, 3)
+        
+        q_points = q_points.contiguous()
+        x = x.contiguous()
+        
+        knn_idxs, _ = pops.knn_query(self.k, x, x_offset, q_points, q_offset)
+        
+        return conversions.build_batch_tensor(knn_idxs, q_offset, x_offset)
+        
 
 
 def torch_knn(q_points: Tensor, s_points: Tensor, k: int) -> Tuple[Tensor, Tensor]:
@@ -95,13 +114,33 @@ def keops_knn(q_points: Tensor, s_points: Tensor, k: int) -> Tuple[Tensor, Tenso
     return knn_distances, knn_indices
 
 
-
-
-
 if __name__ == '__main__':
     
-    import pointops as pops
+    points = torch.rand((2, 100_000, 3)).cuda()
+    q_points = torch.rand((2, 10, 3)).cuda()
     
+    k = 1000 # number of neighbors to consider
+    knn = KNN_Neighboring(k)
+    
+    # measure the time taken to perform kNN
+    import time
+    start = time.time()
+    pops_s_points = knn(q_points, points)
+    print(f"Time taken for pops knn: {time.time() - start}")
+    
+    start = time.time()
+    keops_s_points = keops_knn(q_points, points, k)[1]
+    print(f"Time taken for keops knn: {time.time() - start}")
+    
+    # print(f"{pops_s_points=} \n\n {keops_s_points=}")
+    
+    assert torch.all(pops_s_points == keops_s_points), "Error: The two implementations do not match."
+    
+    print("\n\nSuccess! The two implementations match.")
+    
+    input("Press any key to continue...")
+    
+    ########## TEST POINTCEPT OPS ##########
     
     # Define the point cloud
     points = torch.rand((100_000, 3)).cuda()    
@@ -141,6 +180,8 @@ if __name__ == '__main__':
     
     ########
     
+    inter_pts = pops.interpolation(q_points, points, feats, q_offset, offset, k=3)
+    print(f"{inter_pts.shape=}")
     
     
     

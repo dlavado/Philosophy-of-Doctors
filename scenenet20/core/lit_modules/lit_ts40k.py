@@ -177,8 +177,7 @@ class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
                 self.predict_ds._build_pyramid(self.pyramid_builder)
                 
                 
-    def train_dataloader(self):
-        
+    def train_dataloader(self): 
         return DataLoader(self.train_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=True, pin_memory=True, collate_fn=self.collate_fn)
     
     def val_dataloader(self):

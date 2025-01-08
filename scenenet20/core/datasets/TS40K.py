@@ -1046,9 +1046,9 @@ def main():
     #                        os.path.join(TS40K_DIR, "TS40K-FULL-Preprocessed-SMOTE"),
     #                     )
     
-    save_preprocessed_data(constants.TS40K_FULL_PREPROCESSED_PATH,
-                           os.path.join(TS40K_DIR, "TS40K-FULL-Preprocessed-Normals"),
-                        )
+    # save_preprocessed_data(constants.TS40K_FULL_PREPROCESSED_PATH,
+    #                        os.path.join(TS40K_DIR, "TS40K-FULL-Preprocessed-Normals"),
+    #                     )
 
     # process_ts40k_for_mmlab_pcdet_framework(os.path.join(TS40K_DIR, "TS40K-FULL"),
     #                                         "/home/didi/VSCode/Philosophy-of-Doctors/OpenPCDet/data/ts40k/",
@@ -1059,7 +1059,7 @@ def main():
     #                     )    
     
 
-    input("Press Enter to continue...")
+    # input("Press Enter to continue...")
 
     # ts40k = TS40K_FULL_Preprocessed(
     #     constants.TS40K_FULL_PREPROCESSED_IDIS_PATH,
@@ -1088,21 +1088,20 @@ def main():
     
     composed = None
     
-    ts40k = TS40K_FULL(constants.TS40K_FULL_PATH, 
-                       split='fit', 
-                       sample_types=['tower_radius'], 
-                       task='sem_seg', transform=composed, load_into_memory=False)
+    # ts40k = TS40K_FULL(constants.TS40K_FULL_PATH, 
+    #                    split='fit', 
+    #                    sample_types=['tower_radius'], 
+    #                    task='sem_seg', transform=composed, load_into_memory=False)
 
-    # ts40k = TS40K_FULL_Preprocessed(
-    #     constants.TS40K_FULL_PREPROCESSED_IDIS_PATH, 
-    #     split='fit', 
-    #     sample_types=['tower_radius', '2_towers'], 
-    #     transform=None, 
-    #     load_into_memory=False
-    # )
+    ts40k = TS40K_FULL_Preprocessed(
+        constants.TS40K_FULL_PREPROCESSED_PATH, 
+        split='fit', 
+        sample_types=['tower_radius', '2_towers'], 
+        transform=None, 
+        load_into_memory=False
+    )
 
-    class_freqs = torch.zeros(6)
-
+    # class_freqs = torch.zeros(6)
     # for i in tqdm(range(0, len(ts40k)), desc="Computing class frequencies..."):
     #     _, y = ts40k[i]
     #     y = y.squeeze().long()
@@ -1114,13 +1113,53 @@ def main():
     # TOWERED SAMPLES DENSITIES: tensor([0.0255, 0.4056, 0.5244, 0.0248, 0.0073, 0.0124])
     # print(class_freqs / torch.sum(class_freqs))
     
+    import pointops as pops
+    import core.models.giblinet.conversions as cvr
+    
     for idx in range(len(ts40k)):   
         xyz, y = ts40k[idx]
-        y = y.reshape(-1).numpy()
-        xyz = xyz.squeeze().numpy()
-        pynt = eda.np_to_ply(xyz)
-        eda.color_pointcloud(pynt, y, use_preset_colors=True)
+        
+        #### visualize the point cloud
+        labels = y.reshape(-1).numpy()
+        pcd = xyz.squeeze().numpy()
+        pynt = eda.np_to_ply(pcd)
+        eda.color_pointcloud(pynt, labels, use_preset_colors=True)
         eda.visualize_ply([pynt])
+        
+        #### fps sampling
+        xyz = xyz.squeeze().cuda()
+        y = y.squeeze().cuda()
+        
+        xyz_batch = cvr.get_batch_vector(xyz[None])
+        xyz_offset = cvr.get_offset_vector(xyz[None])
+        print(f"{xyz_batch=} {xyz_batch.shape=}")
+        print(f"{xyz_offset=}")
+        print(f"{pops.batch2offset(xyz_batch)=}")
+        input("Press Enter to continue...")
+        
+        # this tensor defines the number of points to sample from each point cloud
+        fps_offsets = torch.tensor([5000], dtype=torch.int32).cuda()
+        fps_batch = pops.offset2batch(fps_offsets)
+        print(f"{fps_batch.shape=}")
+        print(f"{fps_offsets=}")
+        fps_idxs = pops.farthest_point_sampling(xyz, xyz_offset, fps_offsets)
+        
+        print(f"{fps_idxs.shape=}")
+        
+        fps_idxs = fps_idxs[fps_batch == 0] # get the indices for the first point cloud
+        fps_points = xyz[fps_idxs]
+        
+        print(f"{fps_points.shape=}")
+        
+        pcd = fps_points.cpu().numpy()
+        labels = y[fps_idxs].reshape(-1).cpu().numpy()
+        pynt = eda.np_to_ply(pcd)
+        eda.color_pointcloud(pynt, labels, use_preset_colors=True)
+        eda.visualize_ply([pynt])
+        
+        
+        
+        
 
         
 
