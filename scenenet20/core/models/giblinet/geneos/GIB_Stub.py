@@ -11,7 +11,6 @@ KERNEL_REACH = "kernel_reach"
 NUM_GIBS = "num_gibs"
 
 
-
 ###############################################################
 #                          GIB Utils                          #
 ###############################################################
@@ -241,7 +240,7 @@ class GIB_Stub(torch.nn.Module):
     
 class GIBCollection(torch.nn.Module):
     
-    def __init__(self, kernel_reach:float, num_gibs, angles=None, intensity=1, **kwargs):
+    def __init__(self, kernel_reach:float, num_gibs, intensity=1, **kwargs):
         """
         Initializes the GIB kernel.
 
@@ -260,18 +259,14 @@ class GIBCollection(torch.nn.Module):
         `angles` - torch.Tensor:
             tensor of shape (num_gibs, 3) containing rotation angles for the x, y, and z axes for each GIB;
         """
-        super(GIBCollection, self).__init__()
-                    
+        super(GIBCollection, self).__init__()    
 
         self.kernel_reach = kernel_reach
         self.num_gibs = num_gibs
         
         # variables to compute the integral of the GIB function within the kernel reach
         self.epsilon = 1e-8 # small value to avoid division by zero        
-
-        self.intensity = intensity # intensity of the gaussian function
-        self.angles = angles
-        
+        self.intensity = intensity # intensity of the gaussian function        
         
         
     def compute_integral(self, mc_points:torch.Tensor) -> torch.Tensor:
@@ -293,7 +288,7 @@ class GIBCollection(torch.nn.Module):
         mc_weights = self._compute_gib_weights(mc_points)
         # print(f"{mc_weights.shape=}")
         # for g in range(self.num_gibs):
-        #     self._plot_integral(mc_weights[g], plot_valid=True)
+        #     self._plot_integral(mc_points[g], mc_weights[g], plot_valid=False)
         return torch.sum(mc_weights, dim=-1)
 
     @abstractmethod
@@ -322,7 +317,7 @@ class GIBCollection(torch.nn.Module):
         }
         gib_params = {
             'intensity' : torch.randint(5, 10, (num_gibs, 1))/5, # float \in [0, 1]
-            'angles'    : torch.randn((num_gibs, 3))
+            # 'angles'    : torch.randn((num_gibs, 3))
         }
 
         for param in GIBCollection.gib_parameters():
@@ -334,6 +329,20 @@ class GIBCollection(torch.nn.Module):
         return config
     
     
+    def _plot_integral(self, mc, mc_weights:torch.Tensor, plot_valid=False):
+        print(f"{mc_weights.shape=}")
+        import matplotlib.pyplot as plt
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        if plot_valid: # only plot points with positive weights
+            valid_mask = mc_weights > self.epsilon
+            mc = mc[valid_mask]
+            mc_weights = mc_weights[valid_mask]
+        ax.scatter(mc[:, 0], mc[:, 1], mc[:, 2], c=mc_weights.detach().cpu().numpy(), cmap='magma')
+        plt.show()  
+    
+    
+    
     def sum_zero(self, tensor:torch.Tensor, mc_points:torch.Tensor) -> torch.Tensor:
         """
         Normalizes the input tensor by subtracting the integral of the resulting gaussian functions within the kernel reach.
@@ -342,7 +351,8 @@ class GIBCollection(torch.nn.Module):
         ----------
         `tensor` - torch.Tensor:
             Tensor of shape (..., G, K) representing the values of the kernel;
-            This tensor is the product of the gaussian function of the GIB Collection; where G is the number of GIBs and K is the num of neighbors;
+            This tensor is the product of the gaussian function of the GIB Collection; 
+            where G is the number of GIBs and K is the num of neighbors;
             
         Returns
         -------
@@ -351,11 +361,9 @@ class GIBCollection(torch.nn.Module):
         """
         #mc_points = mc_points.unsqueeze(0).expand(self.num_gibs, -1, -1)
         integral = self.compute_integral(mc_points)
-        # print(f"{integral.shape=}")
-        # print(f"{tensor.shape=}")
         return tensor - integral.unsqueeze(-1) / mc_points.shape[0]
     
-    
+    @torch.jit.script
     def _retrieve_support_points(points: torch.Tensor, support_idxs: torch.Tensor) -> torch.Tensor:
         """
         Retrieves the support points from the input tensor given the support indices.
@@ -383,59 +391,9 @@ class GIBCollection(torch.nn.Module):
         # Gather the points (B, M*K, 3); Reshape back to (B, M, K, 3)
         return torch.gather(points, 1, support_idxs.unsqueeze(-1).expand(-1, -1, F)).reshape(B, M, K, F).to(torch.float16)
     
-
-    def _plot_integral(self, gaussian_x:torch.Tensor, plot_valid=False):
-        print(f"{gaussian_x.shape=}")
-        import matplotlib.pyplot as plt
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        mc = self.montecarlo_points.detach().cpu().numpy()
-        if plot_valid: # only plot points with positive weights
-            valid_mask = gaussian_x > self.epsilon
-            mc = mc[:, valid_mask]
-            gaussian_x = gaussian_x[valid_mask]
-        ax.scatter(mc[0, :, 0], mc[0, :, 1], mc[0, :, 2], c=gaussian_x.detach().cpu().numpy(), cmap='magma')
-        plt.show()  
-    
-      
-    def rotate(self, points:torch.Tensor) -> torch.Tensor:
-        """
-        Rotate a tensor along the x, y, and z axes by the angles of each GIB in the collection.
-        
-        Parameters
-        ----------
-        `points` - torch.Tensor:
-            Tensor of shape (N, 3) representing the 3D points to rotate.
-            
-        Returns
-        -------
-        `points` - torch.Tensor:
-            Tensor of shape (G, N, 3) containing the rotated
-        """
-        from core.models.giblinet.geneos.diff_rotation_transform import rotate_points_batch
-        # convert self.angles to an acceptable range [0, 2]:
-        # this is equivalent to angles = self.angles % 2
-        angles = torch.fmod(self.angles, 2) # rotations higher than 2\pi are equivalent to rotations within 2\pi
-        # angles = angles + (angles < 0).float() * 2 
-        
-        angles = 2 - torch.relu(-angles) # convert negative angles to positive
-        return rotate_points_batch(angles, points)
-    
-    
-    def apply_rotations(self, s_centered:torch.Tensor) -> torch.Tensor:
-        
-        if self.angles is not None:
-            s_centered = self.rotate(s_centered) # (B, M, G, K, 3), where G is the number of GIBs, we rotate each GIB separately according to their respective angles
-        else:
-            s_centered = s_centered.unsqueeze(2).expand(-1, -1, self.num_gibs, -1, -1) # (B, M, G, K, 3), expand the tensor to maintain the same shape as the angles tensor
-            
-        return s_centered.contiguous()
-    
-    
-    
     def _prep_support_vectors(points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor):
         
-        if points.dim() == 2:
+        if points.ndimension() == 2:
             # If unbatched, add a batch dimension
             points = points.unsqueeze(0)
             q_points = q_points.unsqueeze(0)
@@ -445,7 +403,7 @@ class GIBCollection(torch.nn.Module):
             batched = True
 
         # Gather support points: (B, M, K) -> (B, M, K, 3)
-        s_centered = GIBCollection._retrieve_support_points(points, support_idxs).contiguous()
+        s_centered = GIBCollection._retrieve_support_points(points, support_idxs)
         # Center the support points around the query points
         s_centered = s_centered - q_points.unsqueeze(2) # (B, M, K, 3)
         
@@ -463,7 +421,8 @@ class GIBCollection(torch.nn.Module):
         
     def _prepped_forward(self, s_centered:torch.Tensor, valid_mask:torch.Tensor, batched:bool, mc_points:torch.Tensor) -> torch.Tensor:
         
-        s_centered = self.apply_rotations(s_centered.contiguous())
+        # rotations moved to GIB Layer for faster computation
+        # s_centered = self.apply_rotations(s_centered.contiguous()) # (B, M, G, K, 3)
         
         # print(f"{s_centered.shape=}")   
         # Compute GIB weights; (B, M, G, K, 3) -> (B, M, G, K)
@@ -484,8 +443,8 @@ class GIBCollection(torch.nn.Module):
         Validates the weights and sums them up.
         """
         weights = weights * valid_mask.unsqueeze(2).expand_as(weights).to(torch.float16)
-        weights = self.sum_zero(weights, mc_points) # (B, M, K)
-        weights = torch.sum(weights, dim=-1) # (B, M)
+        weights = self.sum_zero(weights, mc_points) # (B, M, G, K)
+        weights = torch.sum(weights, dim=-1) # (B, M, G)
         return weights
    
 

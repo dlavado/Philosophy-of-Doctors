@@ -98,26 +98,32 @@ def rotate_points_batch(angles: torch.Tensor, points: torch.Tensor) -> torch.Ten
         Tensor of shape (..., G, N, 3) containing the rotated points for G batches.
     """
     R = build_rotation_matrices(angles.contiguous()) # shape (G, 3, 3)
-    # points = points.unsqueeze(-3)  # (..., 1, N, 3)
-    # points = torch.matmul(points, R.transpose(-1, -2))  # (..., G, N, 3)
-    # print(points.shape)
-    # return points
-    # flat points
     points_shape = points.size()
     points = points.view(-1, points_shape[-1]).contiguous()  # (*, 3)
-    points = torch.matmul(points, R.transpose(-1, -2)) # (*, 3) x (G, 3, 3) -> (*, G, 3)
+    points = points @ R.transpose(-1, -2)  # (G, 3, *) x (G, 3, 3) -> (G, 3, *)
     # implictit shape recovery can be achieved but not in script mode
     points = points.view(points_shape[0], points_shape[1], R.size(0), points_shape[2], -1)  # (..., G, N, 3)
     return points.contiguous()
 
 
 if __name__ == '__main__':
+    import time
     
-    num_gibs = 15
-    angles = torch.rand((num_gibs, 3)) # random angles
-    
-    points = torch.ones((4, 4, 10, 3)) # 4 batches, 4 neighbors, 10 3D points
-    
+    # print(rotated_points.shape)  # torch.Size([4, 4, 3, 100_000, 3])
+    num_gibs = 1000
+    angles = torch.rand((num_gibs, 3))  # random angles
+    points = torch.ones((4, 16, 10_000, 3))  # 4 batches, 16 neighbors, 100K points each
+
+    # Time the rotation matrix construction
+    start_build = time.time()
+    R = build_rotation_matrices(angles)
+    torch.cuda.synchronize() if torch.cuda.is_available() else None
+    end_build = time.time()
+    print(f"Time to build rotation matrices: {end_build - start_build:.6f} seconds")
+
+    # Time the full operation
+    start_full = time.time()
     rotated_points = rotate_points_batch(angles, points)
-    
-    # print(rotated_points.shape)  # torch.Size([4, 4, 3, 10, 3])
+    torch.cuda.synchronize() if torch.cuda.is_available() else None
+    end_full = time.time()
+    print(f"Total time for rotate_points_batch: {end_full - start_full:.6f} seconds")

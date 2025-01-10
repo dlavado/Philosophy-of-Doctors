@@ -28,22 +28,25 @@ class KNN_Neighboring:
         s_points - torch.Tensor
             support points of shape (B, Q, k)
         """
-        # return torch_knn(q_points, x, self.k)[1]
-        # return keops_knn(q_points, x, self.k)[1]
-        
-        q_offset = conversions.get_offset_vector(q_points)
-        x_offset = conversions.get_offset_vector(x)
-        
-        B = q_points.size(0)
-        q_points = q_points.view(-1, 3)
-        x = x.view(-1, 3)
-        
         q_points = q_points.contiguous()
         x = x.contiguous()
         
-        knn_idxs, _ = pops.knn_query(self.k, x, x_offset, q_points, q_offset)
+        # return torch_knn(q_points, x, self.k)[1]
+        return keops_knn(q_points, x, self.k)[1]
         
-        return conversions.build_batch_tensor(knn_idxs, q_offset, x_offset)
+        # q_offset = conversions.get_offset_vector(q_points)
+        # x_offset = conversions.get_offset_vector(x)
+        
+        # B = q_points.size(0)
+        # q_points = q_points.view(-1, 3)
+        # x = x.view(-1, 3)
+        
+        # q_points = q_points.contiguous().to(torch.float32)
+        # x = x.contiguous().to(torch.float32)
+        
+        # knn_idxs, _ = pops.knn_query(self.k, x, x_offset, q_points, q_offset)
+        
+        # return conversions.build_batch_tensor(knn_idxs, q_offset, x_offset)
         
 
 

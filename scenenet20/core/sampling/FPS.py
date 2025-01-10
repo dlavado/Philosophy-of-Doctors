@@ -71,11 +71,11 @@ class Farthest_Point_Sampling:
         if pointcloud.ndim < 3:
             pointcloud = pointcloud.unsqueeze(0) # create fake batch dimension
             
-        offset = conversions.get_offset_vector(pointcloud)
+        offset = conversions.get_offset_vector(pointcloud).contiguous()
         B, N, F = pointcloud.shape
-        pointcloud = pointcloud.view(-1, 3) 
+        pointcloud = pointcloud.view(-1, 3).to(torch.float32).contiguous() # shape: (B*N, 3)
         
-        fps_offset = torch.arange(self.num_points, (B + 1)*self.num_points, self.num_points, device=pointcloud.device)
+        fps_offset = torch.arange(self.num_points, (B + 1)*self.num_points, self.num_points, device=pointcloud.device).contiguous()
         
         fps_idxs = pops.farthest_point_sampling(pointcloud, offset, fps_offset)
         # print(f"{fps_offset.shape=} {fps_idxs.shape=}")

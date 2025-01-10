@@ -15,21 +15,21 @@ preprocessed:
   value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: True
+  value: False
 data_path:
   value: ''
 in_channels:
   value: 3
   description: 'Number of input data channels'
 add_normals:
-  value: True
+  value: False
   description: 'If True, adds normals to the input data'
 num_classes:
   value: 6
 batch_size:
   value: 1
 ignore_index:
-  value: -1 # noise
+  value: -1
 num_workers: 
   value: 12
 val_split:
@@ -43,23 +43,23 @@ model:
   value: 'gibli'
 # --- GiBs config
 cylinder:
-  value: 16
+  value: 8
 disk:
-  value: 16
+  value: 8
 cone:
-  value: 16
+  value: 8
 ellipsoid:
-  value: 16
+  value: 8
 num_observers:
-  value: 10
+  value: -1
 kernel_size:
   value: 0.1
 # --- GIBLi config
 num_levels:
-  value: 5
+  value: 4
   description: 'Number of levels in the model'
 out_gib_channels:
-  value: 16
+  value: 4
   description: 'Number of output channels for GIB'
 skip_connections:
   value: True
@@ -74,7 +74,7 @@ neighborhood_strategy:
   value: 'knn'
   description: 'Strategy for neighborhood operations'
 neighborhood_size:
-  value: "8" # "[16, 48, 96, 192, 384]"
+  value: "4" # "[16, 48, 96, 192, 384]"
   description: 'Size of the neighborhood for the strategy'
 neighborhood_kwargs:
   value: {}
@@ -89,11 +89,11 @@ voxel_size:
 # training config
 # ------------------ #
 optimizer:
-  value: 'adamw' #'adam' 
+  value: 'adam' #'adam' 
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 150 # -1 for infinite
+  value: 10 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -124,9 +124,9 @@ precision: # 16 or 32 FPU precision
   value: 'bf16'
   description: 'FPU precision'
 auto_scale_batch_size:
-  value: True
+  value: False
 profiler:
-  value: None # 'advanced' # 'simple' or 'advanced'
+  value: 'advanced' # 'advanced' # 'simple' or 'advanced'
   description: 'PyTorch Lightning profiler'
 accumulate_grad_batches:
   value: 1

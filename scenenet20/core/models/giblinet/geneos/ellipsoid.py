@@ -1,5 +1,7 @@
 
 import torch
+import sys
+sys.path.append('../../../..')
 from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS, NON_TRAINABLE, KERNEL_REACH
 
 class Ellipsoid(GIB_Stub):
@@ -207,12 +209,14 @@ class EllipsoidCollection(GIBCollection):
           r3r1  r3r2  r3^2  
         ]
         """
-        #cov_matrix = torch.diag_embed((self.radii + self.epsilon)** 2) # (G, 3, 3)
-        precision_matrix = torch.inverse(torch.diag_embed((self.radii + self.epsilon)**2))
-        #exponent = -0.5 * torch.einsum('...gki,gij,...gkj->...gk', x, cov_matrix, x) # (..., G, K)
-        gauss_dist = torch.exp(-0.5 * torch.einsum('...gki,gij,...gkj->...gk', x, precision_matrix, x))
+        #cov_matrix = torch.diag_embed((self.radii + self.epsilon)** 2)
+        precision_matrix = torch.inverse(torch.diag_embed((self.radii + self.epsilon)**2)) # (G, 3, 3)
+        # gauss_dist = torch.exp(-0.5 * torch.einsum('...gki,gij,...gkj->...gk', x, precision_matrix, x)) # (..., G, K)
+        gauss_dist = torch.sum((x @ precision_matrix) * x, dim=-1)  # (..., G, K)
+        gauss_dist = torch.exp(-0.5 * gauss_dist)
 
         return self.intensity * gauss_dist
+        
     
     
     def _compute_gib_weights(self, s_centered: torch.Tensor) -> torch.Tensor:
@@ -255,15 +259,16 @@ class EllipsoidCollection(GIBCollection):
         """
         
         ##### prep for GIB computation #####
-        s_centered, valid_mask, batched = self._prep_support_vectors(points, q_points, support_idxs)
-        q_output = self._prepped_forward(s_centered, valid_mask, batched)
+        s_centered, valid_mask, batched = GIBCollection._prep_support_vectors(points, q_points, support_idxs)
+        s_centered = s_centered.unsqueeze(2).expand(-1, -1, self.num_gibs, -1, -1)
+        montecarlo_points = torch.rand((int(10_000), 3), device=s_centered.device) * 2 * self.kernel_reach - self.kernel_reach # \in [-kernel_reach, kernel_reach]
+        montecarlo_points = montecarlo_points[torch.norm(montecarlo_points, dim=-1) <= self.kernel_reach]
+        q_output = self._prepped_forward(s_centered, valid_mask, batched, montecarlo_points)
         return q_output
-    
-    
-    
-        
-        
 
+    
+    
+        
 
 if __name__ == "__main__":
     import sys
@@ -290,11 +295,11 @@ if __name__ == "__main__":
     print(neighbors_idxs.shape)
     print(q_points.shape)
 
-    ellip = Ellipsoid(0.2,
-                      angles = torch.tensor([0.0, 0.0, 0.0], device=points.device),
-                      radii  = torch.tensor([0.01, 0.5, 0.01], device=points.device),)
+    # ellip = Ellipsoid(0.2,
+    #                   angles = torch.tensor([0.0, 0.0, 0.0], device=points.device),
+    #                   radii  = torch.tensor([0.01, 0.5, 0.01], device=points.device),)
 
-    ellip_weights = ellip.forward(points, q_points, neighbors_idxs)
+    # ellip_weights = ellip.forward(points, q_points, neighbors_idxs)
     # print(ellip_weights.shape)
 
     # plot q_points + kernel
@@ -315,10 +320,11 @@ if __name__ == "__main__":
     
     
     ################# EllipsoidCollection #################
+    import time
     
-    num_gibs = 1
+    num_gibs = 8
     
-    radii = torch.tensor([0.5, 0.01, 0.01], device=points.device)
+    radii = torch.tensor([0.05, 0.05, 0.5], device=points.device)
     radii = radii.repeat(num_gibs, 1)
     print(f"{radii.shape=}")
     
@@ -327,7 +333,10 @@ if __name__ == "__main__":
     
     ellip_coll = EllipsoidCollection(kernel_reach=0.2, num_gibs=num_gibs, radii=radii)
     
+    start = time.time()
     ellip_weights = ellip_coll.forward(points, q_points, neighbors_idxs) # (B, M, G)
+    torch.cuda.synchronize() if torch.cuda.is_available() else None
+    print(f"Time taken for EllipsoidCollection: {time.time() - start}")
     
     print(ellip_weights.shape)
     print(ellip_coll.radii.shape)

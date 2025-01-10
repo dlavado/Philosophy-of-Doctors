@@ -157,7 +157,7 @@ class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
         if stage == 'fit':
             self.fit_ds = TS40K_FULL_Preprocessed(self.data_dir, split="fit", sample_types=self.sample_types, transform=self.transform, load_into_memory=self.load_into_memory)
             
-            # self.fit_ds.data_files = self.fit_ds.data_files[:int(len(self.fit_ds) * self.fit_split)]
+            self.fit_ds.data_files = self.fit_ds.data_files[:int(len(self.fit_ds) * self.fit_split)]
             
             if self.pyramid_builder is not None:
                 self.fit_ds._build_pyramid(self.pyramid_builder)

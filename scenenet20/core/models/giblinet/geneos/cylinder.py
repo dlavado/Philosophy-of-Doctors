@@ -231,11 +231,13 @@ class CylinderCollection(GIBCollection):
             where G is the number of GIBs in the collection.
         """
         ##### prep for GIB computation #####
-        s_centered, valid_mask, batched = self._prep_support_vectors(points, q_points, support_idxs)
-
-        q_outputs = self._prepped_forward(s_centered, valid_mask, batched)
+        s_centered, valid_mask, batched = GIBCollection._prep_support_vectors(points, q_points, support_idxs)
+        s_centered = s_centered.unsqueeze(2).expand(-1, -1, self.num_gibs, -1, -1)
+        montecarlo_points = torch.rand((int(10_000), 3), device=s_centered.device) * 2 * self.kernel_reach - self.kernel_reach # \in [-kernel_reach, kernel_reach]
+        montecarlo_points = montecarlo_points[torch.norm(montecarlo_points, dim=-1) <= self.kernel_reach]
+        q_output = self._prepped_forward(s_centered, valid_mask, batched, montecarlo_points)
         
-        return q_outputs
+        return q_output
 
 
 if __name__ == "__main__":

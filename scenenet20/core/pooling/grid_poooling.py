@@ -355,8 +355,8 @@ def grid_pooling_pack_mode(points, lengths, voxel_size):
         hash_values, return_inverse=True, return_counts=True
     )  # (M) (N) (M)
     inv_indices = inv_indices.unsqueeze(1).expand(-1, 3)  # (N, 3)
-    s_points = torch.zeros(size=(unique_counts.shape[0], 3)).cuda()  # (M, 3)
-    s_points.scatter_add_(0, inv_indices, points)  # (M, 3)
+    s_points = torch.zeros(size=(unique_counts.shape[0], 3), dtype=points.dtype).cuda()  # (M, 3)
+    s_points.scatter_add_(0, inv_indices, points)   # (M, 3)
     s_points /= unique_counts.unsqueeze(1).float()  # (M, 3)
 
     # compute lengths

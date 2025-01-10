@@ -13,6 +13,7 @@ from core.models.giblinet.GIBLi_utils import PointBatchNorm
 from core.unpooling.nearest_interpolation import interpolation
 from core.pooling.pooling import local_pooling
 from core.models.giblinet.conversions import compute_centered_support_points
+from core.models.giblinet.geneos.diff_rotation_transform import rotate_points_batch
 
 ###############################################################
 #                          GIB Layer                          #
@@ -145,7 +146,7 @@ class GIB_Operator_Collection(nn.Module):
         """
         return self.gib(points, q_coords, support_idxs)
         
-class GIB_Layer(nn.Module):
+class GIB_Layer(nn.Module): 
 
     def __init__(self, gib_dict:dict, kernel_reach:int, num_observers:int=1):
         """
@@ -315,8 +316,9 @@ class GIB_Layer_Coll(nn.Module):
             if num_gibs > 0:
                 self.gibs[key] = GIB_Operator_Collection(g_class, num_gibs=num_gibs, kernel_reach=kernel_reach)
                 self.total_gibs += num_gibs
-                
-
+          
+        # angles for each GIB in the layer; each GIB has 3 angles for rotation along the x, y, and z axes   
+        self.angles = nn.Parameter(torch.randn((self.total_gibs, 3)) * 0.01)
 
         # --- Initializing Convex Coefficients ---
         if num_observers > 1:
@@ -345,6 +347,44 @@ class GIB_Layer_Coll(nn.Module):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
     
     
+    @torch.jit.script
+    def rotate(points:torch.Tensor, angles:torch.Tensor) -> torch.Tensor:
+        """
+        Rotate a tensor along the x, y, and z axes by the angles of each GIB in the collection.
+        
+        Parameters
+        ----------
+        `points` - torch.Tensor:
+            Tensor of shape (N, 3) representing the 3D points to rotate.
+            
+        `angles` - torch.Tensor:
+            Tensor of shape (G, 3) containing rotation angles for the x, y, and z axes for each GIB in the collection.
+            These are normalized in the range [-1, 1] and represent angles_normalized = angles
+            
+        Returns
+        -------
+        `points` - torch.Tensor:
+            Tensor of shape (G, N, 3) containing the rotated
+        """
+        # convert self.angles to an acceptable range [0, 2]:
+        # this is equivalent to angles = self.angles % 2
+        angles = torch.fmod(angles, 2) # rotations higher than 2\pi are equivalent to rotations within 2\pi
+        # angles = angles + (angles < 0).float() * 2 
+        
+        angles = 2 - torch.relu(-angles) # convert negative angles to positive
+        return rotate_points_batch(angles, points)
+    
+    
+    def apply_rotations(self, s_centered:torch.Tensor) -> torch.Tensor:
+        # self.angles = None # for testing purposes
+        if self.angles is not None:
+            s_centered = self.rotate(s_centered, self.angles) # (B, M, G, K, 3), where G is the number of GIBs, we rotate each GIB separately according to their respective angles
+        else:
+            s_centered = s_centered.unsqueeze(2).expand(-1, -1, self.total_gibs, -1, -1) # (B, M, G, K, 3), expand the tensor to maintain the same shape as the angles tensor
+            
+        return s_centered.contiguous()
+    
+    
     def _compute_gib_outputs(self, coords: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor, mc_points) -> torch.Tensor:
         # Ensure tensors are batched
         if coords.dim() == 2:
@@ -354,23 +394,25 @@ class GIB_Layer_Coll(nn.Module):
 
         # Prepare support vectors
         s_centered, valid_mask, batched = compute_centered_support_points(coords, q_points, support_idxs)
+        s_centered = self.apply_rotations(s_centered) # (B, M, G, K, 3)
 
         ###### time efficient sol; mem inefficient due to empty alloc ######
-        # q_outputs = torch.empty((q_points.shape[0], q_points.shape[1], self.total_gibs), device=coords.device).contiguous()
+        q_outputs = torch.empty((q_points.shape[0], q_points.shape[1], self.total_gibs), device=coords.device).contiguous()
 
-        # offset = 0
-        # for gib_coll in self.gibs.values():
-        #     gib_output_dim = gib_coll.num_gibs
-        #     gib_outputs = gib_coll._prepped_forward(s_centered, valid_mask, batched, mc_points)  # ([B], Q, output_dim)
-        #     q_outputs[:, :, offset : offset + gib_output_dim] = gib_outputs
-        #     offset += gib_output_dim
+        offset = 0
+        for gib_coll in self.gibs.values():
+            gib_output_dim = gib_coll.num_gibs
+            support = s_centered[:, :, offset : offset + gib_output_dim] # (B, M, gib_output_dim, K, 3)
+            gib_outputs = gib_coll._prepped_forward(support, valid_mask, batched, mc_points)  # ([B], Q, output_dim)
+            q_outputs[:, :, offset : offset + gib_output_dim] = gib_outputs
+            offset += gib_output_dim
             
         ###### mem efficient sol; time inefficient due to cat ######
-        q_outputs_list = []
-        for gib_coll in self.gibs.values():
-            gib_outputs = gib_coll._prepped_forward(s_centered, valid_mask, batched, mc_points)  # ([B], Q, output_dim)
-            q_outputs_list.append(gib_outputs)
-        q_outputs = torch.cat(q_outputs_list, dim=-1)  # ([B], Q, total_gibs)
+        # q_outputs_list = []
+        # for gib_coll in self.gibs.values():
+        #     gib_outputs = gib_coll._prepped_forward(s_centered, valid_mask, batched, mc_points)  # ([B], Q, output_dim)
+        #     q_outputs_list.append(gib_outputs)
+        # q_outputs = torch.cat(q_outputs_list, dim=-1)  # ([B], Q, total_gibs)
 
         if not batched:
             q_outputs = q_outputs.squeeze(0)

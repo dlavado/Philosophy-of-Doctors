@@ -476,7 +476,7 @@ def main():
     if wandb.config.save_onnx:
         print("Saving ONNX model...")
         onnx_file_path = os.path.join(ckpt_dir, f"{run_name}.onnx")
-        input_sample = next(iter(data_module.test_dataloader()))
+        input_sample = next(iter(data_module.train_dataloader()))
         model.to_onnx(onnx_file_path, input_sample, export_params=True)
         wandb_logger.log({"onnx_model": wandb.File(onnx_file_path)})
 
@@ -495,6 +495,7 @@ if __name__ == '__main__':
     torch.autograd.set_detect_anomaly(True)
     os.environ['TORCH_CUDA_ARCH_LIST'] = '8.9'
     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+    torch.backends.cudnn.benchmark = True # enable cudnn benchmark mode for faster training in fixed input size
     # --------------------------------
 
 

@@ -240,8 +240,8 @@ class DiskCollection(GIBCollection):
         `gaussian` - torch.Tensor:
             Tensor of shape (..., G, K) representing the gaussian function of the input tensor.
         """
-        #x_norm = torch.linalg.norm(x, dim=-1) # shape (..., G, K)
-        return self.intensity * torch.exp((torch.linalg.norm(x, dim=-1)**2) * (-1 / (2*(self.radius + self.epsilon)**2))) # Kx1
+    
+        return self.intensity * torch.exp(torch.sum(x**2, dim=-1) * (-1 / (2*(self.radius + self.epsilon)**2))) # Kx1
     
     def _compute_gib_weights(self, s_centered: torch.Tensor) -> torch.Tensor:
         """
@@ -250,7 +250,7 @@ class DiskCollection(GIBCollection):
         Parameters
         ----------
         `s_centered` - torch.Tensor:
-            Tensor of shape (..., K, 3), representing the centered support points.
+            Tensor of shape (..., G, K, 3), representing the centered support points.
 
         Returns
         -------
@@ -285,10 +285,12 @@ class DiskCollection(GIBCollection):
         """
 
         ##### prep for GIB computation #####
-        s_centered, valid_mask, batched = self._prep_support_vectors(points, q_points, support_idxs)
-        q_output = self._prepped_forward(s_centered, valid_mask, batched)
-        return q_output
-        
+        s_centered, valid_mask, batched = GIBCollection._prep_support_vectors(points, q_points, support_idxs)
+        s_centered = s_centered.unsqueeze(2).expand(-1, -1, self.num_gibs, -1, -1)
+        montecarlo_points = torch.rand((int(10_000), 3), device=s_centered.device) * 2 * self.kernel_reach - self.kernel_reach # \in [-kernel_reach, kernel_reach]
+        montecarlo_points = montecarlo_points[torch.norm(montecarlo_points, dim=-1) <= self.kernel_reach]
+        q_output = self._prepped_forward(s_centered, valid_mask, batched, montecarlo_points)
+        return q_output    
 
 
 if __name__ == '__main__':
@@ -296,11 +298,15 @@ if __name__ == '__main__':
     from core.neighboring.knn import torch_knn
     from core.pooling.fps_pooling import fps_sampling
     
+    
+    
+    
+    
     # generate some points, query points, and neighbors. For the neighbors, I want to test two scenarios: 
     # 1) where the neighbors are at radius distance from the query points
     # 2) where the neighbors are very distance fromt the query points, at least 2*radius distance
-    points = torch.rand((3, 100_000, 3))
-    q_points = fps_sampling(points, num_points=1000)
+    points = torch.rand((32, 100_000, 3))
+    q_points = fps_sampling(points, num_points=10_000)
     print(f"{q_points.shape=}")
     num_neighbors = 16
     # neighbors_idxs = keops_radius_search(q_points, points, 0.2, num_neighbors, loop=True)
