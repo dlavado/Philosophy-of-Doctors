@@ -93,7 +93,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 10 # -1 for infinite
+  value: 3 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -132,7 +132,7 @@ accumulate_grad_batches:
   value: 1
   description: 'Accumulate gradients on k batches before performing a backward pass'
 save_onnx:
-  value: True
+  value: False
   description: 'Save model in onnx format'
 # ------------------ #
 # Checkpoint config

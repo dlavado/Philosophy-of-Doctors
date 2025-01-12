@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 import torch
 import torch.nn as nn
 
@@ -26,7 +26,7 @@ class GIBLiNet(nn.Module):
                 out_gib_channels:int,
                 num_observers:int,
                 kernel_size:float,
-                gib_dict:dict,
+                gib_dict:Dict[str, int],
                 skip_connections:bool,
                 pyramid_builder:BuildGraphPyramid
                 ) -> None:

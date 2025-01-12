@@ -1,6 +1,6 @@
 
 import torch
-from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS, NON_TRAINABLE, to_parameter, to_tensor
+from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS, NON_TRAINABLE, to_parameter, to_tensor, gaussian_2d, _prep_support_vectors
 
 class Cone(GIB_Stub):
 
@@ -162,8 +162,6 @@ class Cone(GIB_Stub):
     
 class ConeCollection(GIBCollection):
     
-    
-    
     def __init__(self, kernel_reach:float, num_gibs, **kwargs):
         """
         Collection of Cone GIBs.
@@ -197,8 +195,7 @@ class ConeCollection(GIBCollection):
         
         if self.inc is None:
             raise KeyError("Provide an inclination for the cone.")
-        
-        
+            
     
     def mandatory_parameters():
         return ['radius', 'inc']
@@ -220,10 +217,11 @@ class ConeCollection(GIBCollection):
         return rand_config
 
     
-    def gaussian(self, x:torch.Tensor, rad) -> torch.Tensor:
+    def gaussian(self, x:torch.Tensor, rad:torch.Tensor) -> torch.Tensor:
         # x_norm = torch.linalg.norm(x, dim=-1)
         # print(f"{x_norm.shape=} {rad.shape=}")
-        return self.intensity * torch.exp((torch.linalg.norm(x, dim=-1)**2) * (-1 / (2*(rad + self.epsilon)**2)))
+        # return self.intensity * torch.exp(torch.linalg.norm(x, dim=-1) * (-1 / (2*(rad + self.epsilon)**2)))
+        return self.intensity * gaussian_2d(x, rad + self.epsilon)
 
     
     
@@ -242,13 +240,11 @@ class ConeCollection(GIBCollection):
             Tensor of shape ([B], M, G, K), representing the weights of the GIBs for each query point.
         """
         cone_inc = torch.fmod(self.inc, 0.499) # cone inclination is in range [0, 0.499]
-        #cone_inc = torch.remainder(self.inc, 0.499) # cone inclination is in range [0, 0.499]
-        # cone_inc += (cone_inc < 0).float() * 0.499  # 
         cone_inc.mul_(torch.pi)
         
-        s_height = torch.relu(-s_centered[..., 2])  # (B, M, G, K)
-        cone_inc = torch.relu(self.radius * s_height * cone_inc) # the radius of the cone at the height of the support point
-
+        #                                   s_height pointing up;             the radius of the cone at the height of the support point
+        cone_inc = torch.relu(self.radius * torch.relu(-s_centered[..., 2]) * cone_inc) # (G,)
+        
         # Compute weights with Gaussian
         weights = self.gaussian(s_centered[..., :2], rad=cone_inc) 
         return weights
@@ -277,14 +273,14 @@ class ConeCollection(GIBCollection):
             Tensor of shape ([B], M, G), representing the output of the Cone GIB on the query points.
         """
         ##### prep for GIB computation #####
-        s_centered, valid_mask, batched = GIBCollection._prep_support_vectors(points, q_points, support_idxs)
+        s_centered, valid_mask, batched = _prep_support_vectors(points, q_points, support_idxs)
         s_centered = s_centered.unsqueeze(2).expand(-1, -1, self.num_gibs, -1, -1)
         montecarlo_points = torch.rand((int(10_000), 3), device=s_centered.device) * 2 * self.kernel_reach - self.kernel_reach # \in [-kernel_reach, kernel_reach]
         montecarlo_points = montecarlo_points[torch.norm(montecarlo_points, dim=-1) <= self.kernel_reach]
         q_output = self._prepped_forward(s_centered, valid_mask, batched, montecarlo_points)
         
         return q_output
-        
+    
     
 
 

@@ -39,6 +39,77 @@ def to_tensor(value):
     raise ValueError("Input value must be a torch.Tensor")
 
 
+@torch.jit.script
+def gaussian_2d(x:torch.Tensor, sigma:torch.Tensor) -> torch.Tensor:
+    """
+    Computes a two-dimensional gaussian function.
+
+    Parameters
+    ----------
+    `x` - torch.Tensor:
+        Tensor of shape (..., G, K, 2) representing the input tensor. 
+        Where G is the number of GIBs, and K is the number of neighbors and their dimensions.
+        
+    `sigma` - torch.Tensor:
+        Tensor of shape (..., G, 1) representing the standard deviation of the gaussian function for each GIB.
+
+    Returns
+    -------
+    `gaussian` - torch.Tensor:
+        Tensor of shape (..., G, K) representing the gaussian function of the input tensor.
+    """
+    return torch.exp(torch.linalg.norm(x, dim=-1) * (-1 / (2*sigma**2)))
+
+
+@torch.jit.script
+def _retrieve_support_points(points: torch.Tensor, support_idxs: torch.Tensor) -> torch.Tensor:
+    """
+    Retrieves the support points from the input tensor given the support indices.
+
+    Parameters
+    ----------
+
+    `points` - torch.Tensor:
+        Tensor of shape (B, N, 3) representing the point cloud.
+
+    `supports_idxs` - torch.Tensor:
+        Tensor of shape (B, M, K) representing the indices of the support points for each query point.
+
+    Returns
+    -------
+    `support_points` - torch.Tensor:
+        Tensor of shape (B, M, K, 3) representing the support points.
+    """
+    B, M, K = support_idxs.shape
+    F = points.shape[-1]
+
+    support_idxs = support_idxs.reshape(B, -1) # (B, M*K)
+    # illegal indices are -1, we need to mask them out
+    support_idxs = torch.where(support_idxs == -1, torch.zeros_like(support_idxs), support_idxs)
+    # Gather the points (B, M*K, 3); Reshape back to (B, M, K, 3)
+    return torch.gather(points, 1, support_idxs.unsqueeze(-1).expand(-1, -1, F)).reshape(B, M, K, F).to(torch.float16)
+
+@torch.jit.script
+def _prep_support_vectors(points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor):
+        
+    # if points.ndimension() == 2:
+    #     # If unbatched, add a batch dimension
+    #     points = points.unsqueeze(0)
+    #     q_points = q_points.unsqueeze(0)
+    #     support_idxs = support_idxs.unsqueeze(0)
+    #     batched = False
+    # else:
+    #     batched = True
+
+    # Gather support points: (B, M, K) -> (B, M, K, 3)
+    s_centered = _retrieve_support_points(points, support_idxs)
+    # Center the support points around the query points
+    s_centered = s_centered - q_points.unsqueeze(2) # (B, M, K, 3)
+    
+    valid_mask = (support_idxs != -1) # Mask out invalid indices with -1; shape (B, M, K)
+
+    return s_centered.contiguous(), valid_mask, True
+
 ###############################################################
 #                           GIB Stub                          #
 ###############################################################
@@ -266,30 +337,8 @@ class GIBCollection(torch.nn.Module):
         
         # variables to compute the integral of the GIB function within the kernel reach
         self.epsilon = 1e-8 # small value to avoid division by zero        
-        self.intensity = intensity # intensity of the gaussian function        
+        self.intensity = intensity # intensity of the gaussian function   
         
-        
-    def compute_integral(self, mc_points:torch.Tensor) -> torch.Tensor:
-        """
-        Computes an integral approximation of the gaussian function within the kernel_reach.
-        
-        Parameters
-        ----------
-        
-        `mc_points` - torch.Tensor:
-            Tensor of shape (N, 3) representing the montecarlo points for each GIB in the collection.
-
-        Returns
-        -------
-        `integral` - torch.Tensor:
-            Tensor of shape (G,) representing the integral of the gaussian function within the kernel reach for each gib in the collection;
-        """
-        mc_points = mc_points[None].expand(self.num_gibs, -1, -1)
-        mc_weights = self._compute_gib_weights(mc_points)
-        # print(f"{mc_weights.shape=}")
-        # for g in range(self.num_gibs):
-        #     self._plot_integral(mc_points[g], mc_weights[g], plot_valid=False)
-        return torch.sum(mc_weights, dim=-1)
 
     @abstractmethod
     def gaussian(self, x:torch.Tensor) -> torch.Tensor:
@@ -304,7 +353,6 @@ class GIBCollection(torch.nn.Module):
     @staticmethod
     def gib_parameters():
         return []
-    
     
     @staticmethod
     def gib_random_config(num_gibs:int, kernel_reach:int):
@@ -342,6 +390,27 @@ class GIBCollection(torch.nn.Module):
         plt.show()  
     
     
+    def compute_integral(self, mc_points:torch.Tensor) -> torch.Tensor:
+        """
+        Computes an integral approximation of the gaussian function within the kernel_reach.
+        
+        Parameters
+        ----------
+        
+        `mc_points` - torch.Tensor:
+            Tensor of shape (G, N, 3) representing the montecarlo points for each GIB in the collection.
+
+        Returns
+        -------
+        `integral` - torch.Tensor:
+            Tensor of shape (G,) representing the integral of the gaussian function within the kernel reach for each gib in the collection;
+        """
+        # mc_points = mc_points[None].expand(self.num_gibs, -1, -1)
+        mc_weights = self._compute_gib_weights(mc_points)
+        # print(f"{mc_weights.shape=}")
+        # for g in range(self.num_gibs):
+        #     self._plot_integral(mc_points[g], mc_weights[g], plot_valid=False)
+        return torch.sum(mc_weights, dim=-1)
     
     def sum_zero(self, tensor:torch.Tensor, mc_points:torch.Tensor) -> torch.Tensor:
         """
@@ -362,54 +431,6 @@ class GIBCollection(torch.nn.Module):
         #mc_points = mc_points.unsqueeze(0).expand(self.num_gibs, -1, -1)
         integral = self.compute_integral(mc_points)
         return tensor - integral.unsqueeze(-1) / mc_points.shape[0]
-    
-    @torch.jit.script
-    def _retrieve_support_points(points: torch.Tensor, support_idxs: torch.Tensor) -> torch.Tensor:
-        """
-        Retrieves the support points from the input tensor given the support indices.
-
-        Parameters
-        ----------
-
-        `points` - torch.Tensor:
-            Tensor of shape (B, N, 3) representing the point cloud.
-
-        `supports_idxs` - torch.Tensor:
-            Tensor of shape (B, M, K) representing the indices of the support points for each query point.
-
-        Returns
-        -------
-        `support_points` - torch.Tensor:
-            Tensor of shape (B, M, K, 3) representing the support points.
-        """
-        B, M, K = support_idxs.shape
-        F = points.shape[-1]
-
-        support_idxs = support_idxs.reshape(B, -1) # (B, M*K)
-        # illegal indices are -1, we need to mask them out
-        support_idxs = torch.where(support_idxs == -1, torch.zeros_like(support_idxs), support_idxs)
-        # Gather the points (B, M*K, 3); Reshape back to (B, M, K, 3)
-        return torch.gather(points, 1, support_idxs.unsqueeze(-1).expand(-1, -1, F)).reshape(B, M, K, F).to(torch.float16)
-    
-    def _prep_support_vectors(points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor):
-        
-        if points.ndimension() == 2:
-            # If unbatched, add a batch dimension
-            points = points.unsqueeze(0)
-            q_points = q_points.unsqueeze(0)
-            support_idxs = support_idxs.unsqueeze(0)
-            batched = False
-        else:
-            batched = True
-
-        # Gather support points: (B, M, K) -> (B, M, K, 3)
-        s_centered = GIBCollection._retrieve_support_points(points, support_idxs)
-        # Center the support points around the query points
-        s_centered = s_centered - q_points.unsqueeze(2) # (B, M, K, 3)
-        
-        valid_mask = (support_idxs != -1) # Mask out invalid indices with -1; shape (B, M, K)
-
-        return s_centered.contiguous(), valid_mask, batched
     
     
     @abstractmethod
@@ -446,8 +467,9 @@ class GIBCollection(torch.nn.Module):
         weights = self.sum_zero(weights, mc_points) # (B, M, G, K)
         weights = torch.sum(weights, dim=-1) # (B, M, G)
         return weights
-   
-
+    
+    
+    
 if __name__ == "__main__":
     import sys
     sys.path.insert(0, '..')

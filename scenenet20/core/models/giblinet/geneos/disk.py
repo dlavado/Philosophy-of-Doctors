@@ -3,7 +3,7 @@
 import torch
 import sys
 sys.path.append('../../../../')
-from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS
+from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS, NON_TRAINABLE, gaussian_2d, _prep_support_vectors
 
 
 class Disk(GIB_Stub):
@@ -241,7 +241,8 @@ class DiskCollection(GIBCollection):
             Tensor of shape (..., G, K) representing the gaussian function of the input tensor.
         """
     
-        return self.intensity * torch.exp(torch.sum(x**2, dim=-1) * (-1 / (2*(self.radius + self.epsilon)**2))) # Kx1
+        # return self.intensity * torch.exp(torch.linalg.norm(x, dim=-1) * (-1 / (2*(self.radius + self.epsilon)**2))) # Kx1
+        return self.intensity * gaussian_2d(x, self.radius + self.epsilon)
     
     def _compute_gib_weights(self, s_centered: torch.Tensor) -> torch.Tensor:
         """
@@ -285,12 +286,12 @@ class DiskCollection(GIBCollection):
         """
 
         ##### prep for GIB computation #####
-        s_centered, valid_mask, batched = GIBCollection._prep_support_vectors(points, q_points, support_idxs)
+        s_centered, valid_mask, batched = _prep_support_vectors(points, q_points, support_idxs)
         s_centered = s_centered.unsqueeze(2).expand(-1, -1, self.num_gibs, -1, -1)
         montecarlo_points = torch.rand((int(10_000), 3), device=s_centered.device) * 2 * self.kernel_reach - self.kernel_reach # \in [-kernel_reach, kernel_reach]
         montecarlo_points = montecarlo_points[torch.norm(montecarlo_points, dim=-1) <= self.kernel_reach]
         q_output = self._prepped_forward(s_centered, valid_mask, batched, montecarlo_points)
-        return q_output    
+        return q_output 
 
 
 if __name__ == '__main__':

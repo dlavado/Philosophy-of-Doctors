@@ -1,8 +1,9 @@
 
 import torch
+import torch.nn.functional as F
 import sys
 sys.path.append('../../../..')
-from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS, NON_TRAINABLE, KERNEL_REACH
+from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS, NON_TRAINABLE, gaussian_2d, _prep_support_vectors
 
 class Ellipsoid(GIB_Stub):
 
@@ -158,20 +159,27 @@ class EllipsoidCollection(GIBCollection):
         
         Required Kwargs
         --------------
-        `radii` - torch.Tensor:
-            Tensor of shape (num_gibs, 3) representing the radii of each ellipsoid.
+        `L` - torch.Tensor:
+            Lower triangular matrix for the Cholesky Decomposition of the precision matrix.
+            This guarantees that the precision matrix is positive definite at running time, avoids numerical issues and grants the ellipsoid more degrees of freedom.
+            For a more intuitive use of the ellipsoid, provide the `radii` instead (the eigenvalues of the precision matrix).
         """
         
         super().__init__(kernel_reach, num_gibs=num_gibs, angles=kwargs.get('angles', None), intensity=kwargs.get('intensity', 1))
         
+        if 'radii' not in kwargs and 'L' not in kwargs:
+            raise KeyError("Provide radii or precision matrix for the ellipsoid.")
         
-        self.radii = kwargs.get('radii', None)
-        if self.radii is None:
-            raise KeyError("Provide radii for the ellipsoid.")
+        self.L = kwargs.get('L', None)
+
+        if self.L is None: # if L matrix is not provided, compute it from the radii
+            self.L = torch.diag_embed(1 / kwargs.get('radii', None)**2) # (G, 3, 3)
+        
+        self.epsilon = self.epsilon * torch.eye(3, device=self.L.device).cuda()        
         
         
     def mandatory_parameters():
-        return ['radii']
+        return ['L']
     
     def gib_parameters():
         return EllipsoidCollection.mandatory_parameters() + ['intensity']
@@ -180,7 +188,8 @@ class EllipsoidCollection(GIBCollection):
         rand_config = GIBCollection.gib_random_config(num_gibs, kernel_reach)
 
         gib_params = {
-            'radii' : torch.rand(num_gibs, 3),
+            # Lower Trig. Matrix for the Cholesky Decomposition of the Precision Matrix
+            'L' : torch.tril(torch.randn(num_gibs, 3, 3)), # (G, 3, 3)
         }
         
         rand_config[GIB_PARAMS].update(gib_params)
@@ -209,13 +218,41 @@ class EllipsoidCollection(GIBCollection):
           r3r1  r3r2  r3^2  
         ]
         """
-        #cov_matrix = torch.diag_embed((self.radii + self.epsilon)** 2)
-        precision_matrix = torch.inverse(torch.diag_embed((self.radii + self.epsilon)**2)) # (G, 3, 3)
+        # this way, we guarantee that the precision matrix is positive definite
+        # precision_matrix =  self.L @ self.L.transpose(-1, -2) + self.epsilon# (..., G, 3, 3)
         # gauss_dist = torch.exp(-0.5 * torch.einsum('...gki,gij,...gkj->...gk', x, precision_matrix, x)) # (..., G, K)
-        gauss_dist = torch.sum((x @ precision_matrix) * x, dim=-1)  # (..., G, K)
-        gauss_dist = torch.exp(-0.5 * gauss_dist)
+        # gauss_dist = torch.sum((x @ (self.L @ self.L.transpose(-1, -2) + self.epsilon)) * x, dim=-1)  # (..., G, K)
+        # gauss_dist = torch.exp(-0.5 * gauss_dist)
 
-        return self.intensity * gauss_dist
+        # return self.intensity * gauss_dist
+        return self.intensity*EllipsoidCollection.gaussian_3d(x, self.L, self.epsilon)
+    
+    
+    @torch.jit.script
+    def gaussian_3d(x:torch.Tensor, L:torch.Tensor, eps:torch.Tensor) -> torch.Tensor:
+        """
+        Computes a three-dimensional gaussian function.
+
+        Parameters
+        ----------
+        `x` - torch.Tensor:
+            Tensor of shape (..., G, K, 3) representing the input tensor. 
+            Where G is the number of GIBs, and K is the number of neighbors and their dimensions.
+            
+        `L` - torch.Tensor:
+            Tensor of shape (G, 3, 3) representing the lower triangular matrix for the 
+            Cholesky Decomposition of the precision matrix.
+            
+        `eps` - torch.Tensor:
+            Tensor of shape (3, 3) representing the epsilon matrix.
+            This matrix is added to the precision matrix to ensure numerical stability and positive definiteness.
+
+        Returns
+        -------
+        `gaussian` - torch.Tensor:
+            Tensor of shape (..., G, K) representing the gaussian function of the input tensor.
+        """
+        return torch.exp(-0.5 * torch.sum((x @ (L @ L.transpose(-1, -2) + eps)) * x, dim=-1))
         
     
     
@@ -258,8 +295,10 @@ class EllipsoidCollection(GIBCollection):
             Tensor of shape ([B], M, G), representing the output of the Ellipsoid GIB on the query points.
         """
         
+        # print("Ellipsoid Forward")
+        
         ##### prep for GIB computation #####
-        s_centered, valid_mask, batched = GIBCollection._prep_support_vectors(points, q_points, support_idxs)
+        s_centered, valid_mask, batched = _prep_support_vectors(points, q_points, support_idxs)
         s_centered = s_centered.unsqueeze(2).expand(-1, -1, self.num_gibs, -1, -1)
         montecarlo_points = torch.rand((int(10_000), 3), device=s_centered.device) * 2 * self.kernel_reach - self.kernel_reach # \in [-kernel_reach, kernel_reach]
         montecarlo_points = montecarlo_points[torch.norm(montecarlo_points, dim=-1) <= self.kernel_reach]

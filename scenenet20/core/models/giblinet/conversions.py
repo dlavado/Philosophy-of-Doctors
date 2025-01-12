@@ -389,7 +389,7 @@ def compute_centered_support_points(points: torch.Tensor, q_points: torch.Tensor
     flat_supports_idxs = torch.where(valid_mask, support_idxs, 0).reshape(B, -1).to(torch.long)  # (B, M*K)
     # flat_supports_idxs = torch.where(flat_supports_idxs == -1, torch.zeros_like(flat_supports_idxs), flat_supports_idxs)
 
-    # Gather the support points (B, M*K, 3)
+    # Gather the support points (B, M*K, F)
     support_points = torch.gather(points, 1, flat_supports_idxs.unsqueeze(-1).expand(-1, -1, F)).to(points.dtype)
     # Reshape back to (B, M, K, 3)
     support_points = support_points.reshape(B, M, K, F).contiguous()

@@ -437,7 +437,7 @@ def main():
         devices='auto',#wandb.config.devices,
         num_nodes=wandb.config.num_nodes,
         strategy=wandb.config.strategy,
-        profiler= init_profiler(wandb.config.profiler, 'profiler'),
+        profiler= init_profiler(wandb.config.profiler, f'profiler_{run_name}'),
         precision=wandb.config.precision,
         enable_model_summary=True,
         enable_checkpointing=True,
@@ -495,7 +495,7 @@ if __name__ == '__main__':
     torch.autograd.set_detect_anomaly(True)
     os.environ['TORCH_CUDA_ARCH_LIST'] = '8.9'
     os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-    torch.backends.cudnn.benchmark = True # enable cudnn benchmark mode for faster training in fixed input size
+    # torch.backends.cudnn.benchmark = True # enable cudnn benchmark mode for faster training in fixed input size
     # --------------------------------
 
 
