@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 import sys
 sys.path.append('../../../..')
-from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS, NON_TRAINABLE, gaussian_2d, _prep_support_vectors
+from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS, NON_TRAINABLE, gaussian_2d, _prep_support_vectors, _retrieve_support_points
 
 class Ellipsoid(GIB_Stub):
 
@@ -121,7 +121,7 @@ class Ellipsoid(GIB_Stub):
             batched = True
 
         # Gather support points: (B, M, K) -> (B, M, K, 3)
-        support_points = self._retrieve_support_points(points, support_idxs)
+        support_points = _retrieve_support_points(points, support_idxs)
         valid_mask = (support_idxs != -1) # Mask out invalid indices with -1; shape (B, M, K)
 
         # Center support points: (B, M, K, 3) - (B, M, 1, 3)

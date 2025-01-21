@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Union
 import torch
 import torch.nn as nn
 
@@ -23,7 +23,7 @@ class GIBLiNet(nn.Module):
                 in_channels:int,
                 num_classes:int,
                 num_levels:int,
-                out_gib_channels:int,
+                out_gib_channels:Union[int, List[int]],
                 num_observers:int,
                 kernel_size:float,
                 gib_dict:Dict[str, int],
@@ -35,6 +35,11 @@ class GIBLiNet(nn.Module):
 
         self.skip_connections = skip_connections
         self.num_levels = num_levels
+        
+        if isinstance(out_gib_channels, int):
+            out_gib_channels = [out_gib_channels*i for i in range(1, num_levels + 1)]
+        else:
+            assert len(out_gib_channels) == num_levels, "The number of out_gib_channels must be equal to the number of levels"
 
         self.pyramid_builder = pyramid_builder
 
@@ -45,7 +50,7 @@ class GIBLiNet(nn.Module):
         enc_channels = []
         f_channels = in_channels
         for i in range(num_levels):
-            out_channels = out_gib_channels*(i+1)
+            out_channels = out_gib_channels[i]
             # print(f"GIBLi Building Encoding Level {i} with {f_channels} input channels and {out_channels} out channels")
             gib_seq = GIB_Sequence(num_layers=(i+1), 
                                    gib_dict=gib_dict, 
@@ -178,6 +183,7 @@ class GIBLiNet(nn.Module):
             
             ###### Encoding phase ######
             # print(f"Encoding {i}...")
+            # print(f"{coords.dtype=}, {feats.dtype=}, {neighbors_idxs_list[i].dtype=}")
             # print(f"\tfeats.shape={tuple(feats.shape)} \n\tpoint_list[{i}].shape={tuple(point_list[i].shape)} \n\tneighbors_idxs_list[{i}].shape={tuple(neighbors_idxs_list[i].shape)}")
             feats = self.gib_neigh_encoders[i]((coords, feats), point_list[i], neighbors_idxs_list[i])
             # print(f"\t {feats.shape=}\n")
@@ -243,7 +249,7 @@ class GIBLiLayer(nn.Module):
         # the batch_dim is necessary for now
        
         coords = x[..., :3]
-        feats = x
+        feats = x # x[..., 3:]
 
         # print(f"{coords.shape=} --- {feats.shape=}")
         neighbors_idxs = self.neighboring_strategy(coords, coords)

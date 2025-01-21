@@ -93,7 +93,8 @@ class LitGIBLi(LitWrapperModel):
         #     profile_memory=True,
         #     record_shapes=True
         # ) as prof:
-        logits = self.model(x.to(torch.float16), graph_pyramid)
+        # x = x.to(self.dtype)
+        logits = self.model(x, graph_pyramid)
         
         #print(prof.key_averages().table(sort_by="cuda_memory_usage", row_limit=10))
         
@@ -130,14 +131,14 @@ class LitGIBLi(LitWrapperModel):
         return loss, preds, y
 
         
-    # def on_after_backward(self):
-    #     # for name, param in self.model.named_parameters():
-    #     #     if 'lambdas' in name or 'gib_params' in name:
-    #     #         print(f"{name=},  {param=},  {param.grad=}")
+    def on_after_backward(self):
+        for name, param in self.model.named_parameters():
+            if 'lambdas' in name or 'gib_params' in name:
+                print(f"{name=},  {param=},  {param.grad=}")
         
-    #     # print(f"Memory after backward: {torch.cuda.memory_allocated() / (1024 ** 2)} MB")
-    #     #print(torch.cuda.memory_summary())
-    #     return
+        # print(f"Memory after backward: {torch.cuda.memory_allocated() / (1024 ** 2)} MB")
+        # print(torch.cuda.memory_summary())
+        return
     
     
     # def optimizer_step(self, epoch, batch_idx, optimizer, optimizer_closure):

@@ -37,6 +37,21 @@ class Lit_PointTransformer(LitWrapperModel):
                                                        gib_dict=gib_dict,
                                                        num_neighbors=num_neighbors, 
                                                        gib_layers=gib_layers)
+            elif 'v2' in version: # gibli v2
+                model = ptv2.GIBLiPointTransformerV2(in_channels=in_channels,
+                                                     num_classes=num_classes,
+                                                     grid_sizes=(0.05, 0.10, 0.20, 0.40),
+                                                     k_size=k_size,
+                                                     gib_dict=gib_dict,
+                                                     num_neighbors=num_neighbors,
+                                                     gib_layers=gib_layers)
+                
+            elif 'v3' in version: # gibli v3
+                model = ptv3.GIBLiPointTransformerV3(in_channels=in_channels, num_classes=num_classes,
+                                                      order=["z", "z-trans", "hilbert", "hilbert-trans"], enable_flash=False,
+                                                     k_size=k_size, gib_dict=gib_dict, num_neighbors=num_neighbors, gib_layers=gib_layers)
+            else:
+                ValueError("Invalid version")
         else:
             if version == 'v2':
                 model = ptv2.PointTransformerV2(in_channels=in_channels, 
@@ -121,7 +136,7 @@ class Lit_PointTransformer(LitWrapperModel):
                 "feat": feat.to(torch.float32),
                 "batch": batch,
                 "offset": batch2offset(batch),
-                "grid_size": torch.tensor([0.1, 0.1, 0.1], device=inpt.device)
+                "grid_size": torch.tensor([0.05, 0.05, 0.05], device=inpt.device)
             }
     
 

@@ -338,7 +338,7 @@ class PointTransformerSeg50(PointTransformerSeg):
 
 from core.models.giblinet.GIBLi import GIBLiLayer
 from core.models.giblinet.GIBLi_utils import Neighboring
-from core.models.giblinet.conversions import get_offset_vector, build_batch_tensor
+from core.models.giblinet.conversions import get_offset_vector, build_batch_tensor, build_batch_tensor_autograd
 
 class GIBLiBottleneck(nn.Module):
     expansion = 1
@@ -370,6 +370,7 @@ class GIBLiBottleneck(nn.Module):
         p, x, o = pxo  # (n, 3), (n, c), (b)
         identity = x
         bx = self.linear1(build_batch_tensor(x, o))
+        torch.cuda.empty_cache()
         x = bx.view(x.shape[0], -1)
         x = self.relu(self.bn1(x))
         x = self.relu(self.bn2(self.transformer([p, x, o])))

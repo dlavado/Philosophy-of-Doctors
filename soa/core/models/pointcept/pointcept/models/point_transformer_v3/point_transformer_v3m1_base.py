@@ -717,3 +717,332 @@ class PointTransformerV3(PointModule):
                 reduce="mean",
             )
         return self.head(torch.nn.GELU()(point.feat))
+    
+    
+    
+    
+####################################################################################################
+
+
+from core.models.giblinet.GIBLi import GIBLiLayer
+from core.models.giblinet.GIBLi_utils import Neighboring
+from core.models.giblinet.conversions import get_offset_vector, build_batch_tensor
+
+class GIBLiBlock(PointModule):
+    def __init__(
+        self,
+        channels,
+        num_heads,
+        patch_size=48,
+        mlp_ratio=4.0,
+        qkv_bias=True,
+        qk_scale=None,
+        attn_drop=0.0,
+        proj_drop=0.0,
+        drop_path=0.0,
+        norm_layer=nn.LayerNorm,
+        act_layer=nn.GELU,
+        pre_norm=True,
+        order_index=0,
+        cpe_indice_key=None,
+        enable_rpe=False,
+        enable_flash=True,
+        upcast_attention=True,
+        upcast_softmax=True,
+        ### gib parameters
+        k_size=0.1,
+        gib_dict=None,
+        num_neighbors=16,
+        gib_layers=1,
+    ):
+        super().__init__()
+        self.channels = channels
+        self.pre_norm = pre_norm
+
+        self.cpe = PointSequential(
+            spconv.SubMConv3d(
+                channels,
+                channels,
+                kernel_size=3,
+                bias=True,
+                indice_key=cpe_indice_key,
+            ),
+            nn.Linear(channels, channels),
+            norm_layer(channels),
+        )
+        
+        neigh_strat = Neighboring('knn', num_neighbors)
+        self.gibli = GIBLiLayer(channels, channels, -1, k_size, gib_dict, neigh_strat, gib_layers)
+        
+        self.norm1 = PointSequential(norm_layer(channels))
+        
+        self.attn = SerializedAttention(
+            channels=channels,
+            patch_size=patch_size,
+            num_heads=num_heads,
+            qkv_bias=qkv_bias,
+            qk_scale=qk_scale,
+            attn_drop=attn_drop,
+            proj_drop=proj_drop,
+            order_index=order_index,
+            enable_rpe=enable_rpe,
+            enable_flash=enable_flash,
+            upcast_attention=upcast_attention,
+            upcast_softmax=upcast_softmax,
+        )
+        self.norm2 = PointSequential(norm_layer(channels))
+        self.mlp = PointSequential(
+            MLP(
+                in_channels=channels,
+                hidden_channels=int(channels * mlp_ratio),
+                out_channels=channels,
+                act_layer=act_layer,
+                drop=proj_drop,
+            )
+        )
+        self.drop_path = PointSequential(
+            DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
+        )
+
+    def forward(self, point: Point):
+        shortcut = point.feat
+        point = self.cpe(point)
+        point.feat = shortcut + point.feat
+        shortcut = point.feat
+        if self.pre_norm:
+            bfeat = self.gibli(build_batch_tensor(point.feat, point.offset))
+            bfeat = bfeat.view(-1, point.feat.shape[-1])
+            point.feat = bfeat
+            point = self.norm1(point)
+        point = self.drop_path(self.attn(point))
+        point.feat = shortcut + point.feat
+        if not self.pre_norm:
+            point = self.norm1(point)
+
+        shortcut = point.feat
+        if self.pre_norm:
+            point = self.norm2(point)
+        point = self.drop_path(self.mlp(point))
+        point.feat = shortcut + point.feat
+        if not self.pre_norm:
+            point = self.norm2(point)
+        point.sparse_conv_feat.replace_feature(point.feat)
+        return point
+    
+    
+    
+@MODELS.register_module("GIB-PT-v3m1")
+class GIBLiPointTransformerV3(PointModule):
+    def __init__(
+        self,
+        in_channels=6,
+        num_classes=16,
+        order=("z", "z_trans"),
+        stride=(2, 2, 2, 2),
+        enc_depths=(2, 2, 2, 6, 2),
+        enc_channels=(32, 64, 128, 256, 512),
+        enc_num_head=(2, 4, 8, 16, 32),
+        enc_patch_size=(48, 48, 48, 48, 48),
+        dec_depths=(2, 2, 2, 2),
+        dec_channels=(64, 64, 128, 256),
+        dec_num_head=(4, 4, 8, 16),
+        dec_patch_size=(48, 48, 48, 48),
+        mlp_ratio=4,
+        qkv_bias=True,
+        qk_scale=None,
+        attn_drop=0.0,
+        proj_drop=0.0,
+        drop_path=0.3,
+        pre_norm=True,
+        shuffle_orders=True,
+        enable_rpe=False,
+        enable_flash=True,
+        upcast_attention=True,
+        upcast_softmax=True,
+        cls_mode=False,
+        pdnorm_bn=False,
+        pdnorm_ln=False,
+        pdnorm_decouple=True,
+        pdnorm_adaptive=False,
+        pdnorm_affine=True,
+        pdnorm_conditions=("ScanNet", "S3DIS", "Structured3D"),
+        ### gib parameters
+        k_size=0.1,
+        gib_dict=None,
+        num_neighbors=16,
+        gib_layers=1,
+    ):
+        super().__init__()
+        self.num_stages = len(enc_depths)
+        self.order = [order] if isinstance(order, str) else order
+        self.cls_mode = cls_mode
+        self.shuffle_orders = shuffle_orders
+
+        assert self.num_stages == len(stride) + 1
+        assert self.num_stages == len(enc_depths)
+        assert self.num_stages == len(enc_channels)
+        assert self.num_stages == len(enc_num_head)
+        assert self.num_stages == len(enc_patch_size)
+        assert self.cls_mode or self.num_stages == len(dec_depths) + 1
+        assert self.cls_mode or self.num_stages == len(dec_channels) + 1
+        assert self.cls_mode or self.num_stages == len(dec_num_head) + 1
+        assert self.cls_mode or self.num_stages == len(dec_patch_size) + 1
+
+        # norm layers
+        if pdnorm_bn:
+            bn_layer = partial(
+                PDNorm,
+                norm_layer=partial(
+                    nn.BatchNorm1d, eps=1e-3, momentum=0.01, affine=pdnorm_affine
+                ),
+                conditions=pdnorm_conditions,
+                decouple=pdnorm_decouple,
+                adaptive=pdnorm_adaptive,
+            )
+        else:
+            bn_layer = partial(nn.BatchNorm1d, eps=1e-3, momentum=0.01)
+        if pdnorm_ln:
+            ln_layer = partial(
+                PDNorm,
+                norm_layer=partial(nn.LayerNorm, elementwise_affine=pdnorm_affine),
+                conditions=pdnorm_conditions,
+                decouple=pdnorm_decouple,
+                adaptive=pdnorm_adaptive,
+            )
+        else:
+            ln_layer = nn.LayerNorm
+        # activation layers
+        act_layer = nn.GELU
+
+        self.embedding = Embedding(
+            in_channels=in_channels,
+            embed_channels=enc_channels[0],
+            norm_layer=bn_layer,
+            act_layer=act_layer,
+        )
+
+        # encoder
+        enc_drop_path = [
+            x.item() for x in torch.linspace(0, drop_path, sum(enc_depths))
+        ]
+        self.enc = PointSequential()
+        for s in range(self.num_stages):
+            enc_drop_path_ = enc_drop_path[
+                sum(enc_depths[:s]) : sum(enc_depths[: s + 1])
+            ]
+            enc = PointSequential()
+            if s > 0:
+                enc.add(
+                    SerializedPooling(
+                        in_channels=enc_channels[s - 1],
+                        out_channels=enc_channels[s],
+                        stride=stride[s - 1],
+                        norm_layer=bn_layer,
+                        act_layer=act_layer,
+                    ),
+                    name="down",
+                )
+            for i in range(enc_depths[s]):
+                enc.add(
+                    GIBLiBlock(
+                        channels=enc_channels[s],
+                        num_heads=enc_num_head[s],
+                        patch_size=enc_patch_size[s],
+                        mlp_ratio=mlp_ratio,
+                        qkv_bias=qkv_bias,
+                        qk_scale=qk_scale,
+                        attn_drop=attn_drop,
+                        proj_drop=proj_drop,
+                        drop_path=enc_drop_path_[i],
+                        norm_layer=ln_layer,
+                        act_layer=act_layer,
+                        pre_norm=pre_norm,
+                        order_index=i % len(self.order),
+                        cpe_indice_key=f"stage{s}",
+                        enable_rpe=enable_rpe,
+                        enable_flash=enable_flash,
+                        upcast_attention=upcast_attention,
+                        upcast_softmax=upcast_softmax,
+                        k_size=k_size,
+                        gib_dict=gib_dict,
+                        num_neighbors=num_neighbors,
+                        gib_layers=gib_layers,
+                    ),
+                    name=f"block{i}",
+                )
+            if len(enc) != 0:
+                self.enc.add(module=enc, name=f"enc{s}")
+
+        # decoder
+        if not self.cls_mode:
+            dec_drop_path = [
+                x.item() for x in torch.linspace(0, drop_path, sum(dec_depths))
+            ]
+            self.dec = PointSequential()
+            dec_channels = list(dec_channels) + [enc_channels[-1]]
+            for s in reversed(range(self.num_stages - 1)):
+                dec_drop_path_ = dec_drop_path[
+                    sum(dec_depths[:s]) : sum(dec_depths[: s + 1])
+                ]
+                dec_drop_path_.reverse()
+                dec = PointSequential()
+                dec.add(
+                    SerializedUnpooling(
+                        in_channels=dec_channels[s + 1],
+                        skip_channels=enc_channels[s],
+                        out_channels=dec_channels[s],
+                        norm_layer=bn_layer,
+                        act_layer=act_layer,
+                    ),
+                    name="up",
+                )
+                for i in range(dec_depths[s]):
+                    dec.add(
+                        GIBLiBlock(
+                            channels=dec_channels[s],
+                            num_heads=dec_num_head[s],
+                            patch_size=dec_patch_size[s],
+                            mlp_ratio=mlp_ratio,
+                            qkv_bias=qkv_bias,
+                            qk_scale=qk_scale,
+                            attn_drop=attn_drop,
+                            proj_drop=proj_drop,
+                            drop_path=dec_drop_path_[i],
+                            norm_layer=ln_layer,
+                            act_layer=act_layer,
+                            pre_norm=pre_norm,
+                            order_index=i % len(self.order),
+                            cpe_indice_key=f"stage{s}",
+                            enable_rpe=enable_rpe,
+                            enable_flash=enable_flash,
+                            upcast_attention=upcast_attention,
+                            upcast_softmax=upcast_softmax,
+                            k_size=k_size,
+                            gib_dict=gib_dict,
+                            num_neighbors=num_neighbors,
+                            gib_layers=gib_layers,
+                        ),
+                        name=f"block{i}",
+                    )
+                self.dec.add(module=dec, name=f"dec{s}")
+
+        # decoder layer to num_classes
+        self.head = nn.Linear(dec_channels[0], num_classes)
+
+    def forward(self, data_dict):
+        data_dict['grid_size'] = 0.05
+        point = Point(data_dict)
+        point.serialization(order=self.order, shuffle_orders=self.shuffle_orders)
+        point.sparsify()
+
+        point = self.embedding(point)
+        point = self.enc(point)
+        if not self.cls_mode:
+            point = self.dec(point)
+        else:
+            point.feat = torch_scatter.segment_csr(
+                src=point.feat,
+                indptr=nn.functional.pad(point.offset, (1, 0)),
+                reduce="mean",
+            )
+        return self.head(torch.nn.GELU()(point.feat))

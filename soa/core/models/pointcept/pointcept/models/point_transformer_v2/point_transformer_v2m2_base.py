@@ -176,66 +176,7 @@ class Block(nn.Module):
         feat = self.act(feat)
         return [coord, feat, offset]
     
-    
-from core.models.giblinet.GIBLi import GIBLiLayer
-from core.models.giblinet.GIBLi_utils import Neighboring
-from core.models.giblinet.conversions import get_offset_vector, build_batch_tensor
-class GIBLiBlock(nn.Module):
-    def __init__(
-        self,
-        embed_channels,
-        groups,
-        qkv_bias=True,
-        pe_multiplier=False,
-        pe_bias=True,
-        attn_drop_rate=0.0,
-        drop_path_rate=0.0,
-        enable_checkpoint=False,
-        ### gib parameters
-        k_size=0.1,
-        gib_dict=None,
-        num_neighbors=16,
-        gib_layers=1,
-        
-    ):
-        super(Block, self).__init__()
-        self.attn = GroupedVectorAttention(
-            embed_channels=embed_channels,
-            groups=groups,
-            qkv_bias=qkv_bias,
-            attn_drop_rate=attn_drop_rate,
-            pe_multiplier=pe_multiplier,
-            pe_bias=pe_bias,
-        )
-        
-        neigh_strat = Neighboring('knn', num_neighbors)
-        self.fc1 = GIBLiLayer(embed_channels, embed_channels, -1, k_size, gib_dict, neigh_strat, gib_layers) 
-        self.fc3 = nn.Linear(embed_channels, embed_channels, bias=False)
-        self.norm1 = PointBatchNorm(embed_channels)
-        self.norm2 = PointBatchNorm(embed_channels)
-        self.norm3 = PointBatchNorm(embed_channels)
-        self.act = nn.ReLU(inplace=True)
-        self.enable_checkpoint = enable_checkpoint
-        self.drop_path = (
-            DropPath(drop_path_rate) if drop_path_rate > 0.0 else nn.Identity()
-        )
 
-    def forward(self, points, reference_index):
-        coord, feat, offset = points
-        identity = feat
-        bfeat = self.fc1(build_batch_tensor(feat, offset))
-        feat = bfeat.view(feat.shape[0], -1)
-        feat = self.act(self.norm1(feat))
-        feat = (
-            self.attn(feat, coord, reference_index)
-            if not self.enable_checkpoint
-            else checkpoint(self.attn, feat, coord, reference_index)
-        )
-        feat = self.act(self.norm2(feat))
-        feat = self.norm3(self.fc3(feat))
-        feat = identity + self.drop_path(feat)
-        feat = self.act(feat)
-        return [coord, feat, offset]
 
 class BlockSequence(nn.Module):
     def __init__(
@@ -667,3 +608,470 @@ class PointTransformerV2(nn.Module):
         coord, feat, offset = points
         seg_logits = self.seg_head(feat)
         return seg_logits
+    
+    
+    
+##############################################################################################
+
+from core.models.giblinet.GIBLi import GIBLiLayer
+from core.models.giblinet.GIBLi_utils import Neighboring
+from core.models.giblinet.conversions import get_offset_vector, build_batch_tensor
+class GIBLiBlock(nn.Module):
+    def __init__(
+        self,
+        embed_channels,
+        groups,
+        qkv_bias=True,
+        pe_multiplier=False,
+        pe_bias=True,
+        attn_drop_rate=0.0,
+        drop_path_rate=0.0,
+        enable_checkpoint=False,
+        ### gib parameters
+        k_size=0.1,
+        gib_dict=None,
+        num_neighbors=16,
+        gib_layers=1,
+    ):
+        super(GIBLiBlock, self).__init__()
+        self.attn = GroupedVectorAttention(
+            embed_channels=embed_channels,
+            groups=groups,
+            qkv_bias=qkv_bias,
+            attn_drop_rate=attn_drop_rate,
+            pe_multiplier=pe_multiplier,
+            pe_bias=pe_bias,
+        )
+        
+        neigh_strat = Neighboring('knn', num_neighbors)
+        self.fc1 = GIBLiLayer(embed_channels, embed_channels, -1, k_size, gib_dict, neigh_strat, gib_layers) 
+        self.fc3 = nn.Linear(embed_channels, embed_channels, bias=False)
+        self.norm1 = PointBatchNorm(embed_channels)
+        self.norm2 = PointBatchNorm(embed_channels)
+        self.norm3 = PointBatchNorm(embed_channels)
+        self.act = nn.ReLU(inplace=True)
+        self.enable_checkpoint = enable_checkpoint
+        self.drop_path = (
+            DropPath(drop_path_rate) if drop_path_rate > 0.0 else nn.Identity()
+        )
+
+    def forward(self, points, reference_index):
+        coord, feat, offset = points
+        identity = feat
+        # print(f"{feat.shape=} {offset.shape=} {build_batch_tensor(feat, offset).shape=}")
+        bfeat = self.fc1(build_batch_tensor(feat, offset))
+        feat = bfeat.view(-1, bfeat.shape[-1])
+        feat = self.act(self.norm1(feat))
+        # print(f"{feat.shape=}")
+        feat = (
+            self.attn(feat, coord, reference_index)
+            if not self.enable_checkpoint
+            else checkpoint(self.attn, feat, coord, reference_index)
+        )
+        feat = self.act(self.norm2(feat))
+        feat = self.norm3(self.fc3(feat))
+        feat = identity + self.drop_path(feat)
+        feat = self.act(feat)
+        return [coord, feat, offset]
+    
+    
+class GIBLiBlockSequence(nn.Module):
+    def __init__(
+        self,
+        depth,
+        embed_channels,
+        groups,
+        neighbours=16,
+        qkv_bias=True,
+        pe_multiplier=False,
+        pe_bias=True,
+        attn_drop_rate=0.0,
+        drop_path_rate=0.0,
+        enable_checkpoint=False,
+        ### gib parameters
+        k_size=0.1,
+        gib_dict=None,
+        num_neighbors=16,
+        gib_layers=1,
+    ):
+        super(GIBLiBlockSequence, self).__init__()
+
+        if isinstance(drop_path_rate, list):
+            drop_path_rates = drop_path_rate
+            assert len(drop_path_rates) == depth
+        elif isinstance(drop_path_rate, float):
+            drop_path_rates = [deepcopy(drop_path_rate) for _ in range(depth)]
+        else:
+            drop_path_rates = [0.0 for _ in range(depth)]
+
+        self.neighbours = neighbours
+        self.blocks = nn.ModuleList()
+        for i in range(depth):
+            block = GIBLiBlock(
+                embed_channels=embed_channels,
+                groups=groups,
+                qkv_bias=qkv_bias,
+                pe_multiplier=pe_multiplier,
+                pe_bias=pe_bias,
+                attn_drop_rate=attn_drop_rate,
+                drop_path_rate=drop_path_rates[i],
+                enable_checkpoint=enable_checkpoint,
+                ### gib parameters
+                k_size=k_size,
+                gib_dict=gib_dict,
+                num_neighbors=num_neighbors,
+                gib_layers=gib_layers,
+            )
+            self.blocks.append(block)
+            
+            
+    def forward(self, points):
+        coord, feat, offset = points
+        # reference index query of neighbourhood attention
+        # for windows attention, modify reference index query method
+        reference_index, _ = pointops.knn_query(self.neighbours, coord, offset)
+        for block in self.blocks:
+            points = block(points, reference_index)
+        return points
+
+
+class GIBLiEncoder(nn.Module):
+    def __init__(
+        self,
+        depth,
+        in_channels,
+        embed_channels,
+        groups,
+        grid_size=None,
+        neighbours=16,
+        qkv_bias=True,
+        pe_multiplier=False,
+        pe_bias=True,
+        attn_drop_rate=None,
+        drop_path_rate=None,
+        enable_checkpoint=False,
+        ### gib parameters
+        k_size=0.1,
+        gib_dict=None,
+        num_neighbors=16,
+        gib_layers=1,
+    ):
+        super(GIBLiEncoder, self).__init__()
+
+        self.down = GridPool(
+            in_channels=in_channels,
+            out_channels=embed_channels,
+            grid_size=grid_size,
+        )
+
+        self.blocks = GIBLiBlockSequence(
+            depth=depth,
+            embed_channels=embed_channels,
+            groups=groups,
+            neighbours=neighbours,
+            qkv_bias=qkv_bias,
+            pe_multiplier=pe_multiplier,
+            pe_bias=pe_bias,
+            attn_drop_rate=attn_drop_rate if attn_drop_rate is not None else 0.0,
+            drop_path_rate=drop_path_rate if drop_path_rate is not None else 0.0,
+            enable_checkpoint=enable_checkpoint,
+            ### gib parameters
+            k_size=k_size,
+            gib_dict=gib_dict,
+            num_neighbors=num_neighbors,
+            gib_layers=gib_layers,
+        )
+
+    def forward(self, points):
+        points, cluster = self.down(points)
+        return self.blocks(points), cluster
+
+class GIBLiDecoder(nn.Module):
+    def __init__(
+        self,
+        in_channels,
+        skip_channels,
+        embed_channels,
+        groups,
+        depth,
+        neighbours=16,
+        qkv_bias=True,
+        pe_multiplier=False,
+        pe_bias=True,
+        attn_drop_rate=None,
+        drop_path_rate=None,
+        enable_checkpoint=False,
+        unpool_backend="map",
+        ### gib parameters
+        k_size=0.1,
+        gib_dict=None,
+        num_neighbors=16,
+        gib_layers=1,
+    ):
+        super(GIBLiDecoder, self).__init__()
+
+        self.up = UnpoolWithSkip(
+            in_channels=in_channels,
+            out_channels=embed_channels,
+            skip_channels=skip_channels,
+            backend=unpool_backend,
+        )
+
+        self.blocks = GIBLiBlockSequence(
+            depth=depth,
+            embed_channels=embed_channels,
+            groups=groups,
+            neighbours=neighbours,
+            qkv_bias=qkv_bias,
+            pe_multiplier=pe_multiplier,
+            pe_bias=pe_bias,
+            attn_drop_rate=attn_drop_rate if attn_drop_rate is not None else 0.0,
+            drop_path_rate=drop_path_rate if drop_path_rate is not None else 0.0,
+            enable_checkpoint=enable_checkpoint,
+            ### gib parameters
+            k_size=k_size,
+            gib_dict=gib_dict,
+            num_neighbors=num_neighbors,
+            gib_layers=gib_layers,
+        )
+        
+        
+
+    def forward(self, points, skip_points, cluster):
+        points = self.up(points, skip_points, cluster)
+        return self.blocks(points)
+
+
+class GIBLiGVAPatchEmbed(nn.Module):
+    def __init__(
+        self,
+        depth,
+        in_channels,
+        embed_channels,
+        groups,
+        neighbours=16,
+        qkv_bias=True,
+        pe_multiplier=False,
+        pe_bias=True,
+        attn_drop_rate=0.0,
+        drop_path_rate=0.0,
+        enable_checkpoint=False,
+        ### gib parameters
+        k_size=0.1,
+        gib_dict=None,
+        num_neighbors=16,
+        gib_layers=1,
+    ):
+        super(GIBLiGVAPatchEmbed, self).__init__()
+        self.in_channels = in_channels
+        self.embed_channels = embed_channels
+        self.proj = nn.Sequential(
+            nn.Linear(in_channels, embed_channels, bias=False),
+            PointBatchNorm(embed_channels),
+            nn.ReLU(inplace=True),
+        )
+        self.blocks = GIBLiBlockSequence(
+            depth=depth,
+            embed_channels=embed_channels,
+            groups=groups,
+            neighbours=neighbours,
+            qkv_bias=qkv_bias,
+            pe_multiplier=pe_multiplier,
+            pe_bias=pe_bias,
+            attn_drop_rate=attn_drop_rate,
+            drop_path_rate=drop_path_rate,
+            enable_checkpoint=enable_checkpoint,
+            ### gib parameters
+            k_size=k_size,
+            gib_dict=gib_dict,
+            num_neighbors=num_neighbors,
+            gib_layers=gib_layers,
+        )
+
+    def forward(self, points):
+        coord, feat, offset = points
+        feat = self.proj(feat)
+        return self.blocks([coord, feat, offset])
+
+
+@MODELS.register_module("GIB-PT-v2m2")
+class GIBLiPointTransformerV2(nn.Module):
+    def __init__(
+        self,
+        in_channels,
+        num_classes,
+        patch_embed_depth=1,
+        patch_embed_channels=48,
+        patch_embed_groups=6,
+        patch_embed_neighbours=8,
+        enc_depths=(2, 2, 6, 2),
+        enc_channels=(96, 192, 384, 512),
+        enc_groups=(12, 24, 48, 64),
+        enc_neighbours=(16, 16, 16, 16),
+        dec_depths=(1, 1, 1, 1),
+        dec_channels=(48, 96, 192, 384),
+        dec_groups=(6, 12, 24, 48),
+        dec_neighbours=(16, 16, 16, 16),
+        grid_sizes=(0.06, 0.12, 0.24, 0.48),
+        attn_qkv_bias=True,
+        pe_multiplier=False,
+        pe_bias=True,
+        attn_drop_rate=0.0,
+        drop_path_rate=0,
+        enable_checkpoint=False,
+        unpool_backend="map",
+        ### gib parameters
+        k_size=0.1,
+        gib_dict=None,
+        num_neighbors=16,
+        gib_layers=1,
+    ):
+        super(GIBLiPointTransformerV2, self).__init__()
+        self.in_channels = in_channels
+        self.num_classes = num_classes
+        self.num_stages = len(enc_depths)
+        assert self.num_stages == len(dec_depths)
+        assert self.num_stages == len(enc_channels)
+        assert self.num_stages == len(dec_channels)
+        assert self.num_stages == len(enc_groups)
+        assert self.num_stages == len(dec_groups)
+        assert self.num_stages == len(enc_neighbours)
+        assert self.num_stages == len(dec_neighbours)
+        assert self.num_stages == len(grid_sizes)
+        self.patch_embed = GIBLiGVAPatchEmbed(
+            in_channels=in_channels,
+            embed_channels=patch_embed_channels,
+            groups=patch_embed_groups,
+            depth=patch_embed_depth,
+            neighbours=patch_embed_neighbours,
+            qkv_bias=attn_qkv_bias,
+            pe_multiplier=pe_multiplier,
+            pe_bias=pe_bias,
+            attn_drop_rate=attn_drop_rate,
+            enable_checkpoint=enable_checkpoint,
+            ### gib parameters
+            k_size=k_size,
+            gib_dict=gib_dict,
+            num_neighbors=num_neighbors,
+            gib_layers=gib_layers,
+        )
+
+        enc_dp_rates = [
+            x.item() for x in torch.linspace(0, drop_path_rate, sum(enc_depths))
+        ]
+        dec_dp_rates = [
+            x.item() for x in torch.linspace(0, drop_path_rate, sum(dec_depths))
+        ]
+        enc_channels = [patch_embed_channels] + list(enc_channels)
+        dec_channels = list(dec_channels) + [enc_channels[-1]]
+        self.enc_stages = nn.ModuleList()
+        self.dec_stages = nn.ModuleList()
+        for i in range(self.num_stages):
+            enc = GIBLiEncoder(
+                depth=enc_depths[i],
+                in_channels=enc_channels[i],
+                embed_channels=enc_channels[i + 1],
+                groups=enc_groups[i],
+                grid_size=grid_sizes[i],
+                neighbours=enc_neighbours[i],
+                qkv_bias=attn_qkv_bias,
+                pe_multiplier=pe_multiplier,
+                pe_bias=pe_bias,
+                attn_drop_rate=attn_drop_rate,
+                drop_path_rate=enc_dp_rates[
+                    sum(enc_depths[:i]) : sum(enc_depths[: i + 1])
+                ],
+                enable_checkpoint=enable_checkpoint,
+                ### gib parameters
+                k_size=k_size,
+                gib_dict=gib_dict,
+                num_neighbors=num_neighbors,
+                gib_layers=gib_layers,
+            )
+            dec = GIBLiDecoder(
+                depth=dec_depths[i],
+                in_channels=dec_channels[i + 1],
+                skip_channels=enc_channels[i],
+                embed_channels=dec_channels[i],
+                groups=dec_groups[i],
+                neighbours=dec_neighbours[i],
+                qkv_bias=attn_qkv_bias,
+                pe_multiplier=pe_multiplier,
+                pe_bias=pe_bias,
+                attn_drop_rate=attn_drop_rate,
+                drop_path_rate=dec_dp_rates[
+                    sum(dec_depths[:i]) : sum(dec_depths[: i + 1])
+                ],
+                enable_checkpoint=enable_checkpoint,
+                unpool_backend=unpool_backend,
+                ### gib parameters
+                k_size=k_size,
+                gib_dict=gib_dict,
+                num_neighbors=num_neighbors,
+                gib_layers=gib_layers,
+            )
+            self.enc_stages.append(enc)
+            self.dec_stages.append(dec)
+        self.seg_head = (
+            nn.Sequential(
+                nn.Linear(dec_channels[0], dec_channels[0]),
+                PointBatchNorm(dec_channels[0]),
+                nn.ReLU(inplace=True),
+                nn.Linear(dec_channels[0], num_classes),
+            )
+            if num_classes > 0
+            else nn.Identity()
+        )
+    
+    def _process_input(self, inpt:torch.Tensor):
+        """
+        `inpt` - torch.Tensor with shape (B, N, 3 + F) 
+            where B is batch size, N is number of points, F is feature dimension and 3 is for x, y, z coordinates
+
+        Returns
+        -------
+        `coords` - torch.Tensor with shape (B*N, 3)
+
+        `feat` - torch.Tensor with shape (B*N, F)
+
+        `batch` - torch.Tensor with shape (B*N, 1)
+        """
+
+        coords = inpt[:, :, :3].contiguous()
+        coords = coords.view(-1, 3)
+        if inpt.shape[-1] > 3:
+            feat = inpt[:, :, 3:].contiguous()
+            feat = feat.view(-1, feat.shape[-1])
+        else:
+            feat = torch.zeros((coords.shape[0], 1), device=coords.device)
+
+        batch = torch.cat([torch.full((inpt.shape[1],), i, device=inpt.device) for i in range(inpt.shape[0])], dim=0)
+
+        return coords, feat, batch
+
+
+    def forward(self, data_dict):
+        coord = data_dict["coord"]
+        feat = data_dict["feat"]
+        offset = data_dict["offset"].int()
+
+        # a batch of point cloud is a list of coord, feat and offset
+        # print(f"coord shape = {coord.shape}")
+        # print(f"feat shape = {feat.shape}")
+        # print(f"offset shape = {offset.shape}")
+        points = [coord, feat, offset]
+        points = self.patch_embed(points)
+        skips = [[points]]
+        for i in range(self.num_stages):
+            points, cluster = self.enc_stages[i](points)
+            skips[-1].append(cluster)  # record grid cluster of pooling
+            skips.append([points])  # record points info of current stage
+
+        points = skips.pop(-1)[0]  # unpooling points info in the last enc stage
+        for i in reversed(range(self.num_stages)):
+            skip_points, cluster = skips.pop(-1)
+            points = self.dec_stages[i](points, skip_points, cluster)
+        coord, feat, offset = points
+        seg_logits = self.seg_head(feat)
+        return seg_logits
+    

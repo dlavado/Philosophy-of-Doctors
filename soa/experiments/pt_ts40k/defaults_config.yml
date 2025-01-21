@@ -89,7 +89,7 @@ segmentation_losses:
 fast_dev_run:
   value: True
 precision: # 16 or 32 FPU precision
-  value: 32
+  value: bf16
   description: 'FPU precision'
 auto_lr_find:
   value: False

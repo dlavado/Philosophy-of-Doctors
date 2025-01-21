@@ -506,6 +506,61 @@ def build_batch_tensor(packed_tensor: torch.Tensor, offset_vector: torch.Tensor,
     
 
     return batch_tensor
+
+
+def build_batch_tensor_autograd(packed_tensor: torch.Tensor, offset_vector: torch.Tensor, offset_indices=None, pad_value=-1):
+    """
+    Build a batched tensor from a packed tensor and its offset vector, ensuring compatibility with autograd.
+    
+    Parameters
+    ----------
+    `packed_tensor` : torch.Tensor
+        Tensor in packed mode. Shape (B*N, ...).
+        
+    `offset_vector` : torch.Tensor
+        Tensor with the offset indices corresponding to each batch. Shape (B).
+        
+    `offset_indices` : torch.Tensor, optional
+        Tensor with the offset of each batch in the packed tensor. Shape (B).
+        
+    `pad_value` : int or float
+        The value used to pad the tensor for batches with fewer elements than the maximum.
+        
+    Returns
+    -------
+    `batch_tensor` : torch.Tensor
+        Tensor in batch mode. Shape (B, N, ...).
+    """
+    # Handle offsets if `offset_indices` is provided
+    if offset_indices is not None:
+        batch_offsets = torch.cat([torch.zeros(1, device=offset_indices.device), offset_indices[:-1]])
+        batch_offsets = batch_offsets.repeat_interleave(torch.diff(torch.cat([torch.zeros(1, device=offset_vector.device), offset_vector])))
+        packed_tensor = packed_tensor - batch_offsets.unsqueeze(1)
+    
+    lengths = torch.diff(torch.cat([torch.zeros(1, device=offset_vector.device), offset_vector]))  # Shape (B,)
+    max_length = lengths.max().item()
+    
+    # Initialize the batch tensor with padding values
+    batch_tensor = torch.full(
+        (len(lengths), int(max_length), *packed_tensor.shape[1:]),
+        pad_value,
+        dtype=packed_tensor.dtype,
+        device=packed_tensor.device,
+    )
+    
+    # Generate masks and index ranges
+    indices = torch.arange(max_length, device=offset_vector.device).unsqueeze(0)  # Shape (1, max_length)
+    mask = indices < lengths.unsqueeze(1)  # Shape (B, max_length)
+    
+    # Compute flat indices for packed_tensor
+    start_indices = torch.cat([torch.zeros(1, device=offset_vector.device), offset_vector[:-1]])
+    flat_indices = torch.cat([torch.arange(start, end, device=packed_tensor.device) 
+                              for start, end in zip(start_indices, offset_vector)])
+    
+    # Use the mask to scatter packed_tensor into batch_tensor
+    batch_tensor = batch_tensor.scatter(1, mask.nonzero(as_tuple=True)[1].unsqueeze(-1), packed_tensor[flat_indices.to(torch.long)].unsqueeze(-1))
+    
+    return batch_tensor
     
     
     

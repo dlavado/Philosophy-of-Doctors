@@ -17,7 +17,7 @@ preprocessed:
 load_into_memory:
   value: False
 add_normals:
-  value: True
+  value: False
   description: 'If True, adds normals to the dataset'
 data_path:
   value: ''
@@ -43,22 +43,22 @@ in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input''${experiment_path}/wandb/ptv2_resume' # v2
 model_version:
-  value: 'gibli-v1' # 'v1' or 'v2' or 'v3'
+  value: 'gibli-v3' # 'v1' or 'v2' or 'v3'
   description: 'Point Transformer version'
 #### GIBLi Parameters ####
 kernel_size:
-  value: 0.2
+  value: 0.1
   description: 'Kernel size of GIBs'
 gib_dict:
   value: {
-    'cy'    : 16,
-    'ellip' : 16,
-    'disk'  : 16,
-    'cone'  : 16,
+    'cy'    : 4,
+    'ellip' : 4,
+    'disk'  : 4,
+    'cone'  : 4,
   }
   description: 'Dictionary of GIBs'
 num_neighbors:
-  value: 16
+  value: 8
   description: 'Number of neighbors for GIBs'
 gib_layers:
   value: 1
@@ -110,7 +110,7 @@ profiler:
   value: False
   description: 'PyTorch Lightning profiler'
 accumulate_grad_batches:
-  value: 1
+  value: 8
   description: 'Accumulate gradients on k batches before performing a backward pass'
 save_onnx:
   value: False

@@ -1,6 +1,6 @@
 
 import torch
-from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS, NON_TRAINABLE, to_parameter, to_tensor, gaussian_2d, _prep_support_vectors
+from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, GIB_PARAMS, NON_TRAINABLE, to_parameter, to_tensor, gaussian_2d, _prep_support_vectors, _retrieve_support_points
 
 class Cone(GIB_Stub):
 
@@ -137,7 +137,7 @@ class Cone(GIB_Stub):
         cone_inc = torch.clamp(self.inc, 0, 0.499) # tan is not defined for 90 degrees
 
         # Gather support points: (B, M, K) -> (B, M, K, 3)
-        support_points = self._retrieve_support_points(points, support_idxs)
+        support_points = _retrieve_support_points(points, support_idxs)
         valid_mask = (support_idxs != -1) # Mask out invalid indices with -1; shape (B, M, K)
 
         # Center support points: (B, M, K, 3) - (B, M, 1, 3)

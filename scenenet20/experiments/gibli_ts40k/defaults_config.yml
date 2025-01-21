@@ -43,24 +43,24 @@ model:
   value: 'gibli'
 # --- GiBs config
 cylinder:
-  value: 10
+  value: 1
 disk:
-  value: 10
+  value: 1
 cone:
-  value: 10
+  value: 1
 ellipsoid:
-  value: 10
+  value: 1
 num_observers:
   value: -1
 kernel_size:
-  value: 0.2
+  value: 0.1
 # --- GIBLi config
 num_levels:
   value: 4
   description: 'Number of levels in the model'
 out_gib_channels:
-  value: 16
-  description: 'Number of output channels for GIB'
+  value: "[96, 192, 384, 512]"
+  description: 'Number of output channels for GIB' 
 skip_connections:
   value: True
   description: 'Whether to use skip connections in the model'
@@ -74,7 +74,7 @@ neighborhood_strategy:
   value: 'knn'
   description: 'Strategy for neighborhood operations'
 neighborhood_size:
-  value: "4" # "[16, 48, 96, 192, 384]"
+  value: "[16, 16, 16, 16]" # "[16, 48, 96, 192, 384]"
   description: 'Size of the neighborhood for the strategy'
 neighborhood_kwargs:
   value: {}
@@ -121,12 +121,12 @@ segmentation_losses:
 fast_dev_run:
   value: True
 precision: # 16 or 32 FPU precision
-  value: 'bf16'
+  value: bf16 #'bf16'
   description: 'FPU precision'
 auto_scale_batch_size:
   value: True
 profiler:
-  value: 'advanced' # 'advanced' # 'simple' or 'advanced'
+  value: null # 'advanced' # 'simple' or 'advanced'
   description: 'PyTorch Lightning profiler'
 accumulate_grad_batches:
   value: 1

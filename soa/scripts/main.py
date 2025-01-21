@@ -394,12 +394,10 @@ def main():
         # class_weights = 1 / class_densities
         if wandb.config.ignore_index > -1:
             class_weights[wandb.config.ignore_index] = 0.0 # ignore noise class
-        # class_weights = class_weights / class_weights.mean()
+        class_weights = class_weights / class_weights.mean() # normalize with the mean to not affect the lr
     else:
         class_weights = None
         
-    class_weights = class_weights**3 # cube the weights to increase the importance
-
     criterion = init_criterion(class_weights)
 
     # ------------------------
@@ -459,7 +457,7 @@ def main():
         enable_model_summary=True,
         enable_checkpointing=True,
         enable_progress_bar=True,
-        overfit_batches=0.01, # overfit on 10 batches
+        # overfit_batches=0.01, # overfit on 10 batches
         accumulate_grad_batches = wandb.config.accumulate_grad_batches,
     )
 

@@ -158,7 +158,7 @@ def init_gibli(criterion, pyramid_builder=None) -> pl.LightningModule:
         in_channels=wandb.config.in_channels,
         num_classes=wandb.config.num_classes,
         num_levels=wandb.config.num_levels,
-        out_gib_channels=wandb.config.out_gib_channels,
+        out_gib_channels=ast.literal_eval(wandb.config.out_gib_channels),
         num_observers=wandb.config.num_observers,
         kernel_size=wandb.config.kernel_size,
         gib_dict=gig_dict,
@@ -437,7 +437,7 @@ def main():
         enable_checkpointing=True,
         enable_progress_bar=True,
         # gradient_clip_val=1.0,
-        # overfit_batches=0.01, # overfit on 10 batches
+        overfit_batches=0.01, # overfit on 10 batches
         accumulate_grad_batches = wandb.config.accumulate_grad_batches,
     )
 

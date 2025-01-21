@@ -121,6 +121,7 @@ class GIB_Operator_Collection(nn.Module):
             self.gib_params = self.random_init(num_gibs, kernel_reach)
             
         self.gib:GIBCollection = torch.jit.script(self.gib_class(kernel_reach=self.kernel_reach, num_gibs=num_gibs, **self.gib_params))
+        # self.gib:GIBCollection = self.gib_class(kernel_reach=self.kernel_reach, num_gibs=num_gibs, **self.gib_params)
         
         
     def random_init(self, num_gibs, kernel_reach):
@@ -206,7 +207,8 @@ class GIB_Layer(nn.Module):
         self.num_observers = num_observers
 
         self.gibs:Mapping[str, GIB_Operator] = nn.ModuleDict()
-
+        
+        self.total_gibs = 0
         # --- Initializing GIBs ---
         for key in self.gib_dict:
             if key == 'cy':
@@ -220,12 +222,18 @@ class GIB_Layer(nn.Module):
 
             for i in range(self.gib_dict[key]):
                 self.gibs[f'{key}_{i}'] = GIB_Operator(g_class, kernel_reach=kernel_reach)#.to(self.device)
+                self.total_gibs += 1
 
-
-        # --- Initializing Convex Coefficients ---
-        self.lambdas = torch.randn((len(self.gibs), num_observers)) # shape (num_gibs, num_observers)
-        self.maintain_convexity() # make sure the coefficients are convex
-        self.lambdas = to_parameter(self.lambdas)
+        
+         # --- Initializing Convex Coefficients ---
+        if num_observers > 1:
+            self.lambdas = torch.randn((self.total_gibs, num_observers)) # shape (num_gibs, num_observers)
+            self.maintain_convexity() # make sure the coefficients are convex
+            self.lambdas = to_parameter(self.lambdas)
+        elif num_observers == 0: # no cvx comb, only a linear combination of the GIBs
+            self.lambdas = nn.Linear(self.total_gibs, self.total_gibs, bias=False)
+        else: # no observers, only the output of the GIBs
+            self.lambdas = to_tensor(0.0)   
 
     def maintain_convexity(self):
         self.lambdas = to_parameter(torch.softmax(self.lambdas, dim=0))
@@ -247,7 +255,7 @@ class GIB_Layer(nn.Module):
             support_idxs = support_idxs.unsqueeze(0)  
         
 
-        q_outputs = torch.zeros((coords.shape[0], q_points.shape[1], len(self.gibs)), dtype=coords.dtype, device=coords.device) # shape (B, M, num_gibs)
+        q_outputs = torch.empty((q_points.shape[0], q_points.shape[1], self.total_gibs), device=coords.device).contiguous() # shape (B, M, G)
         # print(f"{q_outputs.shape=}")
         for i, gib_key in enumerate(self.gibs):
             
@@ -263,10 +271,13 @@ class GIB_Layer(nn.Module):
     def _compute_observers(self, q_outputs:torch.Tensor) -> torch.Tensor:
         # --- Convex Combination ---
         # for each query point, compute the convex combination of the outputs of the GIBs
-        return q_outputs @ self.lambdas # shape (M, num_gibs) @ (num_gibs, num_observers) = (M, num_observers)
+        if self.num_observers > 1:
+            return q_outputs @ self.lambdas # shape (M, num_gibs) @ (num_gibs, num_observers) = (M, num_observers)
+
+        return q_outputs
     
     
-    def forward(self, points:torch.Tensor, q_coords:torch.Tensor, support_idxs:torch.Tensor) -> torch.Tensor:
+    def forward(self, points:torch.Tensor, q_coords:torch.Tensor, support_idxs:torch.Tensor, mc_points:torch.Tensor) -> torch.Tensor:
         """
         Computes the output of the GIB-Layer on the query points given the support points.
 
@@ -344,6 +355,7 @@ class GIB_Layer_Coll(nn.Module):
             num_gibs = self.gib_dict[key]
             if num_gibs > 0:
                 self.gibs[key] = torch.jit.script(GIB_Operator_Collection(g_class, num_gibs=num_gibs, kernel_reach=kernel_reach))
+                # self.gibs[key] = GIB_Operator_Collection(g_class, num_gibs=num_gibs, kernel_reach=kernel_reach)
                 self.total_gibs += num_gibs
                 
         # angles for each GIB in the layer; each GIB has 3 angles for rotation along the x, y, and z axes   
@@ -394,6 +406,7 @@ class GIB_Layer_Coll(nn.Module):
             support_idxs = support_idxs.unsqueeze(0)
 
         # Prepare support vectors
+        # print(f"{support_idxs.dtype=}")
         s_centered, valid_mask, batched = compute_centered_support_points(coords, q_points, support_idxs)
         s_centered = self.apply_rotations(s_centered) # (B, M, G, K, 3)
 
@@ -490,8 +503,8 @@ class GIB_Layer_Coll(nn.Module):
         `q_outputs` - torch.Tensor:
             Tensor of shape (M, num_observers) representing the output of the GIB-Layer on the query points.
         """
-        # q_outputs = self._compute_gib_outputs(points, q_coords, support_idxs, mc_points) # shape (M, num_gibs)
-        q_outputs = self._jit_compute_gib_outputs(points, q_coords, support_idxs, mc_points) # shape (M, num_gibs)
+        q_outputs = self._compute_gib_outputs(points, q_coords, support_idxs, mc_points) # shape (M, num_gibs)
+        # q_outputs = self._jit_compute_gib_outputs(points, q_coords, support_idxs, mc_points) # shape (M, num_gibs)
         if self.num_observers > 1:
             q_outputs = self._compute_observers(q_outputs) # shape (M, num_observers)
         return q_outputs
@@ -513,6 +526,7 @@ class GIB_Block(nn.Module):
                 ) -> None:
         super(GIB_Block, self).__init__()
         self.gib = torch.jit.script(GIB_Layer_Coll(gib_dict, kernel_size, num_observers))
+        # self.gib = GIB_Layer_Coll(gib_dict, kernel_size, num_observers)
         num_observers = self.gib.total_gibs if num_observers == -1 else num_observers
         self.gib_norm = PointBatchNorm(num_observers)
         self.strided = strided
@@ -587,7 +601,6 @@ class GIB_Sequence(nn.Module):
                 ) -> None:
         
         super(GIB_Sequence, self).__init__()
-    
 
         self.gib_blocks = nn.ModuleList()
         self.feat_channels = feat_channels

@@ -952,8 +952,10 @@ class TS40K_FULL_Preprocessed(Dataset):
                 for key, val in pyramid_dict.items():
                     if 'idx' in key:
                         i_pyramid[key] = [t[i].cpu().to(torch.int16) for t in val]
+                        # i_pyramid[key] = [t[i].cpu() for t in val]
                     else:
-                        i_pyramid[key] = [t[i].cpu().to(torch.float16) for t in val]
+                        # i_pyramid[key] = [t[i].cpu().to(torch.float16) for t in val]
+                        i_pyramid[key] = [t[i].cpu() for t in val]
                         
                 self.pyramids.append(i_pyramid)
                 

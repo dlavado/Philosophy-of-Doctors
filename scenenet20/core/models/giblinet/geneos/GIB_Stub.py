@@ -85,9 +85,9 @@ def _retrieve_support_points(points: torch.Tensor, support_idxs: torch.Tensor) -
 
     support_idxs = support_idxs.reshape(B, -1) # (B, M*K)
     # illegal indices are -1, we need to mask them out
-    support_idxs = torch.where(support_idxs == -1, torch.zeros_like(support_idxs), support_idxs)
+    support_idxs = torch.where(support_idxs == -1, torch.zeros_like(support_idxs), support_idxs).to(torch.long)
     # Gather the points (B, M*K, 3); Reshape back to (B, M, K, 3)
-    return torch.gather(points, 1, support_idxs.unsqueeze(-1).expand(-1, -1, F)).reshape(B, M, K, F).to(torch.float16)
+    return torch.gather(points, 1, support_idxs.unsqueeze(-1).expand(-1, -1, F)).reshape(B, M, K, F).to(points.dtype)
 
 @torch.jit.script
 def _prep_support_vectors(points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor):
@@ -237,39 +237,6 @@ class GIB_Stub(torch.nn.Module):
         config[NON_TRAINABLE] = []
 
         return config
-    
-
-    def _retrieve_support_points(self, points: torch.Tensor, supports_idxs: torch.Tensor) -> torch.Tensor:
-        """
-        Retrieves the support points from the input tensor given the support indices.
-
-        Parameters
-        ----------
-
-        `points` - torch.Tensor:
-            Tensor of shape (B, N, 3) representing the point cloud.
-
-        `supports_idxs` - torch.Tensor:
-            Tensor of shape (B, M, K) representing the indices of the support points for each query point.
-
-        Returns
-        -------
-        `support_points` - torch.Tensor:
-            Tensor of shape (B, M, K, 3) representing the support points.
-        """
-        B, M, K = supports_idxs.shape
-        F = points.shape[-1]
-
-        flat_supports_idxs = supports_idxs.reshape(B, -1) # (B, M*K)
-
-        # Gather the points (B, M*K, 3)
-        # the expanded tensor lets us gather the points at the indices in flat_supports_idxs
-        gathered_support_points = torch.gather(points, 1, flat_supports_idxs.unsqueeze(-1).expand(-1, -1, F))
-
-        # Reshape back to (B, M, K, 3)
-        support_points = gathered_support_points.reshape(B, M, K, F)
-        return support_points#.contiguous()
-    
 
     def _plot_integral(self, gaussian_x:torch.Tensor):
         print(f"{gaussian_x.shape=}")
@@ -430,7 +397,7 @@ class GIBCollection(torch.nn.Module):
         """
         #mc_points = mc_points.unsqueeze(0).expand(self.num_gibs, -1, -1)
         integral = self.compute_integral(mc_points)
-        return tensor - integral.unsqueeze(-1) / mc_points.shape[0]
+        return tensor - integral.unsqueeze(-1) / mc_points.shape[1]
     
     
     @abstractmethod
@@ -463,7 +430,7 @@ class GIBCollection(torch.nn.Module):
         """
         Validates the weights and sums them up.
         """
-        weights = weights * valid_mask.unsqueeze(2).expand_as(weights).to(torch.float16)
+        weights = weights * valid_mask.unsqueeze(2).expand_as(weights).to(weights.dtype)
         weights = self.sum_zero(weights, mc_points) # (B, M, G, K)
         weights = torch.sum(weights, dim=-1) # (B, M, G)
         return weights
