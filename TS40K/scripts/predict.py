@@ -69,8 +69,6 @@ def predict(model:pl.LightningModule, data_module:pl.LightningDataModule):
         if 4 not in uq or counts[uq == 4] < 100:
             print(torch.unique(y, return_counts=True)[1])
             continue
-                    
-        
       
         pred = pred.reshape(y.shape) # reshape to match y
 

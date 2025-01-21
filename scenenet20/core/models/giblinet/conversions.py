@@ -364,10 +364,7 @@ def compute_centered_support_points(points: torch.Tensor, q_points: torch.Tensor
     `valid_mask` - torch.Tensor:
         Tensor of shape (B, M, K) representing a mask where valid points are marked as `True` and invalid (`-1`) points as `False`.
 
-    `batched` - bool:
-        A flag indicating whether the input tensors were batched (True) or not (False).
     """
-
     if points.dim() == 2:
         # If unbatched, add a batch dimension
         points = points.unsqueeze(0)

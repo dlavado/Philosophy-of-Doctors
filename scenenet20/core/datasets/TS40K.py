@@ -20,7 +20,7 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 import utils.pointcloud_processing as eda
 import core.datasets.torch_transforms as tt
-from core.sampling.FPS import Farthest_Point_Sampling
+from core.models.giblinet.sampling.FPS import Farthest_Point_Sampling
 
 import os
 

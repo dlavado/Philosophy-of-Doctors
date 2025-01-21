@@ -15,7 +15,7 @@ preprocessed:
   value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: False
+  value: True
 data_path:
   value: ''
 in_channels:
@@ -43,23 +43,23 @@ model:
   value: 'gibli'
 # --- GiBs config
 cylinder:
-  value: 8
+  value: 10
 disk:
-  value: 8
+  value: 10
 cone:
-  value: 8
+  value: 10
 ellipsoid:
-  value: 8
+  value: 10
 num_observers:
   value: -1
 kernel_size:
-  value: 0.1
+  value: 0.2
 # --- GIBLi config
 num_levels:
   value: 4
   description: 'Number of levels in the model'
 out_gib_channels:
-  value: 4
+  value: 16
   description: 'Number of output channels for GIB'
 skip_connections:
   value: True
@@ -89,11 +89,11 @@ voxel_size:
 # training config
 # ------------------ #
 optimizer:
-  value: 'adam' #'adam' 
+  value: 'adamw' #'adam' 
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 3 # -1 for infinite
+  value: 10 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -113,7 +113,7 @@ class_weights:
   value: True
   description: 'Use class weights in the loss function'
 segmentation_losses:
-  value: {'focal': 0.1, 'tversky': 0.1}
+  value: {'focal': 0.5, 'tversky': 0.5, 'lovasz': 1.0}
   description: 'Additional losses for segmentation'
 # ------------------ #
 # Lit Trainer config
@@ -124,7 +124,7 @@ precision: # 16 or 32 FPU precision
   value: 'bf16'
   description: 'FPU precision'
 auto_scale_batch_size:
-  value: False
+  value: True
 profiler:
   value: 'advanced' # 'advanced' # 'simple' or 'advanced'
   description: 'PyTorch Lightning profiler'

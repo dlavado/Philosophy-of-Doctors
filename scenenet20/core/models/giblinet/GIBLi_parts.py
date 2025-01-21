@@ -10,8 +10,8 @@ sys.path.insert(1, '../..')
 from core.models.giblinet.geneos.GIB_Stub import GIB_Stub, GIBCollection, NON_TRAINABLE, GIB_PARAMS, to_parameter, to_tensor
 from core.models.giblinet.geneos import cylinder, disk, cone, ellipsoid
 from core.models.giblinet.GIBLi_utils import PointBatchNorm
-from core.unpooling.nearest_interpolation import interpolation
-from core.pooling.pooling import local_pooling
+from core.models.giblinet.unpooling.nearest_interpolation import interpolation
+from core.models.giblinet.pooling.pooling import local_pooling
 from core.models.giblinet.conversions import compute_centered_support_points
 from core.models.giblinet.geneos.diff_rotation_transform import rotate_points_batch
 
@@ -341,13 +341,11 @@ class GIB_Layer_Coll(nn.Module):
             else:
                 raise ValueError(f"Invalid GIB Type: `{key}`, must be one of ['cy', 'cone', 'disk', 'ellip']")
             
-            
             num_gibs = self.gib_dict[key]
             if num_gibs > 0:
                 self.gibs[key] = torch.jit.script(GIB_Operator_Collection(g_class, num_gibs=num_gibs, kernel_reach=kernel_reach))
                 self.total_gibs += num_gibs
                 
-          
         # angles for each GIB in the layer; each GIB has 3 angles for rotation along the x, y, and z axes   
         self.angles = nn.Parameter(torch.randn((self.total_gibs, 3)) * 0.01)
 
@@ -359,7 +357,7 @@ class GIB_Layer_Coll(nn.Module):
         elif num_observers == 0: # no cvx comb, only a linear combination of the GIBs
             self.lambdas = nn.Linear(self.total_gibs, self.total_gibs, bias=False)
         else: # no observers, only the output of the GIBs
-            self.lambdas = to_tensor(0.0)   
+            self.lambdas = to_tensor(1.0)   
 
     def maintain_convexity(self):
         if self.num_observers > 1:
@@ -388,7 +386,7 @@ class GIB_Layer_Coll(nn.Module):
         return s_centered.contiguous()
     
     
-    def _compute_gib_outputs(self, coords: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor, mc_points) -> torch.Tensor:
+    def _compute_gib_outputs(self, coords: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor, mc_points:torch.Tensor) -> torch.Tensor:
         # Ensure tensors are batched
         if coords.dim() == 2:
             coords = coords.unsqueeze(0)
@@ -410,8 +408,7 @@ class GIB_Layer_Coll(nn.Module):
             gib_outputs = gib_coll._prepped_forward(support, valid_mask, batched, mc)  # ([B], Q, output_dim)
             q_outputs[:, :, offset : offset + gib_output_dim] = gib_outputs
             offset += gib_output_dim
-            torch.cuda.empty_cache()
-
+            # torch.cuda.empty_cache()
             
         # del gib_outputs, support
         # torch.cuda.empty_cache()
@@ -617,7 +614,6 @@ class GIB_Sequence(nn.Module):
 
             feat_channels = out_c
             
-            
         # --- Initializing Monte Carlo Points ---
         # These points are used for integral approximation for each GIB in the Sequence.
         num_samples = 1000 # number of Monte Carlo points
@@ -644,8 +640,6 @@ class GIB_Sequence(nn.Module):
     def forward(self, points, q_coords, neighbor_idxs) -> torch.Tensor:
         coords, feats = points
         
-        # print(f"{coords.shape=}, {feats.shape}, {q_coords.shape=}, {neighbor_idxs.shape=}")
-
         for gib_block in self.gib_blocks:
             # 1st it: feats = (B, Q, feat_channels + num_observers)
             feats = gib_block((coords, feats), q_coords, neighbor_idxs, self.montecarlo_points)

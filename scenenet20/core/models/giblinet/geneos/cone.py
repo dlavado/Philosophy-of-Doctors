@@ -282,7 +282,7 @@ class ConeCollection(GIBCollection):
         return q_output
     
     
-
+    
 
 if __name__ == "__main__":
     import sys
@@ -290,9 +290,9 @@ if __name__ == "__main__":
     sys.path.insert(1, '../..')
     sys.path.insert(2, '../../..')
     sys.path.insert(3, '../../../..')
-    from core.neighboring.radius_ball import keops_radius_search
-    from core.neighboring.knn import torch_knn
-    from core.pooling.fps_pooling import fps_sampling
+    from core.models.giblinet.neighboring.radius_ball import keops_radius_search
+    from core.models.giblinet.neighboring.knn import torch_knn
+    from core.models.giblinet.pooling.fps_pooling import fps_sampling
     
     # generate some points, query points, and neighbors. For the neighbors, I want to test two scenarios: 
     # 1) where the neighbors are at radius distance from the query points

@@ -51,7 +51,7 @@ def resolve_optimizer(optimizer_name:str, model:torch.nn.Module, learning_rate) 
     if  optimizer_name == 'adam':
         return torch.optim.Adam(model.parameters(), lr=learning_rate)
     elif optimizer_name == 'adamw':
-        return torch.optim.AdamW(model.parameters(), lr=learning_rate)
+        return torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=5e-3)
     elif optimizer_name == 'sgd':
         return torch.optim.SGD(model.parameters(), lr=learning_rate)
     elif optimizer_name == 'rmsprop':

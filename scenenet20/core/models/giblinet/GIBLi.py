@@ -10,7 +10,7 @@ sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 
 from core.models.giblinet.GIBLi_parts import GIB_Sequence, PointBatchNorm, Decoder
-from core.models.giblinet.GIBLi_utils import BuildGraphPyramid
+from core.models.giblinet.GIBLi_utils import BuildGraphPyramid, Neighboring
 
 
 #################################################################
@@ -202,10 +202,70 @@ class GIBLiNet(nn.Module):
         seg_logits = self.seg_head(curr_latent_feats)
         # print(seg_logits.shape)
         
-        del graph_pyramid_dict, point_list, neighbors_idxs_list, subsampling_idxs_list, upsampling_idxs_list, level_feats, feats, curr_latent_feats, curr_coords
-        torch.cuda.empty_cache()
+        # del graph_pyramid_dict, point_list, neighbors_idxs_list, subsampling_idxs_list, upsampling_idxs_list, level_feats, feats, curr_latent_feats, curr_coords
+        # torch.cuda.empty_cache()
         
         return seg_logits
+
+
+
+
+
+
+class GIBLiLayer(nn.Module):
+    
+    def __init__(self, 
+                in_channels:int,
+                out_channels:int,
+                num_observers:int,
+                kernel_size:float,
+                gib_dict:Dict[str, int],
+                neighboring_strategy:Neighboring=None,
+                gib_layers=1
+                ) -> None:
+        
+        super(GIBLiLayer, self).__init__()
+
+        self.gib_seq = GIB_Sequence(num_layers=gib_layers, 
+                                   gib_dict=gib_dict, 
+                                   feat_channels=in_channels, 
+                                   num_observers=num_observers, 
+                                   kernel_size=kernel_size, 
+                                   out_channels=out_channels
+                                )
+        
+        self.neighboring_strategy = neighboring_strategy if neighboring_strategy is not None else Neighboring("knn", 16)
+        
+    
+
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        # this assumes that the input is of shape (B, N, 3 + F), where N is the number of points and F is the number of features (F >= 0).
+        # the batch_dim is necessary for now
+       
+        coords = x[..., :3]
+        feats = x
+
+        # print(f"{coords.shape=} --- {feats.shape=}")
+        neighbors_idxs = self.neighboring_strategy(coords, coords)
+
+        ###### Encoding phase ######
+        # print(f"Encoding...")
+        # print(f"\tfeats.shape={tuple(feats.shape)} \n\tpoint_list.shape={tuple(point_list.shape)} \n\tneighbors_idxs.shape={tuple(neighbors_idxs.shape)}")
+        feats = self.gib_seq((coords, feats), coords, neighbors_idxs)
+        # print(f"\t {feats.shape=}\n")
+        # coords = point_list[i+1]
+
+        return feats
+
+
+    def maintain_convexity(self):
+        self.gib_seq.maintain_convexity()
+
+    def get_gib_params(self) -> List[torch.Tensor]:
+        return self.gib_seq.get_gib_params()
+
+    def get_cvx_coefficients(self) -> List[torch.Tensor]:
+        return self.gib_seq.get_cvx_coefficients()
 
 
 if __name__ == "__main__":
@@ -255,22 +315,28 @@ if __name__ == "__main__":
     graph_pooling_factor = 2
 
 
-    model = GIBLiNet(in_channels, 
-                    num_classes, 
-                    num_levels, 
-                    out_gib_channels, 
-                    num_observers, 
-                    kernel_size, 
-                    gib_dict, 
-                    neighborhood_strategy, 
-                    neighborhood_size, 
-                    neighborhood_kwargs, 
-                    neighborhood_update_kwargs, 
-                    skip_connections, 
-                    graph_strategy, 
-                    graph_pooling_factor
-                ).cuda()
-    
+    # model = GIBLiNet(in_channels, 
+    #                 num_classes, 
+    #                 num_levels, 
+    #                 out_gib_channels, 
+    #                 num_observers, 
+    #                 kernel_size, 
+    #                 gib_dict, 
+    #                 neighborhood_strategy, 
+    #                 neighborhood_size, 
+    #                 neighborhood_kwargs, 
+    #                 neighborhood_update_kwargs, 
+    #                 skip_connections, 
+    #                 graph_strategy, 
+    #                 graph_pooling_factor
+    #             ).cuda()
 
-    pred = model(points.unsqueeze(0).cuda())
-    print(pred.shape) # should be (1, 10_000, 10) for 10 classes
+    # pred = model(points.unsqueeze(0).cuda())
+    # print(pred.shape) # should be (1, 10_000, 10) for 10 classes
+    
+    neighboring = Neighboring(neighborhood_strategy, neighborhood_size, **neighborhood_kwargs)
+    glayer = GIBLiLayer(in_channels, 16, num_observers, kernel_size, gib_dict, neighboring, gib_layers=1).cuda()
+    
+    pred = glayer(points.unsqueeze(0).cuda())
+    
+    print(pred.shape)

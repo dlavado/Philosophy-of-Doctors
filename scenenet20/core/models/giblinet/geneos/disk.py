@@ -295,10 +295,9 @@ class DiskCollection(GIBCollection):
 
 
 if __name__ == '__main__':
-    from core.neighboring.radius_ball import keops_radius_search
-    from core.neighboring.knn import torch_knn
-    from core.pooling.fps_pooling import fps_sampling
-    
+    from core.models.giblinet.neighboring.radius_ball import keops_radius_search
+    from core.models.giblinet.neighboring.knn import torch_knn
+    from core.models.giblinet.pooling.fps_pooling import fps_sampling
     
     
     

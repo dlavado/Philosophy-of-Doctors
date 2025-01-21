@@ -421,13 +421,7 @@ def main():
                                name=wandb.run.name, 
                                config=wandb.config
                             )
-    """
-    TODO:
-    DONE: 1. Put MC Points in a higher layer shared by all levels;
-    2. Put angles and rotations in the GIB Layer to only call the trig funs and rotations once;
-    DONE: 3. Make Precision 16 viable;
-    4. Use KeOps on the GIB Components;
-    """
+
     trainer = pl.Trainer(
         logger=wandb_logger,
         callbacks=callbacks,
@@ -443,7 +437,7 @@ def main():
         enable_checkpointing=True,
         enable_progress_bar=True,
         # gradient_clip_val=1.0,
-        # overfit_batches=0.1, # overfit on 10 batches
+        # overfit_batches=0.01, # overfit on 10 batches
         accumulate_grad_batches = wandb.config.accumulate_grad_batches,
     )
 
