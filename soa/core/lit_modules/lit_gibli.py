@@ -73,42 +73,33 @@ class LitGIBLi(LitWrapperModel):
     # def geneo_loss(self):
     #     return self.geneo_reg(self.model.get_gib_parameters(), self.model.get_cvx_coefficients())
     
+    def process_batch(self, batch):
+        from core.models.giblinet.conversions import build_batch_tensor
+        if isinstance(batch, dict):
+            x = batch["coord"]
+            y = batch["segment"]
+            offset = batch["offset"]
+            feat = batch["feat"]
+        else:
+            x, y = batch
+            
+        x = torch.cat([x, feat], dim=-1)
+        x = build_batch_tensor(x, offset)
+        y = build_batch_tensor(y, offset)    
+        return x, y
+    
     
     def evaluate(self, batch, stage=None, metric=None, prog_bar=True, logger=True):
 
-        if isinstance(batch, dict):
-            x = batch["pointcloud"]
-            y = batch["sem_labels"]
-            graph_pyramid = batch["graph_pyramid"]
-        else:
-            x, y = batch
-            graph_pyramid = None
+        x, y = self.process_batch(batch)
             
-        # import torch.profiler
-        # with torch.profiler.profile(
-        #     activities=[
-        #         torch.profiler.ProfilerActivity.CPU,
-        #         torch.profiler.ProfilerActivity.CUDA,
-        #     ],
-        #     profile_memory=True,
-        #     record_shapes=True
-        # ) as prof:
-        # x = x.to(self.dtype)
-        logits = self.model(x, graph_pyramid)
-        
-        #print(prof.key_averages().table(sort_by="cuda_memory_usage", row_limit=10))
-        
-        # print("Logits stats:", logits.min().item(), logits.max().item(), logits.mean().item(), logits.dtype)
-        
-        #logits = torch.clamp(logits, -1e1, 1e1)
-                
+        logits = self.model(x, None)
         logits = logits.reshape(-1, logits.shape[-1])
-        y = y.to(torch.long).reshape(-1)
                 
         # print(f"{logits.shape=}, {y.shape=}")
         # elastic_loss = self.elastic_loss()
         # geneo_loss = self.geneo_loss()
-        data_fidelity_loss = self.criterion(logits, y)
+        data_fidelity_loss = self.criterion(logits, y.to(torch.long).reshape(-1))
         
         loss = data_fidelity_loss # + elastic_loss #+ geneo_loss
         preds = self.prediction(logits)
@@ -116,9 +107,6 @@ class LitGIBLi(LitWrapperModel):
         if stage:
             on_step = stage == "train" 
             self.log(f"{stage}_loss", loss, on_epoch=True, on_step=on_step, prog_bar=prog_bar, logger=logger)
-            # self.log(f"{stage}_data_fidelity_loss", data_fidelity_loss, on_epoch=True, on_step=on_step, prog_bar=prog_bar, logger=logger)
-            # self.log(f"{stage}_elastic_loss", elastic_loss, on_epoch=True, on_step=on_step, prog_bar=prog_bar, logger=logger)
-            # self.log(f"{stage}_geneo_loss", geneo_loss, on_epoch=True, on_step=on_step, prog_bar=prog_bar, logger=logger)
 
             if metric:
                 for metric_name, metric_val in metric.items():

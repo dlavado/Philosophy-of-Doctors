@@ -156,7 +156,7 @@ checkpoint_dir:
 resume_checkpoint_name:
   value: MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
-  value: 0 # every n epochs
+  value: 1 # every n epochs
 checkpoint_every_n_steps:
-  value: 1 # every n steps
+  value: 0 # every n steps
   

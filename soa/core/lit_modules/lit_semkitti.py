@@ -13,7 +13,6 @@ from core.models.pointcept.pointcept.utils.config import Config
 
 class LitSemanticKITTI(pl.LightningDataModule):
     
-    
     def __init__(
             self,
             data_root,

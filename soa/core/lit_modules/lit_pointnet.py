@@ -68,9 +68,26 @@ class LitPointNet(LitWrapperModel):
     def prediction(self, model_output:torch.Tensor) -> torch.Tensor:
         return torch.argmax(model_output, dim=1)
     
+    
+    def process_batch(self, batch):
+        from core.models.giblinet.conversions import build_batch_tensor
+        if isinstance(batch, dict):
+            x = batch["coord"]
+            y = batch["segment"]
+            offset = batch["offset"]
+            feat = batch["feat"]
+        else:
+            x, y = batch
+            
+        x = torch.cat([x, feat], dim=-1)
+        x = build_batch_tensor(x, offset)
+        y = build_batch_tensor(y, offset)    
+        return x, y
+    
 
-    def evaluate(self, batch, stage=None, metric=None, prog_bar=True, logger=True):
-        x, y = batch
+    def evaluate(self, data_dict, stage=None, metric=None, prog_bar=True, logger=True):
+        
+        x, y = self.process_batch(data_dict)
         # print(x.shape, y.shape)
         out, trans_feat = self(x)
 

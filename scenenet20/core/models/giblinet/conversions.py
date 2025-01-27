@@ -322,10 +322,8 @@ def list_tensor_to_batch(list_tensor: list[torch.Tensor], pad_value: float = -1.
     batch_size = len(list_tensor)
     extra_dims = list_tensor[0].size()[1:]  # Additional dimensions as a tuple
 
-    # Create the batch shape dynamically by summing tuples
     batch_shape = (batch_size, max_length) + extra_dims
 
-    # Initialize the batch tensor
     batch_tensor = torch.full(
         batch_shape,
         pad_value,
@@ -333,7 +331,6 @@ def list_tensor_to_batch(list_tensor: list[torch.Tensor], pad_value: float = -1.
         dtype=list_tensor[0].dtype,
     )
 
-    # Populate the batch tensor
     for i, t in enumerate(list_tensor):
         batch_tensor[i, :t.size(0)] = t
 

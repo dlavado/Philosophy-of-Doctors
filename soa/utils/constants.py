@@ -40,16 +40,10 @@ else:
 TS40K_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/')
 TS40K_FULL_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-FULL/')
 TS40K_FULL_PREPROCESSED_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-FULL-Preprocessed/')
-TS40K_FULL_PREPROCESSED_VOXELIZED_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-FULL-Preprocessed-Voxelized/')
-TS40K_FULL_PREPROCESSED_IDIS_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-FULL-Preprocessed-IDIS/')
-TS40K_FULL_PREPROCESSED_SMOTE_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-FULL-Preprocessed-SMOTE/')
-# TS40K_PATH = os.path.join(EXT_PATH, "TS40K-NEW/TS40K-Sample/")
 
-LABELEC_RGB_DIR = os.path.join(TS40K_PATH, 'Labelec_LAS_RGB_2024')
-LABELEC_RGB_PREPROCESSED = os.path.join(LABELEC_RGB_DIR, 'Preprocessed/')
 
-LAS_RGB_PROCESSED = os.path.join(SSD_PATH, 'TS40K-Dataset/Labelec_LAS_RGB_2024/Processados/')
-LAS_RGB_ORIGINALS = os.path.join(SSD_PATH, 'TS40K-Dataset/Labelec_LAS_RGB_2024/Originais/')
-
-EXPERIMENTS_PATH = os.path.join(ROOT_PROJECT, 'experiments')
-WEIGHT_SCHEME_PATH = os.path.join(ROOT_PROJECT, 'core/criterions/hist_estimation.pickle')
+NUSCENES_PATH = os.path.join(EXT_PATH, 'nuscenes/')
+S3DIS_PATH = os.path.join(EXT_PATH, 's3dis/')
+SEMANTIC_KITTI_PATH = os.path.join(EXT_PATH, 'semkitti/')
+WAYMO_PATH = os.path.join(EXT_PATH, 'waymo/converted/')
+SCANNET_PATH = os.path.join(EXT_PATH, 'scannetv2/scannet/')   

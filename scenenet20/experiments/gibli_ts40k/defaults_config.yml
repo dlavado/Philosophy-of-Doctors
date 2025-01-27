@@ -43,23 +43,23 @@ model:
   value: 'gibli'
 # --- GiBs config
 cylinder:
-  value: 1
+  value: 16
 disk:
-  value: 1
+  value: 16
 cone:
-  value: 1
+  value: 16
 ellipsoid:
-  value: 1
+  value: 16
 num_observers:
-  value: -1
+  value: 32
 kernel_size:
   value: 0.1
 # --- GIBLi config
 num_levels:
-  value: 4
+  value: 5
   description: 'Number of levels in the model'
 out_gib_channels:
-  value: "[96, 192, 384, 512]"
+  value: "32" # "[96, 192, 384, 512]"
   description: 'Number of output channels for GIB' 
 skip_connections:
   value: True
@@ -74,7 +74,7 @@ neighborhood_strategy:
   value: 'knn'
   description: 'Strategy for neighborhood operations'
 neighborhood_size:
-  value: "[16, 16, 16, 16]" # "[16, 48, 96, 192, 384]"
+  value: "[16, 16, 16, 16, 16]"
   description: 'Size of the neighborhood for the strategy'
 neighborhood_kwargs:
   value: {}
@@ -142,7 +142,7 @@ resume_from_checkpoint:
 checkpoint_dir:
   value:  '${experiment_path}/checkpoints/'
 resume_checkpoint_name:
-  value: 'gibli_val_MulticlassJaccardIndex' # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+  value: 'val_MulticlassJaccardIndex' # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:

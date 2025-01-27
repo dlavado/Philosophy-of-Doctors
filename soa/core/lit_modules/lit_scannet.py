@@ -248,9 +248,7 @@ class LitScanNet(pl.LightningDataModule):
                     ),
                 )
         )
-        
-        
-        
+           
     
     def setup(self, stage=None):
         if stage == 'fit' or stage is None:

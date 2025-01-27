@@ -4,7 +4,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader, random_split
 import torch
 
-from core.datasets.TS40K import build_data_samples, TS40K_FULL, TS40K_FULL_Preprocessed
+from core.datasets.TS40K import TS40K_FULL, TS40K_FULL_Preprocessed
 
 from core.models.giblinet.conversions import list_tensor_to_batch
 
@@ -57,9 +57,6 @@ class LitTS40K_FULL(pl.LightningDataModule):
         self.min_points = min_points
         self.load_into_memory = load_into_memory
         self.save_hyperparameters()
-
-    def _build_dataset(self, raw_data_dir): #Somewhat equivalent to `prepare_data` hook of LitDataModule
-        build_data_samples(raw_data_dir, self.data_dir, sem_labels=True, fps=None, sample_types=self.sample_types, data_split={"fit": 0.8, "test": 0.2})
 
     def setup(self, stage:str=None):
         # build dataset

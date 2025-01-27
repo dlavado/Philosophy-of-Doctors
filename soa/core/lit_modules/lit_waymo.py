@@ -13,7 +13,6 @@ class LitWaymo(pl.LightningDataModule):
     
     def __init__(self,
                  data_root,
-                 split="train", 
                  batch_size=12,
                  transform=None,
                  loop=1,
@@ -23,10 +22,8 @@ class LitWaymo(pl.LightningDataModule):
         super().__init__()
         
         self.data_root = data_root
-        self.split = split
         self.batch_size = batch_size
         self.transform = transform
-        self.test_mode = split == "test"
         self.loop = loop
         self.num_workers = num_workers
         
@@ -246,7 +243,6 @@ if __name__ == '__main__':
     
     
     lit_waymo = LitWaymo(data_root=os.path.join(C.get_project_root(), 'data/waymo'), 
-                         split="train", 
                          batch_size=4, 
                          transform=None, 
                          loop=1, 

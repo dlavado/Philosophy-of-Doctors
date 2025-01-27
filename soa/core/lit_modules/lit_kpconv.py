@@ -94,28 +94,21 @@ class LitKPConv(LitWrapperModel):
 
         self.save_hyperparameters()
 
-    def forward(self, x:torch.Tensor):
-        points, lengths = batch_to_pack(x)
-        if points.shape[-1] > 3:
-            points, feats = points[:, :3], points
-        else:
-            feats = points
-
+    def forward(self, data_dict:dict) -> torch.Tensor:
+        
+        points = data_dict["coord"]
+        feats = data_dict["feat"]
+        lengths = data_dict["lengths"]
+        
         return self.model(points, feats, lengths)
     
     def prediction(self, model_output:torch.Tensor) -> torch.Tensor:
         return torch.argmax(model_output, dim=-1)
     
-    def forward_model_output(self, x:torch.Tensor) -> torch.Tensor:
+    def forward_model_output(self, data_dict:dict) -> torch.Tensor:
         # runs the model and returns the model output in (B, N, C) format
-        points, lengths = batch_to_pack(x)
-        if x.shape[-1] > 3:
-            points, feats = points[:, :3], points
-        else:
-            feats = points
-
-        model_dict = self.model(points, feats, lengths)
-
+        model_dict = self(data_dict)
+        lengths = data_dict["lengths"]
         return pack_to_batch(model_dict["scores"], lengths)[0]
     
 

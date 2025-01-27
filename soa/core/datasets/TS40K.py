@@ -355,15 +355,19 @@ class TS40K_FULL_Preprocessed(Dataset):
             idx = idx.tolist()
 
         pt_path = self.data_files[idx]
-        
         try:
             pt = torch.load(pt_path)  # xyz-coord (1, N, 3); label (1, N)
         except:
-            print(f"Unreadable file: {pt_path}")
+            ValueError(f"Unreadable file: {pt_path}")
 
         if self.transform:
             pt = self.transform(pt)
             #print(f"Transformed sample: {sample[0].shape}, {sample[1].shape}, {sample[2].shape}")
 
-        return pt
+        return {
+            'coord': pt[0][..., :3],
+            'feat' : pt[0][..., 3:] if pt[0].shape[-1] > 3 else pt[0],
+            'segment': pt[1],
+            'offset' : torch.tensor([pt[1].shape[-1]]), # number of points in point cloud
+        }
        

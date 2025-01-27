@@ -14,20 +14,16 @@ class LitNuScenes(pl.LightningDataModule):
     
     def __init__(self, 
                  data_dir,
-                 split="train", 
                  batch_size=12,
                  transform=None,
                  loop=1,
                  ignore_index=-1,
                  num_workers=8, 
-                 # load_into_memory=False
             ):
         super().__init__()
         self.data_dir = data_dir
-        self.split = split
         self.batch_size = batch_size
         self.transform = transform
-        self.test_mode = split == "test"
         self.loop = loop
         self.num_workers = num_workers
         
@@ -140,7 +136,6 @@ if __name__ == '__main__':
     from utils import constants as C
     
     lit_nuscenes = LitNuScenes(data_dir=os.path.join(C.get_project_root(), 'data/nuscenes'), 
-                               split="train", 
                                batch_size=12, 
                                transform=None, 
                                loop=1, 
