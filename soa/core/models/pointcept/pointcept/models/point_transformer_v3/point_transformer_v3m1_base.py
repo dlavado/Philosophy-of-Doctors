@@ -723,8 +723,7 @@ class PointTransformerV3(PointModule):
     
 ####################################################################################################
 
-
-from core.models.giblinet.GIBLi import GIBLiLayer
+from core.models.giblinet.GIBLi import GIBLiLayer, GIBLiNet
 from core.models.giblinet.GIBLi_utils import Neighboring
 from core.models.giblinet.conversions import get_offset_vector, build_batch_tensor
 
@@ -1046,3 +1045,69 @@ class GIBLiPointTransformerV3(PointModule):
                 reduce="mean",
             )
         return self.head(torch.nn.GELU()(point.feat))
+
+
+
+
+
+
+class PreGIBLiPointTransformerV3(PointTransformerV3):
+    
+    def __init__(
+        self,
+        in_channels=6,
+        num_classes=16,
+        order=("z", "z_trans"),
+        stride=(2, 2, 2, 2),
+        enc_depths=(2, 2, 2, 6, 2),
+        enc_channels=(32, 64, 128, 256, 512),
+        enc_num_head=(2, 4, 8, 16, 32),
+        enc_patch_size=(48, 48, 48, 48, 48),
+        dec_depths=(2, 2, 2, 2),
+        dec_channels=(64, 64, 128, 256),
+        dec_num_head=(4, 4, 8, 16),
+        dec_patch_size=(48, 48, 48, 48),
+        mlp_ratio=4,
+        qkv_bias=True,
+        qk_scale=None,
+        attn_drop=0.0,
+        proj_drop=0.0,
+        drop_path=0.3,
+        pre_norm=True,
+        shuffle_orders=True,
+        enable_rpe=False,
+        enable_flash=True,
+        upcast_attention=True,
+        upcast_softmax=True,
+        cls_mode=False,
+        pdnorm_bn=False,
+        pdnorm_ln=False,
+        pdnorm_decouple=True,
+        pdnorm_adaptive=False,
+        pdnorm_affine=True,
+        pdnorm_conditions=("ScanNet", "S3DIS", "Structured3D"),
+        ### gib parameters
+        giblinet_params=None
+    ):        
+        
+        gibli = GIBLiNet(in_channels=3 + in_channels, num_classes=num_classes, **giblinet_params)
+        input_dim = giblinet_params['out_gib_channels'][0] if isinstance(giblinet_params['out_gib_channels'], list) else giblinet_params['out_gib_channels']
+        
+        
+        super().__init__(input_dim + in_channels, num_classes, order, stride, enc_depths, enc_channels, enc_num_head, enc_patch_size, dec_depths, dec_channels, dec_num_head, dec_patch_size, mlp_ratio, qkv_bias, qk_scale, attn_drop, proj_drop, drop_path, pre_norm, shuffle_orders, enable_rpe, enable_flash, upcast_attention, upcast_softmax, cls_mode, pdnorm_bn, pdnorm_ln, pdnorm_decouple, pdnorm_adaptive, pdnorm_affine, pdnorm_conditions)
+
+
+        self.gibli = gibli
+
+    def forward(self, data_dict):
+        coords = data_dict['coord']
+        feats = data_dict['feat']
+        
+        x = torch.cat([coords, feats], dim=-1)
+        x = build_batch_tensor(x, data_dict['offset'])
+        x = self.gibli.gibli_forward(x)
+        
+        x = x.reshape(-1, x.shape[-1])
+        data_dict['feat'] = torch.cat([coords, x], dim=-1)
+        
+        return super().forward(data_dict)

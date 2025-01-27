@@ -613,7 +613,7 @@ class PointTransformerV2(nn.Module):
     
 ##############################################################################################
 
-from core.models.giblinet.GIBLi import GIBLiLayer
+from core.models.giblinet.GIBLi import GIBLiLayer, GIBLiNet
 from core.models.giblinet.GIBLi_utils import Neighboring
 from core.models.giblinet.conversions import get_offset_vector, build_batch_tensor
 class GIBLiBlock(nn.Module):
@@ -1075,3 +1075,85 @@ class GIBLiPointTransformerV2(nn.Module):
         seg_logits = self.seg_head(feat)
         return seg_logits
     
+    
+    
+    
+##############################################################################################
+
+
+class PreGIBLiPointTransformerV2(PointTransformerV2):
+    
+    def __init__(
+        self,
+        in_channels,
+        num_classes,
+        patch_embed_depth=1,
+        patch_embed_channels=48,
+        patch_embed_groups=6,
+        patch_embed_neighbours=8,
+        enc_depths=(2, 2, 6, 2),
+        enc_channels=(96, 192, 384, 512),
+        enc_groups=(12, 24, 48, 64),
+        enc_neighbours=(16, 16, 16, 16),
+        dec_depths=(1, 1, 1, 1),
+        dec_channels=(48, 96, 192, 384),
+        dec_groups=(6, 12, 24, 48),
+        dec_neighbours=(16, 16, 16, 16),
+        grid_sizes=(0.06, 0.12, 0.24, 0.48),
+        attn_qkv_bias=True,
+        pe_multiplier=False,
+        pe_bias=True,
+        attn_drop_rate=0.0,
+        drop_path_rate=0,
+        enable_checkpoint=False,
+        unpool_backend="map",
+        ### gib parameters
+        giblinet_params={},
+    ):
+        
+        gibli = GIBLiNet(in_channels=3 + in_channels, num_classes=num_classes, **giblinet_params)
+        input_dim = giblinet_params['out_gib_channels'][0] if isinstance(giblinet_params['out_gib_channels'], list) else giblinet_params['out_gib_channels']
+        
+        super(PreGIBLiPointTransformerV2, self).__init__(
+            input_dim + in_channels,
+            num_classes,
+            patch_embed_depth,
+            patch_embed_channels,
+            patch_embed_groups,
+            patch_embed_neighbours,
+            enc_depths,
+            enc_channels,
+            enc_groups,
+            enc_neighbours,
+            dec_depths,
+            dec_channels,
+            dec_groups,
+            dec_neighbours,
+            grid_sizes,
+            attn_qkv_bias,
+            pe_multiplier,
+            pe_bias,
+            attn_drop_rate,
+            drop_path_rate,
+            enable_checkpoint,
+            unpool_backend,
+        )
+        
+        self.gibli = gibli
+        
+        
+    def forward(self, data_dict):
+        
+        coords = data_dict['coord']
+        feats = data_dict['feat']
+        
+        x = torch.cat([coords, feats], dim=-1)
+        x = build_batch_tensor(x, data_dict['offset'])
+        x = self.gibli.gibli_forward(x)
+        
+        x = x.reshape(-1, x.shape[-1])
+        data_dict['feat'] = torch.cat([coords, x], dim=-1)
+        
+        return super().forward(data_dict)
+        
+      

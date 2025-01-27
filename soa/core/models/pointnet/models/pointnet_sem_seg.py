@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.parallel
 import torch.utils.data
 import torch.nn.functional as F
-from core.models.pointnet.models.pointnet_utils import PointNetEncoder, feature_transform_reguliarzer
-
+from core.models.pointnet.models.pointnet_utils import PointNetEncoder, feature_transform_reguliarzer, GIBLiPointNetEncoder
+from core.models.giblinet.GIBLi import GIBLiNet
 
 class get_model(nn.Module):
     def __init__(self, num_class, num_channels=3):
@@ -32,6 +32,77 @@ class get_model(nn.Module):
         x = F.log_softmax(x.view(-1,self.k), dim=-1)
         x = x.view(batchsize, n_pts, self.k)
         return x, trans_feat
+
+
+class get_gibli_model(nn.Module):
+    def __init__(self, 
+                 num_class, 
+                 num_channels=3,
+                 ### gib params
+                 **kwargs
+                ):
+        super(get_gibli_model, self).__init__()
+        self.k = num_class
+        self.feat = GIBLiPointNetEncoder(global_feat=False, feature_transform=True, channel=num_channels, **kwargs['gibli_params'])
+        self.conv1 = torch.nn.Conv1d(1088, 512, 1)
+        self.conv2 = torch.nn.Conv1d(512, 256, 1)
+        self.conv3 = torch.nn.Conv1d(256, 128, 1)
+        self.conv4 = torch.nn.Conv1d(128, self.k, 1)
+        self.bn1 = nn.BatchNorm1d(512)
+        self.bn2 = nn.BatchNorm1d(256)
+        self.bn3 = nn.BatchNorm1d(128)
+
+    def forward(self, x):
+        x = x.permute(0, 2, 1) # (batch_size, num_channels, num_points)
+        batchsize = x.size()[0]
+        n_pts = x.size()[2]
+        x, trans, trans_feat = self.feat(x)
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = self.conv4(x)
+        x = x.transpose(2,1).contiguous()
+        x = F.log_softmax(x.view(-1,self.k), dim=-1)
+        x = x.view(batchsize, n_pts, self.k)
+        return x, trans_feat
+    
+    
+class get_pre_gibli_model(nn.Module):
+    
+    def __init__(self, 
+                 in_channels:int,
+                 num_classes:int,
+                 num_levels:int,
+                 out_gib_channels,
+                 num_observers:int,
+                 kernel_size:float,
+                 gib_dict:dict,
+                 skip_connections:bool,
+                 pyramid_builder,
+                ):
+        
+        super(get_pre_gibli_model, self).__init__()
+        
+        self.giblinet = GIBLiNet(
+                    in_channels, 
+                    num_classes, 
+                    num_levels, 
+                    out_gib_channels, 
+                    num_observers, 
+                    kernel_size, 
+                    gib_dict, 
+                    skip_connections,
+                    pyramid_builder
+                )
+        
+        num_channels = out_gib_channels[0] if isinstance(out_gib_channels, list) else out_gib_channels
+        self.pointnet = get_model(num_classes, num_channels=num_channels)
+        
+        
+    def forward(self, x):
+        x = self.giblinet.gibli_forward(x)
+        torch.cuda.empty_cache()
+        return self.pointnet(x)
 
 class get_loss(torch.nn.Module):
     def __init__(self, mat_diff_loss_scale=0.001):

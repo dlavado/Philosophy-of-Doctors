@@ -704,75 +704,7 @@ class Farthest_Point_Sampling:
         return selected_points
 
         
-class Normalize_PCD:
 
-    def __init__(self, range=[0,1]) -> None:
-        
-        assert len(range) == 2
-        assert range[0] < range[1]
-
-        self.range = range
-
-
-
-    def __call__(self, sample) -> torch.Tensor:
-        """
-        Normalize the point cloud to have zero mean and unit variance.
-        """
-
-        pointcloud, labels = sample
-
-        pointcloud = self.normalize(pointcloud)
-
-        return pointcloud, labels
-    
-
-    def normalize(self, pointcloud:torch.Tensor) -> torch.Tensor:
-        """
-        normalize = (x - min(x)) / (max(x) - min(x))
-        now x \in pointcloud is such that x \in [0, 1] (i.e., range)
-        """
-
-        point_dim = 1 if pointcloud.dim() == 3 else 0
-
-        xyz = pointcloud[..., :3]
-            
-        min_x = xyz.min(dim=point_dim, keepdim=True).values
-        max_x = xyz.max(dim=point_dim, keepdim=True).values
-        
-        xyz = (xyz - min_x) / (max_x - min_x)
-
-        # put pointcloud in range
-        xyz = xyz * (self.range[1] - self.range[0]) + self.range[0]
-
-        pointcloud[..., :3] = xyz
-
-        return pointcloud
-
-    def standardize(self, pointcloud:torch.Tensor) -> torch.Tensor:
-        """
-        Parameters
-        ----------
-
-        `pointcloud` - torch.Tensor with shape ((B), P, 3)
-            Point cloud to be normalized; Batch dim is optional
-        """
-
-        pointcloud = pointcloud.float()
-
-        if pointcloud.dim() == 3: # batched point clouds
-            centroid = pointcloud.mean(dim=1, keepdim=True)
-            pointcloud = pointcloud - centroid
-            max_dist:torch.Tensor = torch.sqrt((pointcloud ** 2).sum(dim=-1)).max(dim=1) # shape = (batch_size,)
-            pointcloud = pointcloud / max_dist.values[:, None, None]
-
-        else: # single point cloud
-            centroid = pointcloud.mean(dim=0)
-            pointcloud = pointcloud - centroid 
-            max_dist = torch.sqrt((pointcloud ** 2).sum(dim=-1)).max()
-            pointcloud = pointcloud / max_dist
-
-        return pointcloud
 
 
 

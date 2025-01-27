@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from core.models.pointnet.models.pointnet2_utils import PointNetSetAbstraction,PointNetFeaturePropagation
-
+from core.models.pointnet.models.pointnet2_utils import PointNetSetAbstraction,PointNetFeaturePropagation, GIBLiPointNetSetAbstraction
+from core.models.giblinet.GIBLi import GIBLiNet
 
 class get_model(nn.Module):
     def __init__(self, num_classes, num_channels=3):
@@ -53,7 +53,100 @@ class get_model(nn.Module):
         x = F.log_softmax(x, dim=1)
         x = x.permute(0, 2, 1) # (batch_size, num_points, num_classes)
         return x, l4_points
+    
+    
+class get_gibli_model(nn.Module):
+    def __init__(self, 
+                 num_classes, 
+                 num_channels=3,
+                 **kwargs
+                ):
+        super(get_gibli_model, self).__init__()
+        self.sa1 = GIBLiPointNetSetAbstraction(1024, 1, 32, num_channels + 3, [32, 32, 64], False, **kwargs['gibli_params'])
+        self.sa2 = GIBLiPointNetSetAbstraction(256, 0.2, 32, 64 + 3, [64, 64, 128], False, **kwargs['gibli_params'])
+        self.sa3 = GIBLiPointNetSetAbstraction(64, 0.4, 32, 128 + 3, [128, 128, 256], False, **kwargs['gibli_params'])
+        self.sa4 = GIBLiPointNetSetAbstraction(16, 0.8, 32, 256 + 3, [256, 256, 512], False, **kwargs['gibli_params'])
+        self.fp4 = PointNetFeaturePropagation(768, [256, 256])
+        self.fp3 = PointNetFeaturePropagation(384, [256, 256])
+        self.fp2 = PointNetFeaturePropagation(320, [256, 128])
+        self.fp1 = PointNetFeaturePropagation(128, [128, 128, 128])
+        self.conv1 = nn.Conv1d(128, 128, 1)
+        self.bn1 = nn.BatchNorm1d(128)
+        self.drop1 = nn.Dropout(0.5)
+        self.conv2 = nn.Conv1d(128, num_classes, 1)
 
+    def forward(self, xyz):
+        xyz = xyz.permute(0, 2, 1) # (batch_size, num_channels, num_points)
+        l0_points = xyz
+        l0_xyz = xyz[:,:3,:]
+
+        l1_xyz, l1_points = self.sa1(l0_xyz, l0_points)
+        l2_xyz, l2_points = self.sa2(l1_xyz, l1_points)
+        l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
+        l4_xyz, l4_points = self.sa4(l3_xyz, l3_points)
+
+        l3_points = self.fp4(l3_xyz, l4_xyz, l3_points, l4_points)
+        if torch.isnan(l3_points).any():
+            print("l3_points is nan")
+            exit()
+        l2_points = self.fp3(l2_xyz, l3_xyz, l2_points, l3_points)
+        if torch.isnan(l2_points).any():
+            print("l2_points is nan")
+            exit()
+        l1_points = self.fp2(l1_xyz, l2_xyz, l1_points, l2_points)
+        if torch.isnan(l1_points).any():
+            print("l1_points is nan")
+            exit()
+        l0_points = self.fp1(l0_xyz, l1_xyz, None, l1_points)
+        if torch.isnan(l0_points).any():
+            print("l0_points is nan")
+            exit()
+
+        x = self.drop1(F.relu(self.bn1(self.conv1(l0_points))))
+        x = self.conv2(x)
+        x = F.log_softmax(x, dim=1)
+        x = x.permute(0, 2, 1) # (batch_size, num_points, num_classes)
+        return x, l4_points
+
+
+
+
+class get_pre_gibli_model(nn.Module):
+    
+    def __init__(self, 
+                 in_channels:int,
+                 num_classes:int,
+                 num_levels:int,
+                 out_gib_channels,
+                 num_observers:int,
+                 kernel_size:float,
+                 gib_dict:dict,
+                 skip_connections:bool,
+                 pyramid_builder,
+                ):
+        
+        super(get_pre_gibli_model, self).__init__()
+        
+        self.giblinet = GIBLiNet(in_channels, 
+                            num_classes, 
+                            num_levels, 
+                            out_gib_channels, 
+                            num_observers, 
+                            kernel_size, 
+                            gib_dict, 
+                            skip_connections,
+                            pyramid_builder
+                        )
+        
+        num_channels = out_gib_channels[0] if isinstance(out_gib_channels, list) else out_gib_channels
+        self.pointnet2 = get_model(num_classes, num_channels=num_channels)
+        
+        
+    def forward(self, x):
+        x = self.giblinet.gibli_forward(x)
+        torch.cuda.empty_cache()
+        return self.pointnet2(x)
+    
 
 class get_loss(nn.Module):
     def __init__(self):

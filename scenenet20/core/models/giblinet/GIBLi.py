@@ -140,12 +140,9 @@ class GIBLiNet(nn.Module):
                 cvx_coefs.extend(self.decoders[i].get_cvx_coefficients())
         
         return cvx_coefs
-
-
-    def forward(self, x:torch.Tensor, graph_pyramid_dict=None) -> torch.Tensor:
-        # this assumes that the input is of shape (B, N, 3 + F), where N is the number of points and F is the number of features (F >= 0).
-        # the batch_dim is necessary for now
-       
+    
+    def gibli_forward(self, x:torch.Tensor, graph_pyramid_dict=None) -> torch.Tensor:
+        
         if x.shape[-1] > 3:
             feats = x #x[..., 3:]
         else:
@@ -203,6 +200,15 @@ class GIBLiNet(nn.Module):
             curr_latent_feats = self.decoders[i]((curr_coords, curr_latent_feats), (skip_coords, skip_feats), upsampling_idxs_list[i], skip_neighbors_idxs)
             curr_coords = skip_coords
             #print(f"\t{curr_latent_feats.shape=}\n")
+            
+        return curr_latent_feats
+
+
+    def forward(self, x:torch.Tensor, graph_pyramid_dict=None) -> torch.Tensor:
+        # this assumes that the input is of shape (B, N, 3 + F), where N is the number of points and F is the number of features (F >= 0).
+        # the batch_dim is necessary for now
+       
+        curr_latent_feats = self.gibli_forward(x, graph_pyramid_dict)
 
         ###### Segmentation phase ######
         seg_logits = self.seg_head(curr_latent_feats)
@@ -251,7 +257,6 @@ class GIBLiLayer(nn.Module):
         coords = x[..., :3]
         feats = x # x[..., 3:]
 
-        # print(f"{coords.shape=} --- {feats.shape=}")
         neighbors_idxs = self.neighboring_strategy(coords, coords)
 
         ###### Encoding phase ######
@@ -261,7 +266,7 @@ class GIBLiLayer(nn.Module):
         # print(f"\t {feats.shape=}\n")
         # coords = point_list[i+1]
 
-        return feats
+        return feats # (B, N, out_channels)
 
 
     def maintain_convexity(self):

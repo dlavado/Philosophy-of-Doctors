@@ -22,34 +22,45 @@ class Lit_PointTransformer(LitWrapperModel):
                 learning_rate=0.01,
                 metric_initializer=None, 
                 ignore_index=-1,
-                ### gib parameters
-                k_size=0.1,
-                gib_dict=None,
-                num_neighbors=16,
-                gib_layers=1,
                 **kwargs):
         
-        if 'gibli' in version:
+        
+        if 'pre' in version:
+            
+            if 'v3' in version:
+                model = ptv3.PreGIBLiPointTransformerV3(in_channels=in_channels, 
+                                                        num_classes=num_classes, 
+                                                        enable_flash=False,
+                                                        order=["z", "z-trans", "hilbert", "hilbert-trans"],
+                                                        giblinet_params=kwargs['gib_params'])
+                
+                
+            elif 'v2' in version:
+                model = ptv2.PreGIBLiPointTransformerV2(in_channels=in_channels, 
+                                                        num_classes=num_classes,
+                                                        grid_sizes=(0.05, 0.10, 0.20, 0.40),
+                                                        giblinet_params=kwargs['gib_params'])
+                
+            else:
+                model = pts.PreGIBLiPointTransformerSeg50(in_channels=in_channels, 
+                                                        num_classes=num_classes, 
+                                                        giblinet_params=kwargs['gib_params'])
+        
+        elif 'gibli' in version:
             if 'v1' in version: # gibli v1
                 model = pts.GIBLiPointTransformerSeg50(in_channels=in_channels, 
                                                        num_classes=num_classes, 
-                                                       k_size=k_size, 
-                                                       gib_dict=gib_dict,
-                                                       num_neighbors=num_neighbors, 
-                                                       gib_layers=gib_layers)
+                                                       **kwargs['gib_params'])
             elif 'v2' in version: # gibli v2
                 model = ptv2.GIBLiPointTransformerV2(in_channels=in_channels,
                                                      num_classes=num_classes,
                                                      grid_sizes=(0.05, 0.10, 0.20, 0.40),
-                                                     k_size=k_size,
-                                                     gib_dict=gib_dict,
-                                                     num_neighbors=num_neighbors,
-                                                     gib_layers=gib_layers)
+                                                     **kwargs['gib_params'])
                 
             elif 'v3' in version: # gibli v3
                 model = ptv3.GIBLiPointTransformerV3(in_channels=in_channels, num_classes=num_classes,
                                                       order=["z", "z-trans", "hilbert", "hilbert-trans"], enable_flash=False,
-                                                     k_size=k_size, gib_dict=gib_dict, num_neighbors=num_neighbors, gib_layers=gib_layers)
+                                                      **kwargs['gib_params'])
             else:
                 ValueError("Invalid version")
         else:

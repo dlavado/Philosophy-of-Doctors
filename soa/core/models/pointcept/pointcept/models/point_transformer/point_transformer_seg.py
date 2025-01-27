@@ -336,7 +336,7 @@ class PointTransformerSeg50(PointTransformerSeg):
 #########################################################################
 
 
-from core.models.giblinet.GIBLi import GIBLiLayer
+from core.models.giblinet.GIBLi import GIBLiLayer, GIBLiNet
 from core.models.giblinet.GIBLi_utils import Neighboring
 from core.models.giblinet.conversions import get_offset_vector, build_batch_tensor, build_batch_tensor_autograd
 
@@ -532,6 +532,45 @@ class GIBLiPointTransformerSeg50(GIBLiPointTransformerSeg):
     def __init__(self, **kwargs):
         super(GIBLiPointTransformerSeg50, self).__init__(
             GIBLiBottleneck, [1, 2, 3, 5, 2], **kwargs
+        )
+        
+        
+        
+
+class PreGIBLiPointTransformerSeg(PointTransformerSeg):
+    
+    
+    def __init__(self, 
+                block, blocks, in_channels=6, num_classes=13,
+                giblinet_params={}
+                ):
+        
+        gibli = GIBLiNet(in_channels= 3 + in_channels, num_classes=num_classes, **giblinet_params)
+        input_dim = giblinet_params['out_gib_channels'][0] if isinstance(giblinet_params['out_gib_channels'], list) else giblinet_params['out_gib_channels']
+        
+        super(PreGIBLiPointTransformerSeg, self).__init__(block, blocks, input_dim + in_channels, num_classes)
+        
+        self.gibli = gibli
+        
+    def forward(self, data_dict):
+        coords = data_dict['coord']
+        feats = data_dict['feat']
+        
+        x = torch.cat([coords, feats], dim=-1)
+        x = build_batch_tensor(x, data_dict['offset'])
+        x = self.gibli.gibli_forward(x)
+        
+        x = x.reshape(-1, x.shape[-1])
+        data_dict['feat'] = torch.cat([coords, x], dim=-1)
+        
+        return super().forward(data_dict)
+    
+    
+@MODELS.register_module("PreGIBLiPointTransformer-Seg50")
+class PreGIBLiPointTransformerSeg50(PreGIBLiPointTransformerSeg):
+    def __init__(self, **kwargs):
+        super(PreGIBLiPointTransformerSeg50, self).__init__(
+            Bottleneck, [1, 2, 3, 5, 2], **kwargs
         )
     
     

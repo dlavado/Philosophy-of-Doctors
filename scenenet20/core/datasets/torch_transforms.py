@@ -183,31 +183,46 @@ class Ignore_Label:
         
 class Normalize_PCD:
 
+    def __init__(self, range=[0,1]) -> None:
+        
+        assert len(range) == 2
+        assert range[0] < range[1]
+
+        self.range = range
+
+
+
     def __call__(self, sample) -> torch.Tensor:
         """
         Normalize the point cloud to have zero mean and unit variance.
         """
+
         pointcloud, labels = sample
+
         pointcloud = self.normalize(pointcloud)
+
         return pointcloud, labels
     
 
     def normalize(self, pointcloud:torch.Tensor) -> torch.Tensor:
         """
-         (x - min(x)) / (max(x) - min(x))
+        normalize = (x - min(x)) / (max(x) - min(x))
+        now x \in pointcloud is such that x \in [0, 1] (i.e., range)
         """
 
-        pointcloud = pointcloud.float()
+        point_dim = 1 if pointcloud.dim() == 3 else 0
 
-        if pointcloud.dim() == 3: # batched point clouds
-            min_x = pointcloud.min(dim=1, keepdim=True).values
-            max_x = pointcloud.max(dim=1, keepdim=True).values
-            pointcloud = (pointcloud - min_x) / (max_x - min_x)
+        xyz = pointcloud[..., :3]
+            
+        min_x = xyz.min(dim=point_dim, keepdim=True).values
+        max_x = xyz.max(dim=point_dim, keepdim=True).values
         
-        else: # single point cloud
-            min_x = pointcloud.min(dim=0, keepdim=True).values
-            max_x = pointcloud.max(dim=0, keepdim=True).values
-            pointcloud = (pointcloud - min_x) / (max_x - min_x)
+        xyz = (xyz - min_x) / (max_x - min_x)
+
+        # put pointcloud in range
+        xyz = xyz * (self.range[1] - self.range[0]) + self.range[0]
+
+        pointcloud[..., :3] = xyz
 
         return pointcloud
 

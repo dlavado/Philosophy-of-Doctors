@@ -16,22 +16,20 @@ preprocessed:
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
   value: False
+data_path:
+  value: ''
 add_normals:
   value: False
   description: 'If True, adds normals to the dataset'
-data_path:
-  value: ''
 num_classes:
   value: 6
 num_data_channels:
   value: 3
   description: 'Number of channels in the dataset'
-voxel_grid_size:
-  value: (64, 64, 64)
 batch_size:
-  value: 16
+  value: 4
 ignore_index:
-  value: 0 # noise
+  value: -1 # noise
 num_workers: 
   value: 0
 val_split:
@@ -47,39 +45,54 @@ min_points:
 # model config
 # ------------------ #
 model:
-  value: 'kpconv'
+  value: 'pointnet-pregibli'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'
-num_stages:
-    value: 5
-kpconv_voxel_size:
-    value: 0.02
-kernel_size:
-    value: 15
-kpconv_radius:
-    value: 12
-kpconv_sigma:
-    value: 2.0
-init_dim:
-    value: 64
-neighbor_limits:
-    value: "[10, 10, 10, 10, 10]" # if None, recompute neighbors
-###################### sceneNet prebackbone ######################
-cylinder_geneo:
-  value: 10
-arrow_geneo:
-  value: 10
-neg_sphere_geneo:
-  value: 10
-disk_geneo:
-  value: 10
-cone_geneo:
-  value: 10
-ellipsoid_geneo:
-  value: 10
+#### GIBLi Parameters ####
+gib_dict:
+  value: {
+    'cy'    : 4,
+    'ellip' : 4,
+    'disk'  : 4,
+    'cone'  : 4,
+  }
+  description: 'Dictionary of GIBs'
 num_observers:
-  value: "[8]"
+  value: -1
+kernel_size:
+  value: 0.1
+# --- GIBLi config
+num_levels:
+  value: 4
+  description: 'Number of levels in the model'
+out_gib_channels:
+  value: "4" #"[8, 16, 32, 32]"
+  description: 'Number of output channels for GIB' 
+skip_connections:
+  value: True
+  description: 'Whether to use skip connections in the model'
+graph_strategy:
+  value: 'grid' # 'fps' or 'grid'
+  description: 'Strategy for graph construction'
+graph_pooling_factor:
+  value: 2
+  description: 'Pooling factor for graph operations'
+neighborhood_strategy:
+  value: 'knn'
+  description: 'Strategy for neighborhood operations'
+neighborhood_size:
+  value: "4" # "[16, 16, 16, 16]" # "[16, 48, 96, 192, 384]"
+  description: 'Size of the neighborhood for the strategy'
+neighborhood_kwargs:
+  value: {}
+  description: 'Additional keyword arguments for neighborhood operations'
+neighborhood_update_kwargs:
+  value: {}
+  description: 'Additional keyword arguments for neighborhood updates'
+voxel_size:
+  value: "[0.05, 0.05, 0.05]"
+  description: 'Voxel size for voxelization'
 # ------------------ #
 # training config
 # ------------------ #
@@ -88,7 +101,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 300 # -1 for infinite
+  value: -1 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -108,13 +121,16 @@ criterion:
 class_weights:
   value: True
   description: 'Use class weights in the loss function'
+segmentation_losses:
+  value: null #{'focal': 0.2, 'tversky': 0.2, 'lovasz': 0.2}
+  description: 'Additional losses for segmentation'
 # ------------------ #
 # Lit Trainer config
 # ------------------ #
 fast_dev_run:
   value: True
 precision: # 16 or 32 FPU precision
-  value: 16
+  value: 32
   description: 'FPU precision'
 auto_lr_find:
   value: False
@@ -135,11 +151,12 @@ save_onnx:
 resume_from_checkpoint:
   value: False
 checkpoint_dir:
-  value: '${experiment_path}/checkpoints'
+  value: '${experiment_path}/pointnet/'
+  # value: '${experiment_path}/pointnet++/'
 resume_checkpoint_name:
-  value: MulticlassJaccardIndex-v1 # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+  value: MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
-  value: 1 # every n epochs
+  value: 0 # every n epochs
 checkpoint_every_n_steps:
-  value: 0 # every n steps
+  value: 1 # every n steps
   

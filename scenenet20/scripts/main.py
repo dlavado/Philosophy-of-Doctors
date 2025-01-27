@@ -176,47 +176,7 @@ def init_gibli(criterion, pyramid_builder=None) -> pl.LightningModule:
 # fd654c61852c40948c264d606c81f59a9dddcc67
 
 
-def init_pyramid_builder():
-    from core.models.giblinet.GIBLi_utils import BuildGraphPyramid
-    
-    neigh_strategy = wandb.config.neighborhood_strategy
-    
-    if neigh_strategy == 'knn':
-        neighborhood_kwargs = {}
-        neighborhood_update_kwargs = {}
-    # elif neigh_strategy == 'dbscan': #TODO: fix DBSCAN
-    #     neighborhood_kwargs = {'eps': wandb.config.dbscan_eps, 'min_points': wandb.config.dbscan_min_points}
-    #     neighborhood_update_kwargs = {'eps': wandb.config.dbscan_eps_update, 'min_points': wandb.config.dbscan_min_points_update}
-    elif neigh_strategy == 'radius_ball':
-        neighborhood_kwargs = {'radius': wandb.config.radius_ball_radius}
-        neighborhood_update_kwargs = {'radius': wandb.config.radius_ball_radius_update}
-    else:
-        raise ValueError(f"Neighborhood strategy {neigh_strategy} not supported.")
-    
-    if wandb.config.graph_strategy=="grid":
-        voxel_size = torch.tensor(ast.literal_eval(wandb.config.voxel_size))
-    else:
-        voxel_size = None
-    
-    neighborhood_size = ast.literal_eval(wandb.config.neighborhood_size) 
-    num_levels =  wandb.config.num_levels
-    if isinstance(neighborhood_size, int):
-        # if the neighborhood size is an integer, then increase its size by a factor of 2 for each level
-        neighborhood_size = [neighborhood_size * (2**i) for i in range(num_levels)]
-        
-    sampling_factor = wandb.config.graph_pooling_factor
-    if wandb.config.graph_strategy == 'fps':
-        sampling_factor = 1 / sampling_factor
 
-    return BuildGraphPyramid(num_layers=num_levels,
-                            graph_strategy=wandb.config.graph_strategy,
-                            sampling_factor=sampling_factor,
-                            num_neighbors=neighborhood_size,
-                            neighborhood_strategy=neigh_strategy,
-                            neighborhood_kwargs=neighborhood_kwargs,
-                            neighborhood_kwarg_update=neighborhood_update_kwargs,
-                            voxel_size = voxel_size
-                        )
 
 
 def init_ts40k(data_path, preprocessed=False, pyramid_builder=None):
@@ -437,7 +397,7 @@ def main():
         enable_checkpointing=True,
         enable_progress_bar=True,
         # gradient_clip_val=1.0,
-        overfit_batches=0.01, # overfit on 10 batches
+        # overfit_batches=0.01, # overfit on 10 batches
         accumulate_grad_batches = wandb.config.accumulate_grad_batches,
     )
 

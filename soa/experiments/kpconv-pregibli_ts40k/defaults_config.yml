@@ -26,10 +26,8 @@ num_classes:
 num_data_channels:
   value: 3
   description: 'Number of channels in the dataset'
-voxel_grid_size:
-  value: (64, 64, 64)
 batch_size:
-  value: 16
+  value: 1
 ignore_index:
   value: 0 # noise
 num_workers: 
@@ -47,7 +45,7 @@ min_points:
 # model config
 # ------------------ #
 model:
-  value: 'kpconv'
+  value: 'kpconv-pregibli'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'
@@ -65,30 +63,59 @@ init_dim:
     value: 64
 neighbor_limits:
     value: "[10, 10, 10, 10, 10]" # if None, recompute neighbors
-###################### sceneNet prebackbone ######################
-cylinder_geneo:
-  value: 10
-arrow_geneo:
-  value: 10
-neg_sphere_geneo:
-  value: 10
-disk_geneo:
-  value: 10
-cone_geneo:
-  value: 10
-ellipsoid_geneo:
-  value: 10
+#### GIBLi Parameters ####
+gib_dict:
+  value: {
+    'cy'    : 4,
+    'ellip' : 4,
+    'disk'  : 4,
+    'cone'  : 4,
+  }
+  description: 'Dictionary of GIBs'
 num_observers:
-  value: "[8]"
+  value: -1
+kernel_size:
+  value: 0.1
+# --- GIBLi config
+num_levels:
+  value: 4
+  description: 'Number of levels in the model'
+out_gib_channels:
+  value: "4" #"[8, 16, 32, 32]"
+  description: 'Number of output channels for GIB' 
+skip_connections:
+  value: True
+  description: 'Whether to use skip connections in the model'
+graph_strategy:
+  value: 'grid' # 'fps' or 'grid'
+  description: 'Strategy for graph construction'
+graph_pooling_factor:
+  value: 2
+  description: 'Pooling factor for graph operations'
+neighborhood_strategy:
+  value: 'knn'
+  description: 'Strategy for neighborhood operations'
+neighborhood_size:
+  value: "4" # "[16, 16, 16, 16]" # "[16, 48, 96, 192, 384]"
+  description: 'Size of the neighborhood for the strategy'
+neighborhood_kwargs:
+  value: {}
+  description: 'Additional keyword arguments for neighborhood operations'
+neighborhood_update_kwargs:
+  value: {}
+  description: 'Additional keyword arguments for neighborhood updates'
+voxel_size:
+  value: "[0.05, 0.05, 0.05]"
+  description: 'Voxel size for voxelization'
 # ------------------ #
 # training config
 # ------------------ #
 optimizer:
-  value: 'adam' #'adam' 
+  value: 'adamw' #'adam' 
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 300 # -1 for infinite
+  value: 100 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -108,6 +135,9 @@ criterion:
 class_weights:
   value: True
   description: 'Use class weights in the loss function'
+segmentation_losses:
+  value: null #{'focal': 0.2, 'tversky': 0.2, 'lovasz': 0.2}
+  description: 'Additional losses for segmentation'
 # ------------------ #
 # Lit Trainer config
 # ------------------ #
