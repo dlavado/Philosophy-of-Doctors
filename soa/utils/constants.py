@@ -32,10 +32,11 @@ if "didi" in str(ROOT_PROJECT):
     else:
         EXT_PATH = "/home/didi/DATASETS/" # google cluster data dir
         # TOSH_PATH = "/home/didi/DATASETS/"
-elif 'vulpix' in str(ROOT_PROJECT):
-    EXT_PATH = "/data/d.lavado/"
 else:
-    EXT_PATH = "/home/d.lavado/" #cluster data dir
+    EXT_PATH = "/data/d.lavado/"
+    
+if not os.path.exists(EXT_PATH): # cluster data dir
+    EXT_PATH = "/home/d.lavado/"
 
 TS40K_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/')
 TS40K_FULL_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-FULL/')

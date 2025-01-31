@@ -46,6 +46,8 @@ min_points:
 # ------------------ #
 model:
   value: 'pointnet-gibli'
+model_hash:
+  value: 'pointnet2_gibli_gib4_nknn8'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'

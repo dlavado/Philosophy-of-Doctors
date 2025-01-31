@@ -14,7 +14,7 @@ dataset:
 data_path:
   value: ''
 num_classes:
-  value: 6
+  value: 16
 num_data_channels:
   value: 4
   description: 'Number of channels in the dataset'
@@ -29,6 +29,8 @@ num_workers:
 # ------------------ #
 model:
   value: 'pointnet-pregibli'
+model_hash:
+  value: 'pointnet2_pregibli_gib4_nl4_nknn4'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'

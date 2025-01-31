@@ -46,6 +46,8 @@ min_points:
 # ------------------ #
 model:
   value: 'pointnet2'
+model_hash:
+  value: 'pointnet2'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'

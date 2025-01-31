@@ -198,33 +198,31 @@ class Normalize_PCD:
         """
 
         pointcloud, labels = sample
-
-        pointcloud = self.normalize(pointcloud)
-
+        with torch.no_grad():
+            pointcloud = self.normalize(pointcloud, self.range[0], self.range[1])
+        
         return pointcloud, labels
     
 
-    def normalize(self, pointcloud:torch.Tensor) -> torch.Tensor:
+    @torch.jit.script
+    def normalize(pointcloud: torch.Tensor, range_min: float, range_max: float) -> torch.Tensor:
         """
-        normalize = (x - min(x)) / (max(x) - min(x))
-        now x \in pointcloud is such that x \in [0, 1] (i.e., range)
+        Normalize xyz coordinates to the range [range_min, range_max].
         """
-
         point_dim = 1 if pointcloud.dim() == 3 else 0
-
         xyz = pointcloud[..., :3]
-            
-        min_x = xyz.min(dim=point_dim, keepdim=True).values
-        max_x = xyz.max(dim=point_dim, keepdim=True).values
-        
-        xyz = (xyz - min_x) / (max_x - min_x)
 
-        # put pointcloud in range
-        xyz = xyz * (self.range[1] - self.range[0]) + self.range[0]
+        min_x = xyz.amin(dim=point_dim, keepdim=True)
+        max_x = xyz.amax(dim=point_dim, keepdim=True)
 
-        pointcloud[..., :3] = xyz
+        range_diff = torch.clamp(max_x - min_x, min=1e-6)  # prevent division by zero
 
-        return pointcloud
+        range_scale = range_max - range_min
+        xyz = ((xyz - min_x) / range_diff) * range_scale + range_min
+
+        if pointcloud.shape[-1] > 3:
+            return torch.cat([xyz, pointcloud[..., 3:]], dim=-1).to(pointcloud.device)
+        return xyz.to(pointcloud.device)
 
     def standardize(self, pointcloud:torch.Tensor) -> torch.Tensor:
         """

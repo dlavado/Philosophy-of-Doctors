@@ -14,7 +14,7 @@ dataset:
 data_path:
   value: ''
 num_classes:
-  value: 6
+  value: 19
 num_data_channels:
   value: 4
   description: 'Number of channels in the dataset'
@@ -28,6 +28,8 @@ num_workers:
 # model config
 # ------------------ #
 model:
+  value: 'pointnet2'
+model_hash:
   value: 'pointnet2'
 in_channels:
   value: 3 # xyz coords

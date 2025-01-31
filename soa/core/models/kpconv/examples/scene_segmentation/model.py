@@ -304,15 +304,16 @@ class PreGIBLi_KPFCNN(nn.Module):
         super(PreGIBLi_KPFCNN, self).__init__()
         
         
-        self.gibli = GIBLiNet(in_channels, num_classes, **giblinet_params)  
+        self.gibli = GIBLiNet(3, num_classes, **giblinet_params)  
         
-        input_dim = giblinet_params['out_gib_channels'][0] if isinstance(giblinet_params['out_gib_channels'], list) else giblinet_params['out_gib_channels']
-        self.kpfcnn = KPFCNN(input_dim=input_dim + in_channels, num_classes=num_classes, **kpconv_params)
+        gibli_out = giblinet_params['out_gib_channels'][0] if isinstance(giblinet_params['out_gib_channels'], list) else giblinet_params['out_gib_channels']
+        self.kpfcnn = KPFCNN(input_dim=gibli_out + in_channels, num_classes=num_classes, **kpconv_params)
         
         
     def forward(self, points, feats, lengths):
-        x = self.gibli.gibli_forward(pack_to_batch(points, lengths)[0])
-        x = batch_to_pack(x)[0]
+        x_pack, mask = pack_to_batch(points, lengths)
+        x = self.gibli.gibli_forward(x_pack)
+        x = batch_to_pack(x, mask)[0]
         feats = torch.cat([x, feats], dim=1)
         torch.cuda.empty_cache()
         x = self.kpfcnn(points, feats, lengths)

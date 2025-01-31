@@ -46,6 +46,8 @@ min_points:
 # ------------------ #
 model:
   value: 'pointnet-pregibli'
+model_hash:
+  value: 'pointnet2_pregibli_gib4_nl4_nknn4'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'

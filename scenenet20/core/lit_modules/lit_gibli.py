@@ -122,6 +122,7 @@ class LitGIBLi(LitWrapperModel):
 
             if metric:
                 for metric_name, metric_val in metric.items():
+                    metric_val = metric_val
                     met = metric_val(preds, y.reshape(-1))
                     if isinstance(met, torch.Tensor):
                         met = met.mean()

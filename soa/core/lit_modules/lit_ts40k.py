@@ -184,13 +184,9 @@ class LitTS40K_FULL_Preprocessed(LitTS40K_FULL):
         return DataLoader(self.val_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=True, pin_memory=True, collate_fn=self.collate_fn)
          
 
-    # def test_dataloader(self):
-    #     if self.use_full_test_set:
-    #         batch_size = 1 # point clouds do not have the same number of points; thus they cannot be stacked.
-    #     else:
-    #         batch_size = self.hparams.batch_size
+    def test_dataloader(self):
 
-    #     return DataLoader(self.test_ds, batch_size=batch_size, num_workers=self.hparams.num_workers, shuffle=False, collate_fn=self.collate_fn)
+        return DataLoader(self.test_ds, batch_size=self.hparams.batch_size, num_workers=self.hparams.num_workers, shuffle=False, collate_fn=self.collate_fn)
     
     
     

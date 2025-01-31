@@ -15,7 +15,7 @@ preprocessed:
   value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: False
+  value: True
 add_normals:
   value: False
   description: 'If True, adds normals to the dataset'
@@ -39,6 +39,8 @@ val_split:
 # ------------------ #
 model:
   value: 'pt_transformer'
+model_hash:
+  value: 'ptv3-gibli-gib4-nknn8'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input''${experiment_path}/wandb/ptv2_resume' # v2
@@ -51,14 +53,14 @@ kernel_size:
   description: 'Kernel size of GIBs'
 gib_dict:
   value: {
-    'cy'    : 4,
-    'ellip' : 4,
-    'disk'  : 4,
-    'cone'  : 4,
+    'cy'    : 16,
+    'ellip' : 16,
+    'disk'  : 16,
+    'cone'  : 16,
   }
   description: 'Dictionary of GIBs'
 num_neighbors:
-  value: 8
+  value: 16
   description: 'Number of neighbors for GIBs'
 gib_layers:
   value: 1
@@ -71,7 +73,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 4 # -1 for infinite
+  value: 40 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -92,7 +94,7 @@ class_weights:
   value: True
   description: 'Use class weights in the loss function'
 segmentation_losses:
-  value: null #{'focal': 0.2, 'tversky': 0.2, 'lovasz': 0.2}
+  value: {'focal': 0.2, 'tversky': 0.2, 'lovasz': 0.4}
   description: 'Additional losses for segmentation'
 # ------------------ #
 # Lit Trainer config
@@ -105,7 +107,7 @@ precision: # 16 or 32 FPU precision
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: False
+  value: True
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'

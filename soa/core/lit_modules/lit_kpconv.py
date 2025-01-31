@@ -95,10 +95,11 @@ class LitKPConv(LitWrapperModel):
         self.save_hyperparameters()
 
     def forward(self, data_dict:dict) -> torch.Tensor:
+        from core.models.giblinet.conversions import offset2batch, batchvector_to_lengths
         
         points = data_dict["coord"]
         feats = data_dict["feat"]
-        lengths = data_dict["lengths"]
+        lengths = batchvector_to_lengths(offset2batch(data_dict["offset"]))
         
         return self.model(points, feats, lengths)
     
@@ -107,19 +108,19 @@ class LitKPConv(LitWrapperModel):
     
     def forward_model_output(self, data_dict:dict) -> torch.Tensor:
         # runs the model and returns the model output in (B, N, C) format
+        from core.models.giblinet.conversions import offset2batch, batchvector_to_lengths
         model_dict = self(data_dict)
-        lengths = data_dict["lengths"]
+        lengths = batchvector_to_lengths(offset2batch(data_dict["offset"]))
         return pack_to_batch(model_dict["scores"], lengths)[0]
     
 
-    def evaluate(self, batch, stage=None, metric=None, prog_bar=True, logger=True):
-        x, y = batch
+    def evaluate(self, data_dict, stage=None, metric=None, prog_bar=True, logger=True):
 
-        out_dict = self(x)
+        out_dict = self(data_dict)
 
         scores = out_dict["scores"]
         # flat targets
-        y = y.reshape(-1).to(torch.long)
+        y = data_dict['segment'].reshape(-1).to(torch.long)
         
         # print("scores: ", scores.shape, "targets: ", y.shape)
         # print(torch.max(scores), torch.min(scores))

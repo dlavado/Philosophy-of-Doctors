@@ -15,7 +15,7 @@ preprocessed:
   value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: False
+  value: True
 add_normals:
   value: False
   description: 'If True, adds normals to the dataset'
@@ -39,20 +39,21 @@ val_split:
 # ------------------ #
 model:
   value: 'pt_transformer'
+model_hash:
+  value: 'ptv1-pregibli-gib4-nl4-out4-nknn4'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input''${experiment_path}/wandb/ptv2_resume' # v2
 model_version:
-  value: 'pregibli-v1' # 'v1' or 'v2' or 'v3'
+  value: 'pregibli-v2' # 'v1' or 'v2' or 'v3'
   description: 'Point Transformer version'
-#### GIBLi Parameters ####
 #### GIBLi Parameters ####
 gib_dict:
   value: {
-    'cy'    : 4,
-    'ellip' : 4,
-    'disk'  : 4,
-    'cone'  : 4,
+    'cy'    : 16,
+    'ellip' : 16,
+    'disk'  : 16,
+    'cone'  : 16,
   }
   description: 'Dictionary of GIBs'
 num_observers:
@@ -64,7 +65,7 @@ num_levels:
   value: 4
   description: 'Number of levels in the model'
 out_gib_channels:
-  value: "4" #"[8, 16, 32, 32]"
+  value: "[16, 32, 64, 64]"
   description: 'Number of output channels for GIB' 
 skip_connections:
   value: True
@@ -79,7 +80,7 @@ neighborhood_strategy:
   value: 'knn'
   description: 'Strategy for neighborhood operations'
 neighborhood_size:
-  value: "4" # "[16, 16, 16, 16]" # "[16, 48, 96, 192, 384]"
+  value: "[16, 16, 16, 16]" # "[16, 48, 96, 192, 384]"
   description: 'Size of the neighborhood for the strategy'
 neighborhood_kwargs:
   value: {}
@@ -98,7 +99,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 4 # -1 for infinite
+  value: 40 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -119,7 +120,7 @@ class_weights:
   value: True
   description: 'Use class weights in the loss function'
 segmentation_losses:
-  value: null #{'focal': 0.2, 'tversky': 0.2, 'lovasz': 0.2}
+  value: {'focal': 0.2, 'tversky': 0.2, 'lovasz': 0.4}
   description: 'Additional losses for segmentation'
 # ------------------ #
 # Lit Trainer config
@@ -132,7 +133,7 @@ precision: # 16 or 32 FPU precision
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: False
+  value: True
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'

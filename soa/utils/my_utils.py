@@ -40,14 +40,14 @@ def main_arg_parser():
 
     parser.add_argument('--dataset', type=str, default='ts40k', help='Dataset to use')
 
-    parser.add_argument('--idis', action='store_true', default=False, help='Uses IDIS subsampling preprocesed dataset')
-
-    parser.add_argument('--smote', action='store_true', default=False, help='Uses SMOTE subsampling preprocesed dataset')
-
     parser.add_argument('--model', type=str, default='scenenet', help='Model to use')
 
     parser.add_argument('--predict', action='store_true', default=False, help='If True, the script is in prediction mode')
-
+    
+    parser.add_argument('--job-id', type=int, default=-1, help='Job ID for the current run')
+    
+    parser.add_argument('--resumable', action='store_true', default=None, help='If True, the script is resumable')
+    
     return parser
     
 

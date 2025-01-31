@@ -14,12 +14,12 @@ dataset:
 data_path:
   value: ''
 num_classes:
-  value: 6
+  value: 19
 num_data_channels:
   value: 4
   description: 'Number of channels in the dataset'
 batch_size:
-  value: 16
+  value: 1
 ignore_index:
   value: -1 # noise
 num_workers: 
@@ -29,6 +29,8 @@ num_workers:
 # ------------------ #
 model:
   value: 'kpconv-pregibli'
+model_hash:
+  value: 'stg5_ksize15_r12_s2.0_pregibli_gib4_ob-1_nknn4_nknn4'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'

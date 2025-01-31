@@ -224,7 +224,9 @@ def init_ts40k(data_path, preprocessed=False, pyramid_builder=None):
     sample_types = 'all'
     if preprocessed:
         
-        transform = []
+        transform = [
+            tt.Normalize_PCD([0, 10]),
+        ]
         # transform = [
         #         tt.Remove_Label(1), # GROUND
         #         tt.Repeat_Points(10_000), # repeat points to 10k so that we can batchfy the data
@@ -250,7 +252,7 @@ def init_ts40k(data_path, preprocessed=False, pyramid_builder=None):
                     )
 
     composed = Compose([
-                        tt.Normalize_PCD(),
+                        tt.Normalize_PCD([0, 10]),
                         tt.Farthest_Point_Sampling(wandb.config.fps_points),
                         tt.To(torch.float32),
                         ])
@@ -344,13 +346,36 @@ def main():
         ckpt_dir = wandb.config.checkpoint_dir
         
         if ckpt_dir == 'latest': # get latest experiment dir
-            ckpt_dir = C.get_experiment_dir(model_name, dataset_name)
-            ckpt_dir = os.path.join(ckpt_dir, 'wandb', 'latest-run',  'files', 'checkpoints')
-
+            ckpt_dir = os.path.join(experiment_path, 'wandb', 'latest-run', 'files', 'checkpoints')
+            
+    
     ckpt_dir = replace_variables(ckpt_dir)
-    ckpt_path = os.path.join(ckpt_dir, wandb.config.resume_checkpoint_name + '.ckpt')
-
-    callbacks = init_callbacks(ckpt_dir)
+    callbacks = init_callbacks(ckpt_dir)  
+    
+    # --- Resume Experiment ---
+    resume_ckpt_path = None 
+    if main_parser.resumable:
+        # find experiment to resume
+        wandb_runs_path = os.path.join(experiment_path, "wandb")
+        existing_exps = [
+            os.path.join(wandb_runs_path, exp) 
+            for exp in os.listdir(wandb_runs_path) 
+                if os.path.isdir(os.path.join(wandb_runs_path, exp)) and  # Ensure it's a run directory
+                   os.path.isdir(os.path.join(wandb_runs_path, exp, 'files', 'checkpoints')) and  # Checkpoints directory exists
+                   os.path.isfile(os.path.join(wandb_runs_path, exp, 'files', 'config.yaml'))  # Config file exists
+        ]
+        
+        for exp in sorted(existing_exps, key=os.path.getmtime, reverse=True):
+            cfg_path = os.path.join(exp, 'files', 'config.yaml')
+            pre_cfg = yaml.safe_load(open(cfg_path))
+            exp_hash = pre_cfg['model_hash']['value']
+            if exp_hash == wandb.config.model_hash:
+                print(f"{'='*5}> Resuming from experiment: {exp}")
+                resume_ckpt_path = os.path.join(os.path.join(exp, 'files', 'checkpoints'), 'last.ckpt')
+                break
+                
+        if resume_ckpt_path is None: # if no experiment was found
+            print(f"{'='*5}> No experiment found to resume. Starting new experiment.")
 
     # ------------------------
     # 1 INIT BASE CRITERION
@@ -365,7 +390,7 @@ def main():
         # class_weights = 1 / class_densities
         if wandb.config.ignore_index > -1:
             class_weights[wandb.config.ignore_index] = 0.0 #ignore noise class
-        # class_weights = class_weights / class_weights.mean()
+        class_weights = class_weights / class_weights.mean()
     else:
         class_weights = None
     
@@ -381,12 +406,16 @@ def main():
 
     # val_MulticlassJaccardIndex: tensor([0.4354, 0.6744, 0.4973, 0.3322, 0.3667, 0.8061], device='cuda:0'); mean: 0.5187
     model = init_model(wandb.config.model, criterion, pyramid_builder)
-    # model = torch.compile(model, mode="reduce-overhead")
+    # torch._dynamo.config.suppress_errors = True
+    # model = torch.compile(model, mode="reduce-overhead", dynamic=True, fullgraph=False)
     input_size = (wandb.config.batch_size, wandb.config.num_points, wandb.config.in_channels)
     print(f"{'='*30} Model initialized {'='*30}")
     summary(model, input_size=input_size)
     
-    if wandb.config.resume_from_checkpoint:
+    
+    if resume_ckpt_path:
+        model = resume_from_checkpoint(resume_ckpt_path, model, class_weights)
+    elif wandb.config.resume_from_checkpoint:
         ckpt_path = replace_variables(ckpt_path)
         model = resume_from_checkpoint(ckpt_path, model, class_weights)
 
@@ -400,7 +429,7 @@ def main():
             data_path = C.TS40K_FULL_PREPROCESSED_PATH
         else:
             data_path = C.TS40K_FULL_PATH
-        data_module = init_ts40k(data_path, wandb.config.preprocessed, pyramid_builder=pyramid_builder)
+        data_module = init_ts40k(data_path, wandb.config.preprocessed, pyramid_builder=None)
     # elif dataset_name == 'labelec':
     #     if wandb.config.preprocessed:
     #         data_path  = C.LABELEC_RGB_PREPROCESSED

@@ -507,12 +507,37 @@ def main():
         ckpt_dir = wandb.config.checkpoint_dir
         
         if ckpt_dir == 'latest': # get latest experiment dir
-            ckpt_dir = C.get_experiment_dir(model_name, dataset_name)
-            ckpt_dir = os.path.join(ckpt_dir, 'wandb', 'latest-run', 'files', 'checkpoints')
+            ckpt_dir = os.path.join(experiment_path, 'wandb', 'latest-run', 'files', 'checkpoints')
             
-
+    
     ckpt_dir = replace_variables(ckpt_dir)
-    callbacks = init_callbacks(ckpt_dir)
+    callbacks = init_callbacks(ckpt_dir)  
+    
+    # --- Resume Experiment ---
+    resume_ckpt_path = None 
+    if main_parser.resumable:
+        # find experiment to resume
+        wandb_runs_path = os.path.join(experiment_path, "wandb")
+        existing_exps = [
+            os.path.join(wandb_runs_path, exp) 
+            for exp in os.listdir(wandb_runs_path) 
+                if os.path.isdir(os.path.join(wandb_runs_path, exp)) and  # Ensure it's a run directory
+                   os.path.isdir(os.path.join(wandb_runs_path, exp, 'files', 'checkpoints')) and  # Checkpoints directory exists
+                   os.path.isfile(os.path.join(wandb_runs_path, exp, 'files', 'config.yaml'))  # Config file exists
+        ]
+        
+        for exp in sorted(existing_exps, key=os.path.getmtime, reverse=True):
+            cfg_path = os.path.join(exp, 'files', 'config.yaml')
+            pre_cfg = yaml.safe_load(open(cfg_path))
+            exp_hash = pre_cfg['model_hash']['value']
+            if exp_hash == wandb.config.model_hash:
+                print(f"{'='*5}> Resuming from experiment: {exp}")
+                resume_ckpt_path = os.path.join(os.path.join(exp, 'files', 'checkpoints'), 'last.ckpt')
+                break
+                
+        if resume_ckpt_path is None: # if no experiment was found
+            print(f"{'='*5}> No experiment found to resume. Starting new experiment.")
+                    
 
     # ------------------------
     # 1 INIT BASE CRITERION
@@ -541,7 +566,10 @@ def main():
     # torchinfo.summary(model, input_size=(wandb.config.batch_size, 1, 64, 64, 64))
     
     ckpt_path = os.path.join(ckpt_dir, wandb.config.resume_checkpoint_name + '.ckpt')
-    if wandb.config.resume_from_checkpoint:
+    
+    if resume_ckpt_path:
+        model = resume_from_checkpoint(resume_ckpt_path, model, class_weights)
+    elif wandb.config.resume_from_checkpoint:
         ckpt_path = replace_variables(ckpt_path)
         model = resume_from_checkpoint(ckpt_path, model, class_weights)
 
@@ -596,7 +624,7 @@ def main():
         enable_model_summary=True,
         enable_checkpointing=True,
         enable_progress_bar=True,
-        # overfit_batches=0.01, # overfit on 10 batches
+        overfit_batches=0.01, # overfit on 10 batches
         accumulate_grad_batches = wandb.config.accumulate_grad_batches,
     )
 
@@ -650,40 +678,37 @@ if __name__ == '__main__':
     torch.set_float32_matmul_precision('high')
     torch.autograd.set_detect_anomaly(True)
     os.environ['TORCH_CUDA_ARCH_LIST'] = '8.9'
+    print(f"{'='*50} CUDA available: {torch.cuda.is_available()} {'='*50}")
+    print(f"{'='*3}> Device specs: {torch.cuda.get_device_properties(0)}")
     # --------------------------------
 
-
-    # is cuda available
-    print(f"{'='*50} CUDA available: {torch.cuda.is_available()} {'='*50}")
-    # get device specs
-    print(f"{'='*3}> Device specs: {torch.cuda.get_device_properties(0)}")
 
     main_parser = su.main_arg_parser().parse_args()
     
     model_name = main_parser.model
     dataset_name = main_parser.dataset
-    project_name = f"{dataset_name.upper()}_SoA"
+    job_id = main_parser.job_id
+    project_name = f"GIBLi-SOA"
 
     prediction_mode = main_parser.predict
 
     # config_path = get_experiment_config_path(model_name, dataset_name)
     experiment_path = C.get_experiment_dir(model_name, dataset_name)
-
+    
     os.environ["WANDB_DIR"] = os.path.abspath(os.path.join(experiment_path, 'wandb'))
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
-    # raw_config = yaml.safe_load(open(config_path))
-    # pprint(raw_config)
 
-    print(f"\n\n{'='*50}")
-    print("Entering main method...") 
+    print(f"\n\n{'='*100}")
+    
+    run_name = f'{model_name}_{dataset_name}_{job_id}_{datetime.now().strftime("%Y/%m/%d_%H:%M:%S")}'
 
     if main_parser.wandb_sweep: 
         #sweep mode
         print("wandb sweep.")
         wandb.init(project=project_name, 
                 dir = experiment_path,
-                name = f'{project_name}_{model_name}_{datetime.now().strftime("%Y%m%d-%H%M%S")}',
+                name = run_name,
         )
     else:
         # default mode
@@ -693,7 +718,7 @@ if __name__ == '__main__':
 
         run = wandb.init(project=project_name, 
                 dir = experiment_path,
-                name = f'{model_name}_{dataset_name}_{datetime.now().strftime("%Y%m%d-%H%M%S")}',
+                name = run_name,
                 config=sweep_config,
                 mode=main_parser.wandb_mode,
         )

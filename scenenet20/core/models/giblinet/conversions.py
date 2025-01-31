@@ -140,6 +140,24 @@ def lengths_to_batchvector(lengths: torch.Tensor) -> torch.Tensor:
     return batch_vector
 
 
+def batchvector_to_lengths(batch_vector:torch.Tensor):
+    
+    """
+    Convert a batch vector to lengths tensor.
+    
+    Parameters
+    ----------
+    batch_vector : torch.Tensor
+        tensor with the batch indices corresponding to each item. shape (B*N)
+        
+    Returns
+    -------
+    lengths : torch.Tensor
+        tensor with the lengths of each sample in the batch. shape (B)
+    """
+    return torch.bincount(batch_vector).to(batch_vector.device)
+
+
 
 def naive_pack_to_batch(pack_tensor: Tensor, lengths: Tensor, max_length=None, fill_value=-1.0) -> Tuple[Tensor, Tensor]:
     """Convert Tensor from pack mode to batch mode.
@@ -411,6 +429,24 @@ In  turn, the `batch_vector` would be `[0, 0, 0, 1, 1, 1, 1, 2, 2]`.
 
 The following functions provide utilities to convert between these representations.
 """
+
+@torch.inference_mode()
+def offset2bincount(offset):
+    return torch.diff(
+        offset, prepend=torch.tensor([0], device=offset.device, dtype=torch.long)
+    )
+
+@torch.inference_mode()
+def offset2batch(offset):
+    bincount = offset2bincount(offset)
+    return torch.arange(
+        len(bincount), device=offset.device, dtype=torch.long
+    ).repeat_interleave(bincount)
+
+
+@torch.inference_mode()
+def batch2offset(batch):
+    return torch.cumsum(batch.bincount(), dim=0).long()
 
 
 def get_batch_vector(batched_tensor:torch.Tensor):

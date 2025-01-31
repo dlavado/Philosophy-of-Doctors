@@ -14,7 +14,7 @@ dataset:
 data_path:
   value: ''
 num_classes:
-  value: 6
+  value: 19
 num_data_channels:
   value: 4
   description: 'Number of channels in the dataset'
@@ -29,6 +29,8 @@ num_workers:
 # ------------------ #
 model:
   value: 'pt_transformer'
+model_hash:
+  value: 'ptv3-gibli-gib4-nknn8'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input''${experiment_path}/wandb/ptv2_resume' # v2
