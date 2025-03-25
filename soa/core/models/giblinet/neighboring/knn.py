@@ -3,9 +3,13 @@ from torch import Tensor
 from typing import Tuple
 
 import sys
-sys.path.append('../../')
+sys.path.insert(0, '..')
+sys.path.insert(1, '../..')
+sys.path.insert(2, '../../..')
+sys.path.insert(3, '../../../..')
 
-import core.models.giblinet.conversions as conversions
+from core.models.giblinet.conversions import batch_to_packed, build_batch_tensor
+
 import pointops as pops
 
 class KNN_Neighboring:
@@ -33,6 +37,7 @@ class KNN_Neighboring:
         
         # return torch_knn(q_points, x, self.k)[1]
         return keops_knn(q_points, x, self.k)[1]
+        # return pops_knn(q_points, x, self.k)
         
 
 
@@ -103,23 +108,81 @@ def keops_knn(q_points: Tensor, s_points: Tensor, k: int) -> Tuple[Tensor, Tenso
     return knn_distances, knn_indices
 
 
+def pops_knn(q_points: Tensor, s_points: Tensor, k: int) -> Tuple[Tensor, Tensor]:
+    """
+    kNN with PointOps
+
+    Parameters
+    ----------
+    q_points - torch.Tensor
+        query points of shape (B, Q, C)
+    s_points - torch.Tensor
+        support points of shape (B, N, C); Q <= N
+    k - int
+        number of neighbors to consider
+
+    Returns
+    -------
+    knn_distances - torch.Tensor
+        distances to the k nearest neighbors of shape (B, Q, k)
+    knn_indices - torch.Tensor
+        indices in `s_points` of the k nearest neighbors of shape (B, Q, k)
+    """
+    q_packed, q_offset = batch_to_packed(q_points, None)
+    s_packed, s_offset = batch_to_packed(s_points, None)
+
+    # print(f"{q_packed.shape=} {q_offset.shape=} {s_packed.shape=} {s_offset.shape=}")
+
+    # Perform the kNN query
+    ref_idx, _ = pops.knn_query(k, s_packed, s_offset, q_packed, q_offset)
+    
+    ref_idx, _ = build_batch_tensor(ref_idx, q_offset, offset_indices=s_offset)
+    
+    return ref_idx
+
 if __name__ == '__main__':
     
-    points = torch.rand((2, 100_000, 3)).cuda()
-    q_points = torch.rand((2, 10, 3)).cuda()
+    def measure_gpu_memory():
+        """Measure GPU memory usage in MB."""
+        allocated_memory = torch.cuda.memory_allocated() / 1024**2  # Convert bytes to MB
+        cached_memory = torch.cuda.memory_reserved() / 1024**2  # Convert bytes to MB
+        return allocated_memory, cached_memory
     
-    k = 1000 # number of neighbors to consider
+    points = torch.rand((16, 100_000, 3)).cuda()
+    q_points = torch.rand((16, 1000, 3)).cuda()
+    
+    k = 16 # number of neighbors to consider
     knn = KNN_Neighboring(k)
     
+    print(q_points.device, points.device)  # Should all print 'cuda:0'
+
+    torch.cuda.empty_cache()  # Clear the cache to get accurate memory measurements
     # measure the time taken to perform kNN
     import time
+    # Measure memory before running pops_knn
+    allocated_before, cached_before = measure_gpu_memory()
     start = time.time()
-    pops_s_points = knn(q_points, points)
+    pops_s_points = pops_knn(q_points, points, k)
+    print(f"{pops_s_points.shape=}")
     print(f"Time taken for pops knn: {time.time() - start}")
-    
+
+    # Measure memory after running pops_knn
+    allocated_after, cached_after = measure_gpu_memory()
+    print(f"Memory before pops_knn: Allocated={allocated_before:.2f} MB, Cached={cached_before:.2f} MB")
+    print(f"Memory after pops_knn: Allocated={allocated_after:.2f} MB, Cached={cached_after:.2f} MB")
+
+    # Measure memory before running keops_knn
+    torch.cuda.empty_cache()  # Clear the cache to get accurate memory measurements
+    allocated_before, cached_before = measure_gpu_memory()
     start = time.time()
     keops_s_points = keops_knn(q_points, points, k)[1]
+    print(f"{keops_s_points.shape=}")
     print(f"Time taken for keops knn: {time.time() - start}")
+
+    # Measure memory after running keops_knn
+    allocated_after, cached_after = measure_gpu_memory()
+    print(f"Memory before keops_knn: Allocated={allocated_before:.2f} MB, Cached={cached_before:.2f} MB")
+    print(f"Memory after keops_knn: Allocated={allocated_after:.2f} MB, Cached={cached_after:.2f} MB")
     
     # print(f"{pops_s_points=} \n\n {keops_s_points=}")
     
@@ -133,8 +196,7 @@ if __name__ == '__main__':
     
     # Define the point cloud
     points = torch.rand((100_000, 3)).cuda()    
-    # offset = torch.tensor([points.size(0)]).cuda()
-    # offset = torch.tensor([1000]*100).cuda() # batched offset;
+   
     batch = torch.cat([torch.full((1000,), i, device=points.device) for i in range(100)], dim=0)
     offset = pops.batch2offset(batch)
     feats  = torch.rand((100_000, 1)).cuda()

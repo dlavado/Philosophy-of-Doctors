@@ -602,6 +602,51 @@ def save_normalized_data(data_dir, save_dir):
                 torch.save(sample_dict, sample_path)
 
 
+
+
+def save_normalize10_data(data_dir, save_dir):
+    
+    transform = Compose([
+                        Normalize_PCD([0, 10]),
+                        To(torch.float32),
+                    ])
+    
+    
+    for sample_type in os.listdir(data_dir):
+
+        sample_type_path = os.path.join(data_dir, sample_type)
+        save_type_path = os.path.join(save_dir, sample_type)
+
+        if '.' in sample_type:
+            continue  # skip files
+
+        if not os.path.exists(save_type_path):
+            os.makedirs(save_type_path)
+
+        for split in os.listdir(sample_type_path):
+            # split_path = os.path.join(sample_type_path, split)
+            save_split_path = os.path.join(save_type_path, split)
+
+            if not os.path.exists(save_split_path):
+                os.makedirs(save_split_path)
+    
+    
+            ts40k = TS40K_FULL_Preprocessed(
+                data_dir,
+                split=split,
+                sample_types=[sample_type],
+                transform=transform,
+                
+            )
+            
+            
+            for i in tqdm(range(len(ts40k)), desc=f"Saving {sample_type} {split} samples..."):
+                sample = ts40k[i]
+                sample_path = os.path.join(save_split_path, f"sample_{i}.pt")
+                torch.save(sample, sample_path)
+                
+                
+
 class TS40K(Dataset):
 
     def __init__(self, dataset_path, split='fit', transform=None, min_points=None, load_into_memory=True) -> None:
@@ -1003,8 +1048,13 @@ def main():
     #                      os.path.join(TS40K_DIR, "TS40K-FULL-Normalized")
     #                     )    
     
+    
+    save_normalize10_data(constants.TS40K_FULL_PREPROCESSED_PATH,
+                          os.path.join(TS40K_DIR, "TS40K-FULL-Preprocessed-0-10")
+                        )  
+    
 
-    # input("Press Enter to continue...")
+    input("Press Enter to continue...")
 
     # ts40k = TS40K_FULL_Preprocessed(
     #     constants.TS40K_FULL_PREPROCESSED_IDIS_PATH,

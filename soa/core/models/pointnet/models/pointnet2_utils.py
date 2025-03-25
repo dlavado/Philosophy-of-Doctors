@@ -185,11 +185,13 @@ class PointNetSetAbstraction(nn.Module):
         xyz = xyz.permute(0, 2, 1)
         if points is not None:
             points = points.permute(0, 2, 1)
-
-        if self.group_all:
-            new_xyz, new_points = sample_and_group_all(xyz, points)
-        else:
-            new_xyz, new_points = sample_and_group(self.npoint, self.radius, self.nsample, xyz, points)
+            
+        npoint = self.npoint if self.npoint > 0 else xyz.shape[1]
+        with torch.no_grad():
+            if self.group_all:
+                new_xyz, new_points = sample_and_group_all(xyz, points)
+            else:
+                new_xyz, new_points = sample_and_group(npoint, self.radius, self.nsample, xyz, points)
         # new_xyz: sampled points position data, [B, npoint, C]
         # new_points: sampled points data, [B, npoint, nsample, C+D]
         new_points = new_points.permute(0, 3, 2, 1) # [B, C+D, nsample,npoint]
@@ -361,7 +363,7 @@ class GIBLiPointNetSetAbstraction(nn.Module):
         neigh_strat = Neighboring('knn', num_neighbors)
         self.giblis = nn.ModuleList()
         for out_channel in mlp:
-            self.giblis.append(GIBLiLayer(last_channel, last_channel, -1, k_size, gib_dict, neigh_strat, gib_layers))
+            self.giblis.append(GIBLiLayer(last_channel, last_channel, 32, k_size, gib_dict, neigh_strat, gib_layers))
             self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1))
             self.mlp_bns.append(nn.BatchNorm2d(out_channel))
             last_channel = out_channel
@@ -389,8 +391,12 @@ class GIBLiPointNetSetAbstraction(nn.Module):
         B, P, S, _ = new_points.shape
         new_points = new_points.permute(0, 3, 2, 1) # [B, C+D, nsample,npoint]
         for i, gib in enumerate(self.giblis):
+            # print(f"{new_points.shape=}")
             new_points = new_points.permute(0, 3, 2, 1) # [B, P, S, D]
-            new_points = gib(new_points.reshape(B, P*S, -1)).reshape(B, P, S, -1)
+            gib_points = gib(new_points.reshape(B, P*S, -1)).reshape(B, P, S, -1)
+            # print(f"{new_points.shape=}")
+            # res connect
+            new_points = new_points + 0.1*gib_points
             conv = self.mlp_convs[i]
             bn = self.mlp_bns[i]
             new_points =  F.relu(bn(conv(new_points.permute(0, 3, 2, 1))))

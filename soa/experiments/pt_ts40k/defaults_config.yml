@@ -48,13 +48,11 @@ model:
   value: 'pt_transformer'
 model_hash:
   value: 'ptv3'
-model_hash:
-  value: 'ptv1'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input''${experiment_path}/wandb/ptv2_resume' # v2
 model_version:
-  value: 'v1' # 'v1' or 'v2' or 'v3'
+  value: 'v3' # 'v1' or 'v2' or 'v3'
   description: 'Point Transformer version'
 # ------------------ #
 # training config
@@ -93,7 +91,7 @@ segmentation_losses:
 fast_dev_run:
   value: True
 precision: # 16 or 32 FPU precision
-  value: bf16
+  value: 32
   description: 'FPU precision'
 auto_lr_find:
   value: False

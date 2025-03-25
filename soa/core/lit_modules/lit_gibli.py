@@ -74,7 +74,7 @@ class LitGIBLi(LitWrapperModel):
     #     return self.geneo_reg(self.model.get_gib_parameters(), self.model.get_cvx_coefficients())
     
     def process_batch(self, batch):
-        from core.models.giblinet.conversions import build_batch_tensor
+        from core.models.giblinet.conversions import build_batch_tensor_autograd as build_batch_tensor
         if isinstance(batch, dict):
             x = batch["coord"]
             y = batch["segment"]
@@ -115,7 +115,7 @@ class LitGIBLi(LitWrapperModel):
                         met = met.mean()
                     self.log(f"{stage}_{metric_name}", met, on_epoch=True, on_step=on_step, prog_bar=True, logger=True)
                     
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
         return loss, preds, y
 
         

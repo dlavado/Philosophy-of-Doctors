@@ -356,6 +356,42 @@ def list_tensor_to_batch(list_tensor: list[torch.Tensor], pad_value: float = -1.
 
 
 @torch.jit.script
+def normalize_pointcloud(s_centered: torch.Tensor, range_min: float, range_max: float) -> torch.Tensor:
+    """
+    Normalize the last dimension (xyz coordinates) of a point cloud tensor to the range [range_min, range_max].
+    
+    Parameters
+    ----------
+    `s_centered` : torch.Tensor
+        Centered support points of shape (B, M, K, 3).
+        
+    `range_min` : float
+        Minimum value of the output range.
+    
+    `range_max` : float
+        Maximum value of the output range.
+
+    Returns
+    -------
+        torch.Tensor: Normalized point cloud of the same shape.
+    """
+
+    # Compute min/max across K dimension (per M)
+    min_xyz = s_centered.amin(dim=2, keepdim=True)  # (B, M, 1, 3)
+    max_xyz = s_centered.amax(dim=2, keepdim=True)  # (B, M, 1, 3)
+
+    # Avoid division by zero
+    range_diff = max_xyz - min_xyz
+    range_diff[range_diff == 0] = 1e-6  
+
+    # Normalize to [0, 1], then scale to [range_min, range_max]
+    scale = range_max - range_min
+    s_normalized = ((s_centered - min_xyz) / range_diff) * scale + range_min
+
+    return s_normalized
+
+
+@torch.jit.script
 def compute_centered_support_points(points: torch.Tensor, q_points: torch.Tensor, support_idxs: torch.Tensor):
     """
     Compute the centered support points for each query point.
@@ -408,6 +444,7 @@ def compute_centered_support_points(points: torch.Tensor, q_points: torch.Tensor
 
     # Center the support points: (B, M, K, 3) - (B, M, 1, 3)
     s_centered = support_points - q_points.unsqueeze(2)  # (B, M, K, 3)
+    # s_centered = normalize_pointcloud(s_centered, -10.0, 10.0).to(points.dtype)
 
     return s_centered.contiguous(), valid_mask, batched
 
@@ -486,7 +523,6 @@ def get_offset_vector(batched_tensor:torch.Tensor):
     offset_vector = torch.cumsum(lengths, dim=0)
     return offset_vector
     
-import torch
 
 def build_batch_tensor(packed_tensor: torch.Tensor, offset_vector: torch.Tensor, offset_indices=None, pad_value=-1):
     """

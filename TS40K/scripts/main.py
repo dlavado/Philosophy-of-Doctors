@@ -36,7 +36,6 @@ import core.lit_modules.lit_callbacks as lit_callbacks
 from core.lit_modules.lit_scenenet import LitSceneNet_multiclass
 from core.lit_modules.lit_ts40k import LitTS40K_FULL, LitTS40K_FULL_Preprocessed
 from core.lit_modules.lit_labelec import LitLabelec, LitLabelec_Preprocessed
-from core.criterions.geneo_loss import GENEO_Loss
 import core.datasets.torch_transforms as tt
 
 #####################################################################

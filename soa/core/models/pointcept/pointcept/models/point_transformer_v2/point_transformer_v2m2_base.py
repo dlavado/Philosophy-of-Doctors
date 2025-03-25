@@ -615,7 +615,7 @@ class PointTransformerV2(nn.Module):
 
 from core.models.giblinet.GIBLi import GIBLiLayer, GIBLiNet
 from core.models.giblinet.GIBLi_utils import Neighboring
-from core.models.giblinet.conversions import get_offset_vector, build_batch_tensor
+from core.models.giblinet.conversions import build_batch_tensor, batch_to_packed
 class GIBLiBlock(nn.Module):
     def __init__(
         self,
@@ -644,7 +644,7 @@ class GIBLiBlock(nn.Module):
         )
         
         neigh_strat = Neighboring('knn', num_neighbors)
-        self.fc1 = GIBLiLayer(embed_channels, embed_channels, -1, k_size, gib_dict, neigh_strat, gib_layers) 
+        self.fc1 = GIBLiLayer(embed_channels, embed_channels, 32, k_size, gib_dict, neigh_strat, gib_layers) 
         self.fc3 = nn.Linear(embed_channels, embed_channels, bias=False)
         self.norm1 = PointBatchNorm(embed_channels)
         self.norm2 = PointBatchNorm(embed_channels)
@@ -659,8 +659,9 @@ class GIBLiBlock(nn.Module):
         coord, feat, offset = points
         identity = feat
         # print(f"{feat.shape=} {offset.shape=} {build_batch_tensor(feat, offset).shape=}")
-        bfeat = self.fc1(build_batch_tensor(feat, offset))
-        feat = bfeat.view(-1, bfeat.shape[-1])
+        bfeat, mask = build_batch_tensor(feat, offset)
+        bfeat = self.fc1(bfeat)
+        feat = batch_to_packed(bfeat, mask)[0]
         feat = self.act(self.norm1(feat))
         # print(f"{feat.shape=}")
         feat = (
@@ -1148,12 +1149,12 @@ class PreGIBLiPointTransformerV2(PointTransformerV2):
         feats = data_dict['feat']
         
         x = torch.cat([coords, feats], dim=-1)
-        x = build_batch_tensor(x, data_dict['offset'])
+        x, mask = build_batch_tensor(x, data_dict['offset'])
         x = self.gibli.gibli_forward(x)
+        x = batch_to_packed(x, mask)[0]
         
         x = x.reshape(-1, x.shape[-1])
         data_dict['feat'] = torch.cat([coords, x], dim=-1)
         
         return super().forward(data_dict)
-        
       

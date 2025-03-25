@@ -11,6 +11,12 @@ sys.path.insert(3, '../../../..')
 from core.models.giblinet.neighboring.neighbors import Neighboring_Method
 from core.models.giblinet.sampling.query_points_strat import Query_Points
 
+def print_gpu_memory():
+    """Measure GPU memory usage in MB."""
+    allocated_memory = torch.cuda.memory_allocated() / 1024**2  # Convert bytes to MB
+    cached_memory = torch.cuda.memory_reserved() / 1024**2  # Convert bytes to MB
+    peak_memory = torch.cuda.max_memory_allocated() / 1024**2 
+    print(f"Allocated Memory: {allocated_memory:.2f} MB, Cached Memory: {cached_memory:.2f} MB Peak Memory: {peak_memory:.2f} MB")
 
 
 class PointBatchNorm(nn.Module):
@@ -26,19 +32,19 @@ class PointBatchNorm(nn.Module):
         
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         
-        output = self.norm(input.contiguous().permute(0, 2, 1))
-        return output.permute(0, 2, 1).contiguous()
+        # output = self.norm(input.contiguous().permute(0, 2, 1))
+        # return output.permute(0, 2, 1).contiguous()
         
-        # if input.dim() == 3:
-        #     return (
-        #         self.norm(input.contiguous().transpose(1, 2))
-        #         .transpose(1, 2)
-        #         .contiguous()
-        #     )
-        # elif input.dim() == 2:
-        #     return self.norm(input)
-        # else:
-        #     raise NotImplementedError
+        if input.dim() == 3:
+            return (
+                self.norm(input.contiguous().transpose(1, 2))
+                .transpose(1, 2)
+                .contiguous()
+            )
+        elif input.dim() == 2:
+            return self.norm(input)
+        else:
+            raise NotImplementedError
 
 class Neighboring(nn.Module):
 
@@ -69,6 +75,63 @@ class Neighboring(nn.Module):
         """
         return self.neighbor(q_points, support)
 
+
+from torch_geometric.nn.pool import voxel_grid
+from torch_scatter import segment_csr
+from core.models.giblinet.conversions import offset2batch, batch2offset
+class GridPool(nn.Module):
+    """
+    Partition-based Pooling (Grid Pooling)
+    """
+
+    def __init__(self, in_channels, out_channels, grid_size, bias=False):
+        super(GridPool, self).__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.grid_size = grid_size
+
+        self.fc = nn.Linear(in_channels, out_channels, bias=bias)
+        self.norm = PointBatchNorm(out_channels)
+        self.act = nn.ReLU(inplace=True)
+
+    def forward(self, data_dict, start=None):
+        # this is borrowed from PTV2 and, thus, is in the format of PTV2
+        coord = data_dict['coord']
+        feat = data_dict['feat']
+        offset = data_dict['offset']
+        # coord, feat, offset = points
+        batch = offset2batch(offset)
+        feat = self.act(self.norm(self.fc(feat)))
+        start = (
+            segment_csr(
+                coord,
+                torch.cat([batch.new_zeros(1), torch.cumsum(batch.bincount(), dim=0)]),
+                reduce="min",
+            )
+            if start is None
+            else start  
+        )
+        # print(f"start shape = {start.shape}; req grad = {start.requires_grad}")
+        # print(f"coord shape = {coord.shape}; req grad = {coord.requires_grad}")
+        # print(f"batch shape = {batch.shape}; req grad = {batch.requires_grad}")
+        cluster = voxel_grid(
+            pos=coord - start[batch], size=self.grid_size, batch=batch, start=0
+        )
+        unique, cluster, counts = torch.unique(
+            cluster, sorted=True, return_inverse=True, return_counts=True
+        )
+        _, sorted_cluster_indices = torch.sort(cluster)
+        idx_ptr = torch.cat([counts.new_zeros(1), torch.cumsum(counts, dim=0)])
+        coord = segment_csr(coord[sorted_cluster_indices], idx_ptr, reduce="mean")
+        feat = segment_csr(feat[sorted_cluster_indices], idx_ptr, reduce="max")
+        batch = batch[idx_ptr[:-1]]
+        offset = batch2offset(batch)
+        return {
+            "coord": coord,
+            "feat": feat,
+            "offset": offset,
+            "cluster": cluster, # cluster indices to then get skip connections
+        }
 
 
 ###############################################################

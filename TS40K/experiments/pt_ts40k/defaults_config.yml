@@ -105,7 +105,7 @@ save_onnx:
 # Checkpoint config
 # ------------------ #
 resume_from_checkpoint:
-  value: True
+  value: False
 checkpoint_dir:
   value: '${experiment_path}/checkpoints/' # v2
 resume_checkpoint_name:

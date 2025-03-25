@@ -89,7 +89,7 @@ class KPResidualBlock(nn.Module):
         self.strided = strided
 
         mid_channels = out_channels // 4
-
+        # print("mid_channels: ", mid_channels, "out_channels: ", out_channels)
         self.unary1 = UnaryBlockPackMode(in_channels, mid_channels, norm_cfg=norm_cfg, act_cfg=act_cfg)
         self.conv = KPConvBlock(
             mid_channels,
@@ -177,7 +177,7 @@ class GIBLiKPResidualBlock(nn.Module):
         mid_channels = out_channels // 4
         
         neigh_strat = Neighboring('knn', num_neighbors)
-        self.unary1 = GIBLiLayer(in_channels, mid_channels, -1, k_size, gib_dict, neigh_strat, gib_layers)
+        self.unary1 = GIBLiLayer(in_channels, mid_channels, 32, k_size, gib_dict, neigh_strat, gib_layers)
         # self.unary1 = UnaryBlockPackMode(in_channels, mid_channels, norm_cfg=norm_cfg, act_cfg=act_cfg)
         
         self.conv = KPConvBlock(

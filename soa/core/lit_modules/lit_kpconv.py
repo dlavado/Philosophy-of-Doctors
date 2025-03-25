@@ -140,9 +140,12 @@ class LitKPConv(LitWrapperModel):
             if metric:
                 for metric_name, metric_val in metric.items():
                     met = metric_val(preds, y)
-                    if isinstance(met, torch.Tensor):
+                    if met.numel() > 1: 
+                        if stage == 'val':   
+                            for i, m in enumerate(met.tolist()):
+                                self.log(f"class_{i}_{metric_name}", m, on_epoch=True, on_step=False, prog_bar=False, logger=logger)
                         met = met.mean()
-                    self.log(f"{stage}_{metric_name}", met, on_epoch=True, on_step=on_step, prog_bar=True, logger=True)
+                    self.log(f"{stage}_{metric_name}", met, on_epoch=True, on_step=on_step, prog_bar=True, logger=logger)
 
         return loss, preds, y
     

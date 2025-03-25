@@ -231,6 +231,8 @@ def init_ts40k(data_path, preprocessed=False, pyramid_builder=None):
         #         tt.Remove_Label(1), # GROUND
         #         tt.Repeat_Points(10_000), # repeat points to 10k so that we can batchfy the data
         # ]
+        
+        # data_path = C.TS40K_FULL_PREPROCESSED_NORMALIZE10_PATH
 
         if wandb.config.add_normals:
             # transform.append(tt.Add_Normal_Vector())
@@ -252,7 +254,7 @@ def init_ts40k(data_path, preprocessed=False, pyramid_builder=None):
                     )
 
     composed = Compose([
-                        tt.Normalize_PCD([0, 10]),
+                        # tt.Normalize_PCD([0, 1]),
                         tt.Farthest_Point_Sampling(wandb.config.fps_points),
                         tt.To(torch.float32),
                         ])
@@ -286,14 +288,15 @@ def resume_from_checkpoint(ckpt_path, model:pl.LightningModule, class_weights=No
         raise FileNotFoundError(f"Checkpoint {ckpt_path} does not exist.")
     
     checkpoint = torch.load(ckpt_path)
-    # print(f"{checkpoint.keys()}")
     print(f"Loading model from checkpoint {ckpt_path}...\n\n")
-    if wandb.config.class_weights and 'pointnet' not in ckpt_path.lower() and 'scenenet' not in ckpt_path.lower():
-        checkpoint['state_dict']['criterion.weight'] = class_weights
+    # if wandb.config.class_weights and 'pointnet' not in ckpt_path.lower() and 'scenenet' not in ckpt_path.lower():
+    #     checkpoint['state_dict']['criterion.weight'] = class_weights
         
     checkpoint['state_dict'] = {k: v for k, v in checkpoint['state_dict'].items() if 'montecarlo' not in k}
     model.load_state_dict(checkpoint['state_dict'])
     print(f"Model loaded from checkpoint {ckpt_path}")
+    
+    ckpt_epoch = checkpoint['epoch']
     
     # model_class = model.__class__
     
@@ -304,7 +307,7 @@ def resume_from_checkpoint(ckpt_path, model:pl.LightningModule, class_weights=No
     #                                    learning_rate=wandb.config.learning_rate,
     #                                    metric_initilizer=su.init_metrics
     #                                 )
-    return model
+    return model, ckpt_epoch
 
 
 def init_criterion(class_weights=None):
@@ -334,9 +337,9 @@ def init_criterion(class_weights=None):
     return criterion
 
 def main():
-    # ------------------------
+    # ---------------------------------------------------------------------------------------------------------------
     # 0 INIT CALLBACKS
-    # ------------------------
+    # ---------------------------------------------------------------------------------------------------------------
 
     # if wandb is disbabled, use local directory
     if main_parser.wandb_mode != 'disabled' and not wandb.config.resume_from_checkpoint:
@@ -376,10 +379,12 @@ def main():
                 
         if resume_ckpt_path is None: # if no experiment was found
             print(f"{'='*5}> No experiment found to resume. Starting new experiment.")
+            
 
-    # ------------------------
+
+    # ---------------------------------------------------------------------------------------------------------------
     # 1 INIT BASE CRITERION
-    # ------------------------
+    # ---------------------------------------------------------------------------------------------------------------
     if wandb.config.class_weights:
         alpha, epsilon = 4, 0.1
         if wandb.config.dataset == 'labelec':
@@ -397,9 +402,9 @@ def main():
         
     criterion = init_criterion(class_weights)
 
-    # ------------------------
+    # ---------------------------------------------------------------------------------------------------------------
     # 2 INIT MODEL
-    # ------------------------
+    # ---------------------------------------------------------------------------------------------------------------
     
     ### PYRAMID BUILDER
     pyramid_builder = init_pyramid_builder()
@@ -414,14 +419,17 @@ def main():
     
     
     if resume_ckpt_path:
-        model = resume_from_checkpoint(resume_ckpt_path, model, class_weights)
+        model, ckpt_epoch = resume_from_checkpoint(resume_ckpt_path, model, class_weights)
     elif wandb.config.resume_from_checkpoint:
         ckpt_path = replace_variables(ckpt_path)
-        model = resume_from_checkpoint(ckpt_path, model, class_weights)
+        model, _ = resume_from_checkpoint(ckpt_path, model, class_weights)
+        ckpt_epoch = 0
+    else:
+        ckpt_epoch = 0
 
-    # ------------------------
+    # ---------------------------------------------------------------------------------------------------------------
     # 4 INIT DATA MODULE
-    # ------------------------
+    # ---------------------------------------------------------------------------------------------------------------
 
     dataset_name = wandb.config.dataset       
     if dataset_name == 'ts40k':
@@ -445,9 +453,9 @@ def main():
     print(f"{data_module}")
     print(data_path)
     
-    # ------------------------
+    # ---------------------------------------------------------------------------------------------------------------
     # 5 INIT TRAINER
-    # ------------------------
+    # ---------------------------------------------------------------------------------------------------------------
 
     # WandbLogger
     wandb_logger = WandbLogger(project=f"{project_name}",
@@ -460,7 +468,7 @@ def main():
         logger=wandb_logger,
         callbacks=callbacks,
         detect_anomaly=False,
-        max_epochs=wandb.config.max_epochs,
+        max_epochs=wandb.config.max_epochs - ckpt_epoch,
         accelerator=wandb.config.accelerator,
         devices='auto',#wandb.config.devices,
         num_nodes=wandb.config.num_nodes,
@@ -493,9 +501,9 @@ def main():
                     wandb.log_artifact(artifact)
                     print(f"Checkpoint logged to Wandb: {checkpoint_path}")
             
-    # ------------------------
+    # ---------------------------------------------------------------------------------------------------------------
     # 6 TEST
-    # ------------------------
+    # ---------------------------------------------------------------------------------------------------------------
 
     if not os.path.exists(ckpt_path):
         print(f"Checkpoint {ckpt_path} does not exist. Using last checkpoint.")
@@ -536,6 +544,7 @@ if __name__ == '__main__':
     
     model_name = main_parser.model
     dataset_name = main_parser.dataset
+    job_id = main_parser.job_id
     project_name = "GIBLi-Net"
     prediction_mode = main_parser.predict
 
@@ -551,7 +560,7 @@ if __name__ == '__main__':
     print(f"\n\n{'='*50}")
     print("Entering main method...") 
     
-    run_name = f"{project_name}_{model_name}_{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    run_name = f'{model_name}_{dataset_name}_{job_id}_{datetime.now().strftime("%Y/%m/%d_%H:%M:%S")}'
 
     if main_parser.wandb_sweep: 
         #sweep mode

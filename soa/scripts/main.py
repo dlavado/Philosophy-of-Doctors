@@ -95,7 +95,6 @@ def init_callbacks(ckpt_dir):
             )
         )
 
-
     model_ckpts.append( # train loss checkpoint
         lit_callbacks.callback_model_checkpoint(
             dirpath=ckpt_dir, #None for default logger dir
@@ -174,7 +173,7 @@ def init_pyramid_builder():
                             voxel_size = voxel_size
                         )
 
-def init_pointnet(model_name='pointnet'):
+def init_pointnet(model_name='pointnet', criterion=None):
     from core.lit_modules.lit_pointnet import LitPointNet
     
     if 'pre' in model_name:
@@ -201,7 +200,7 @@ def init_pointnet(model_name='pointnet'):
 
     # Model definition
     model = LitPointNet(model=model_name,
-                        criterion=None, # criterion is defined in the model
+                        criterion=criterion, # criterion is defined in the model
                         optimizer_name=wandb.config.optimizer,
                         num_classes=wandb.config.num_classes,
                         num_channels=wandb.config.num_data_channels,
@@ -291,11 +290,12 @@ def init_point_transformer(criterion, model_version):
             'pyramid_builder': init_pyramid_builder(),
         }
     elif 'gibli' in model_version:
-        gib_params = { 
-            'k_size': wandb.config.kernel_size,
+        gib_params = {
             'gib_dict': wandb.config.gib_dict,
-            'num_neighbors': wandb.config.num_neighbors,
-            'gib_layers': wandb.config.gib_layers,
+            'num_observers': wandb.config.num_observers,
+            'kernel_reach': wandb.config.kernel_reach,
+            'neighbor_size': wandb.config.neighbor_size,
+            'out_channels': wandb.config.out_channels,
         }
     else:
         gib_params = {}
@@ -430,7 +430,7 @@ def init_waymo(data_path):
 
 def init_model(model_name, criterion) -> pl.LightningModule:
     if 'pointnet' in model_name:
-        return init_pointnet(model_name)
+        return init_pointnet(model_name, criterion)
     elif 'kpconv' in model_name:
         return init_kpconv(criterion, model_name)
     elif 'randlanet' in model_name:
@@ -446,14 +446,14 @@ def resume_from_checkpoint(ckpt_path, model:pl.LightningModule, class_weights=No
         raise FileNotFoundError(f"Checkpoint {ckpt_path} does not exist.")
     
     checkpoint = torch.load(ckpt_path)
-    # print(f"{checkpoint.keys()}")
     print(f"Loading model from checkpoint {ckpt_path}...\n\n")
-    if wandb.config.class_weights and 'pointnet' not in ckpt_path.lower() and 'scenenet' not in ckpt_path.lower():
-        checkpoint['state_dict']['criterion.weight'] = class_weights
+    # if wandb.config.class_weights:
+    #     checkpoint['state_dict']['criterion.weight'] = class_weights
     model.load_state_dict(checkpoint['state_dict'])
     print(f"Model loaded from checkpoint {ckpt_path}")
     
-    # model_class = model.__class__
+    current_epoch = checkpoint['epoch']
+    
     
     # print(f"Resuming from checkpoint {ckpt_path}")
     # model = model_class.load_from_checkpoint(ckpt_path,
@@ -462,7 +462,7 @@ def resume_from_checkpoint(ckpt_path, model:pl.LightningModule, class_weights=No
     #                                    learning_rate=wandb.config.learning_rate,
     #                                    metric_initilizer=su.init_metrics
     #                                 )
-    return model
+    return model, current_epoch
 
 
 def init_criterion(class_weights=None):
@@ -568,10 +568,13 @@ def main():
     ckpt_path = os.path.join(ckpt_dir, wandb.config.resume_checkpoint_name + '.ckpt')
     
     if resume_ckpt_path:
-        model = resume_from_checkpoint(resume_ckpt_path, model, class_weights)
+        model, ckpt_epoch = resume_from_checkpoint(resume_ckpt_path, model, class_weights)
     elif wandb.config.resume_from_checkpoint:
         ckpt_path = replace_variables(ckpt_path)
-        model = resume_from_checkpoint(ckpt_path, model, class_weights)
+        model, _ = resume_from_checkpoint(ckpt_path, model, class_weights)
+        ckpt_epoch = 0
+    else:
+        ckpt_epoch = 0
 
     # ------------------------
     # 4 INIT DATA MODULE
@@ -608,13 +611,13 @@ def main():
                                config=wandb.config
                             )
     
-    wandb_logger.watch(model, log='all', log_freq=100)
+    wandb_logger.watch(model, log='all', log_freq=100, log_graph=False)
     
     trainer = pl.Trainer(
         logger=wandb_logger,
         callbacks=callbacks,
         detect_anomaly=False,
-        max_epochs=wandb.config.max_epochs,
+        max_epochs=wandb.config.max_epochs - ckpt_epoch,
         accelerator=wandb.config.accelerator,
         devices='auto',#wandb.config.devices,
         num_nodes=wandb.config.num_nodes,
@@ -624,7 +627,7 @@ def main():
         enable_model_summary=True,
         enable_checkpointing=True,
         enable_progress_bar=True,
-        overfit_batches=0.01, # overfit on 10 batches
+        overfit_batches=0.1, # overfit on 10 batches
         accumulate_grad_batches = wandb.config.accumulate_grad_batches,
     )
 
@@ -676,8 +679,12 @@ if __name__ == '__main__':
     su.fix_randomness()
     warnings.filterwarnings("ignore")
     torch.set_float32_matmul_precision('high')
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cuda.matmul.allow_fp16_reduced_precision_reduction = True
+    torch.backends.cudnn.allow_tf32 = True
     torch.autograd.set_detect_anomaly(True)
     os.environ['TORCH_CUDA_ARCH_LIST'] = '8.9'
+    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
     print(f"{'='*50} CUDA available: {torch.cuda.is_available()} {'='*50}")
     print(f"{'='*3}> Device specs: {torch.cuda.get_device_properties(0)}")
     # --------------------------------
@@ -695,7 +702,7 @@ if __name__ == '__main__':
     # config_path = get_experiment_config_path(model_name, dataset_name)
     experiment_path = C.get_experiment_dir(model_name, dataset_name)
     
-    os.environ["WANDB_DIR"] = os.path.abspath(os.path.join(experiment_path, 'wandb'))
+    os.environ["WANDB_DIR"] = os.path.abspath(os.path.join(experiment_path))
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 

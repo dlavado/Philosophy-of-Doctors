@@ -290,7 +290,7 @@ class DiskCollection(GIBCollection):
         s_centered = s_centered.unsqueeze(2).expand(-1, -1, self.num_gibs, -1, -1)
         montecarlo_points = torch.rand((int(10_000), 3), device=s_centered.device) * 2 * self.kernel_reach - self.kernel_reach # \in [-kernel_reach, kernel_reach]
         montecarlo_points = montecarlo_points[torch.norm(montecarlo_points, dim=-1) <= self.kernel_reach]
-        q_output = self._prepped_forward(s_centered, valid_mask, batched, montecarlo_points)
+        q_output = self._prepped_forward(s_centered, valid_mask, montecarlo_points)
         return q_output 
 
 

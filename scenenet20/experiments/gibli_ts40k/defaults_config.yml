@@ -54,7 +54,7 @@ cone:
 ellipsoid:
   value: 16
 num_observers:
-  value: -1
+  value: 32
 kernel_size:
   value: 0.1
 # --- GIBLi config
@@ -62,7 +62,7 @@ num_levels:
   value: 4
   description: 'Number of levels in the model'
 out_gib_channels:
-  value: "32" # "[96, 192, 384, 512]"
+  value: "8" # "[96, 192, 384, 512]"
   description: 'Number of output channels for GIB' 
 skip_connections:
   value: True
@@ -116,7 +116,7 @@ class_weights:
   value: True
   description: 'Use class weights in the loss function'
 segmentation_losses:
-  value: {} # {'focal': 0.5, 'tversky': 0.5, 'lovasz': 1.0}
+  value: {'focal': 0.5, 'tversky': 0.5, 'lovasz': 1.0}
   description: 'Additional losses for segmentation'
 # ------------------ #
 # Lit Trainer config
@@ -127,12 +127,12 @@ precision: # 16 or 32 FPU precision
   value: bf16 #'bf16'
   description: 'FPU precision'
 auto_scale_batch_size:
-  value: False
+  value: True
 profiler:
   value: null # 'advanced' # 'simple' or 'advanced'
   description: 'PyTorch Lightning profiler'
 accumulate_grad_batches:
-  value: 12
+  value: 1
   description: 'Accumulate gradients on k batches before performing a backward pass'
 save_onnx:
   value: False

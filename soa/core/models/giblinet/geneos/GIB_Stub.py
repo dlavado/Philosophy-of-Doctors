@@ -4,6 +4,8 @@
 from abc import abstractmethod
 import torch
 
+from core.models.giblinet.geneos.diff_rotation_transform import rotate, build_rotation_matrices
+
 
 GIB_PARAMS = "gib_params"
 NON_TRAINABLE = "non_trainable"
@@ -14,6 +16,13 @@ NUM_GIBS = "num_gibs"
 ###############################################################
 #                          GIB Utils                          #
 ###############################################################
+
+def print_gpu_memory():
+    """Measure GPU memory usage in MB."""
+    allocated_memory = torch.cuda.memory_allocated() / 1024**2  # Convert bytes to MB
+    cached_memory = torch.cuda.memory_reserved() / 1024**2  # Convert bytes to MB
+    peak_memory = torch.cuda.max_memory_allocated() / 1024**2 
+    print(f"Allocated Memory: {allocated_memory:.2f} MB, Cached Memory: {cached_memory:.2f} MB Peak Memory: {peak_memory:.2f} MB")
 
 def to_parameter(value, requires_grad=True):
     """
@@ -119,7 +128,7 @@ class GIB_Stub(torch.nn.Module):
     Abstract class for Geometric Inductive Bias operators.
     """
 
-    def __init__(self, kernel_reach:float, angles=None, **kwargs):
+    def __init__(self, kernel_reach:float, intensity=1, **kwargs):
         """
         Initializes the GIB kernel.
 
@@ -128,86 +137,29 @@ class GIB_Stub(torch.nn.Module):
 
         `kernel_reach` - int:
             The kernel's neighborhood reach in Geometric space.
+            
+        `num_gibs` - int:
+            The number of GIBs in the collection.
+            
+        `intensity` - torch.Tensor:
+            tensor of shape (num_gibs,) representing scalar intensities for each GIB;
+            
+        `angles` - torch.Tensor:
+            tensor of shape (num_gibs, 3) containing rotation angles for the x, y, and z axes for each GIB;
         """
-        super(GIB_Stub, self).__init__()
+        super(GIB_Stub, self).__init__()    
 
-        # self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.sign = 1 if torch.any(torch.rand(1) > 0.5) else -1 # random sign for the kernel
-
-        self.angles:torch.Tensor = angles if angles is not None else None
         self.kernel_reach = kernel_reach
-        
         # variables to compute the integral of the GIB function within the kernel reach
-        self.n_samples = 1e4
-        self.ndims = 3
-        self.montecarlo_points = torch.rand((int(self.n_samples), self.ndims)) * 2 * self.kernel_reach - self.kernel_reach
-        # self.montecarlo_points = self.montecarlo_points.cuda()
-        mask_inside = torch.linalg.norm(self.montecarlo_points, dim=1) <= self.kernel_reach
-        self.montecarlo_points = self.montecarlo_points[mask_inside]
-
-        self.epsilon = 1e-8 # small value to avoid division by zero
-        self.intensity = 1  # intensity of the gaussian function
+        self.epsilon = 1e-8 # small value to avoid division by zero        
+        self.intensity = intensity # intensity of the gaussian function   
         
-
-    @abstractmethod
-    def compute_integral(self) -> torch.Tensor:
-        """
-        Computes an integral approximation of the gaussian function within the kernel_reach.
-       
-        Returns
-        -------
-        `integral` - torch.Tensor:
-            Tensor of shape (1,) representing the integral of the gaussian function within the kernel reach.
-        """
 
     @abstractmethod
     def gaussian(self, x:torch.Tensor) -> torch.Tensor:
         """
         Computes the gaussian function for the given input tensor.
         """
-    
-
-    def sum_zero(self, tensor:torch.Tensor) -> torch.Tensor:
-        """
-        Normalizes the input tensor by subtracting the integral of the resulting gaussian function within the kernel reach.
-
-        Parameters
-        ----------
-        `tensor` - torch.Tensor:
-            Tensor of shape (N,) representing the values of the kernel; this tensor directly results from the gaussian function.
-            
-        Returns
-        -------
-        `tensor` - torch.Tensor:
-            Tensor of shape (N,) representing the normalized values of the kernel.
-        """
-        self.montecarlo_points = self.montecarlo_points.to(tensor.device)
-        integral = self.compute_integral().to(tensor.device)
-        return tensor - integral / self.n_samples
-    
-
-    @abstractmethod
-    def forward(self, points:torch.Tensor, q_points:torch.Tensor, supports_idxs:torch.Tensor) -> torch.Tensor:
-        """
-        Computes a GIB on the query points given the support points.
-
-        Parameters
-        ----------
-        `points` - torch.Tensor:
-            Tensor of shape (N, 3) representing the point cloud.
-
-        `q_points` - torch.Tensor:
-            Tensor of shape (M, 3) representing the query points.
-
-        `supports_idxs` - torch.Tensor[int]:
-            Tensor of shape (M, K) representing the indices of the support points for each query point. With K <= N.
-
-        Returns
-        -------
-        `q_output` - torch.Tensor:
-            Tensor of shape (M,) representing the output of the GIB on the query points.    
-        """
-        
 
     @staticmethod
     def mandatory_parameters():
@@ -237,7 +189,7 @@ class GIB_Stub(torch.nn.Module):
         config[NON_TRAINABLE] = []
 
         return config
-
+    
     def _plot_integral(self, gaussian_x:torch.Tensor):
         print(f"{gaussian_x.shape=}")
         import matplotlib.pyplot as plt
@@ -246,39 +198,89 @@ class GIB_Stub(torch.nn.Module):
         mc = self.montecarlo_points.detach().cpu().numpy()
         ax.scatter(mc[:, 0], mc[:, 1], mc[:, 2], c=gaussian_x.detach().cpu().numpy(), cmap='magma')
         plt.show()  
-    
-   
-    def rotate(self, points:torch.Tensor) -> torch.Tensor:
+        
+        
+    def compute_integral(self, mc_points:torch.Tensor) -> torch.Tensor:
         """
-        Rotate a tensor along the x, y, and z axes by the given angles.
+        Computes an integral approximation of the gaussian function within the kernel_reach.
         
         Parameters
         ----------
-        `angles` - torch.Tensor:
-            Tensor of shape (3,) containing rotation angles for the x, y, and z axes.
-            These are nromalized in the range [-1, 1] and represent angles_normalized = angles / pi.
+        
+        `mc_points` - torch.Tensor:
+            Tensor of shape (N, 3) representing the montecarlo points for each GIB in the collection.
 
-        `points` - torch.Tensor:
-            Tensor of shape (N, 3) representing the 3D points to rotate.
+        Returns
+        -------
+        `integral` - torch.Tensor:
+            Tensor of shape (1,) representing the integral of the gaussian function within the kernel reach;
+        """
+        mc_weights = self._compute_gib_weights(mc_points) # (N,)
+        # print(f"{mc_weights.shape=}")
+        # for g in range(self.num_gibs):
+        #     self._plot_integral(mc_points[g], mc_weights[g], plot_valid=False)
+        return torch.sum(mc_weights, dim=-1) # (1,)
+    
+    def sum_zero(self, tensor:torch.Tensor, mc_points:torch.Tensor) -> torch.Tensor:
+        """
+        Normalizes the input tensor by subtracting the integral of the resulting gaussian functions within the kernel reach.
+
+        Parameters
+        ----------
+        `tensor` - torch.Tensor:
+            Tensor of shape (..., K) representing the values of the kernel;
+            This tensor is the product of the gaussian function of the GIB Stub; 
+            where K is the num of neighbors;
             
         Returns
         -------
-        `points` - torch.Tensor:
-            Tensor of shape (N, 3) containing the rotated
+        `tensor` - torch.Tensor:
+            Tensor of shape (..., K) representing the normalized values of the kernel.
         """
-        if self.angles is None:
-            return points
+        integral = self.compute_integral(mc_points)
+        return tensor - integral.unsqueeze(-1) / mc_points.shape[1]
+    
+    
+    @abstractmethod
+    def _compute_gib_weights(self, s_centered:torch.Tensor) -> torch.Tensor:
+        """
+        Computes the weights of the GIB kernel        
+        """
         
-        from core.models.giblinet.geneos.diff_rotation_transform import rotate_points
-        angles = self.angles % 2 # rotations higher than 2\pi are equivalent to rotations within 2\pi
-        angles = 2 - torch.relu(-angles) # convert negative angles to positive
-        return rotate_points(angles, points)
+        
+    def _prepped_forward(self, s_centered:torch.Tensor, valid_mask:torch.Tensor, batched:bool, mc_points:torch.Tensor) -> torch.Tensor:
+        
+        # print(f"{s_centered.shape=}")   
+        # Compute GIB weights; (B, M, K, 3) -> (B, M, K)
+        # print_gpu_memory()
+        weights = self._compute_gib_weights(s_centered)
+        # print(f"{weights.shape=}")
+        
+        # print_gpu_memory()
+        ### Post Processing ###
+        weights = self._validate_and_sum(weights, valid_mask, mc_points) # (B, M)
+        # print_gpu_memory()
+
+        if not batched:
+            weights = weights.squeeze(0)
+        return weights
+
+
+    def _validate_and_sum(self, weights:torch.Tensor, valid_mask:torch.Tensor, mc_points:torch.Tensor) -> torch.Tensor:
+        """
+        Validates the weights and sums them up.
+        """
+        weights = weights * valid_mask.unsqueeze(2).expand_as(weights).to(weights.dtype)
+        weights = self.sum_zero(weights, mc_points) # (B, M, K)
+        weights = torch.sum(weights, dim=-1) # (B, M)
+        return weights
+    
     
     
     
 class GIBCollection(torch.nn.Module):
     
-    def __init__(self, kernel_reach:float, num_gibs, intensity=1, **kwargs):
+    def __init__(self, kernel_reach:float, num_gibs, intensity=1, angles=None, **kwargs):
         """
         Initializes the GIB kernel.
 
@@ -305,7 +307,7 @@ class GIBCollection(torch.nn.Module):
         # variables to compute the integral of the GIB function within the kernel reach
         self.epsilon = 1e-8 # small value to avoid division by zero        
         self.intensity = intensity # intensity of the gaussian function   
-        
+        self.angles = angles # angles for each GIB; shape (num_gibs, 3)        
 
     @abstractmethod
     def gaussian(self, x:torch.Tensor) -> torch.Tensor:
@@ -406,23 +408,22 @@ class GIBCollection(torch.nn.Module):
         Computes the weights of the GIB kernel        
         """
         
-        
-    def _prepped_forward(self, s_centered:torch.Tensor, valid_mask:torch.Tensor, batched:bool, mc_points:torch.Tensor) -> torch.Tensor:
-        
+    def _prepped_forward(self, s_centered:torch.Tensor, valid_mask:torch.Tensor, mc_points:torch.Tensor) -> torch.Tensor:
+            
         # rotations moved to GIB Layer for faster computation
         # s_centered = self.apply_rotations(s_centered.contiguous()) # (B, M, G, K, 3)
         
         # print(f"{s_centered.shape=}")   
         # Compute GIB weights; (B, M, G, K, 3) -> (B, M, G, K)
+        # print_gpu_memory()
         weights = self._compute_gib_weights(s_centered)
         # print(f"{weights.shape=}")
         
+        # print_gpu_memory()
         ### Post Processing ###
         weights = self._validate_and_sum(weights, valid_mask, mc_points) # (B, M, G)
-
-        if not batched:
-            weights = weights.squeeze(0)
-
+        # print_gpu_memory()
+        
         return weights
 
 

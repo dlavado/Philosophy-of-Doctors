@@ -27,7 +27,7 @@ num_data_channels:
   value: 3
   description: 'Number of channels in the dataset'
 batch_size:
-  value: 1
+  value: 2
 ignore_index:
   value: -1 # noise
 num_workers: 
@@ -40,10 +40,10 @@ val_split:
 model:
   value: 'pt_transformer'
 model_hash:
-  value: 'ptv3-gibli-gib4-nknn8'
+  value: 'ptv3-gibli-gib16-nknn16'
 in_channels:
   value: 3 # xyz coords
-  description: 'Number of channels in the input''${experiment_path}/wandb/ptv2_resume' # v2
+  description: 'Number of channels in the input'
 model_version:
   value: 'gibli-v3' # 'v1' or 'v2' or 'v3'
   description: 'Point Transformer version'
@@ -53,27 +53,33 @@ kernel_size:
   description: 'Kernel size of GIBs'
 gib_dict:
   value: {
-    'cy'    : 16,
-    'ellip' : 16,
-    'disk'  : 16,
-    'cone'  : 16,
+    'cy'    : 8,
+    'ellip' : 8,
+    'disk'  : 8,
+    'cone'  : 8,
   }
   description: 'Dictionary of GIBs'
-num_neighbors:
-  value: 16
-  description: 'Number of neighbors for GIBs'
-gib_layers:
-  value: 1
-  description: 'Number of GIB layers'
+num_observers:
+  value: [16, 16]
+  description: 'Number of observers'
+kernel_reach:
+  value: 0.1
+  description: 'Kernel reach of GIBs'
+neighbor_size:
+  value: [16, 32]
+  description: 'Number of neighbors'
+out_channels:
+  value: 32
+  description: 'Number of output channels'
 # ------------------ #
 # training config
 # ------------------ #
 optimizer:
-  value: 'adamw' #'adam' 
+  value: 'adam' #'adam' 
 learning_rate:
-  value: 0.0001
+  value: 0.001
 max_epochs:
-  value: 40 # -1 for infinite
+  value: 100 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -94,7 +100,7 @@ class_weights:
   value: True
   description: 'Use class weights in the loss function'
 segmentation_losses:
-  value: {'focal': 0.2, 'tversky': 0.2, 'lovasz': 0.4}
+  value: {'focal': 0.2, 'tversky': 0.2, 'lovasz': 0.8}
   description: 'Additional losses for segmentation'
 # ------------------ #
 # Lit Trainer config
@@ -112,7 +118,7 @@ profiler:
   value: False
   description: 'PyTorch Lightning profiler'
 accumulate_grad_batches:
-  value: 8
+  value: 16
   description: 'Accumulate gradients on k batches before performing a backward pass'
 save_onnx:
   value: False
@@ -125,7 +131,7 @@ resume_from_checkpoint:
 checkpoint_dir:
   value: '${experiment_path}/checkpoints/' # v2
 resume_checkpoint_name:
-  value: ptv3_normlas_val_MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+  value: MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:

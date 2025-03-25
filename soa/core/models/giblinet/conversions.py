@@ -380,15 +380,6 @@ def compute_centered_support_points(points: torch.Tensor, q_points: torch.Tensor
         Tensor of shape (B, M, K) representing a mask where valid points are marked as `True` and invalid (`-1`) points as `False`.
 
     """
-    if points.dim() == 2:
-        # If unbatched, add a batch dimension
-        points = points.unsqueeze(0)
-        q_points = q_points.unsqueeze(0)
-        support_idxs = support_idxs.unsqueeze(0)
-        batched = False
-    else:
-        batched = True
-
     B, M, K = support_idxs.shape
     F = points.shape[-1]
     
@@ -409,7 +400,7 @@ def compute_centered_support_points(points: torch.Tensor, q_points: torch.Tensor
     # Center the support points: (B, M, K, 3) - (B, M, 1, 3)
     s_centered = support_points - q_points.unsqueeze(2)  # (B, M, K, 3)
 
-    return s_centered.contiguous(), valid_mask, batched
+    return s_centered.contiguous(), valid_mask
 
 
 
@@ -509,7 +500,10 @@ def build_batch_tensor(packed_tensor: torch.Tensor, offset_vector: torch.Tensor,
     Returns
     -------
     `batch_tensor` : torch.Tensor
-        Tensor in batch mode. Shape (B, N, ...).
+        Tensor in batch mode. Shape (B, N, ...)
+        
+    `mask` : torch.Tensor
+        Boolean tensor indicating valid indices in the batch tensor. Shape (B, N).
     """
     
     if offset_indices is not None:
@@ -538,7 +532,42 @@ def build_batch_tensor(packed_tensor: torch.Tensor, offset_vector: torch.Tensor,
     batch_tensor[mask] = packed_tensor[flat_indices]
     
 
-    return batch_tensor
+    return batch_tensor, mask
+
+
+def batch_to_packed(batch_tensor: torch.Tensor, mask: torch.Tensor):
+    """
+    Convert a batched tensor back to a packed tensor using its corresponding mask.
+
+    Parameters
+    ----------
+    batch_tensor : torch.Tensor
+        Tensor in batch mode. Shape (B, N, ...).
+
+    mask : torch.Tensor
+        Boolean tensor indicating valid indices in the batch tensor. Shape (B, N).
+
+    Returns
+    -------
+    packed_tensor : torch.Tensor
+        Tensor in packed mode. Shape (sum(valid elements), ...).
+
+    offset_vector : torch.Tensor
+        Tensor with the cumulative sum of valid elements per batch. Shape (B).
+    """
+    
+    if mask is None:
+        mask = (batch_tensor != -1).all(dim=-1)
+    # Compute the number of valid elements per batch
+    lengths = mask.sum(dim=1)  # Shape (B,)
+
+    # Compute the offset vector
+    offset_vector = torch.cumsum(lengths, dim=0)  # Shape (B,)
+
+    # Extract valid elements using the mask
+    packed_tensor = batch_tensor[mask]
+
+    return packed_tensor, offset_vector.to(torch.int32)
 
 
 def build_batch_tensor_autograd(packed_tensor: torch.Tensor, offset_vector: torch.Tensor, offset_indices=None, pad_value=-1):
@@ -594,6 +623,3 @@ def build_batch_tensor_autograd(packed_tensor: torch.Tensor, offset_vector: torc
     batch_tensor = batch_tensor.scatter(1, mask.nonzero(as_tuple=True)[1].unsqueeze(-1), packed_tensor[flat_indices.to(torch.long)].unsqueeze(-1))
     
     return batch_tensor
-    
-    
-    

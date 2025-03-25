@@ -69,7 +69,7 @@ class LitS3DIS(pl.LightningDataModule):
                     # dict(type="RandomColorDrop", p=0.2, color_augment=0.0),
                     dict(
                         type="GridSample",
-                        grid_size=0.04,
+                        grid_size=0.05,
                         hash_type="fnv",
                         mode="train",
                         keys=("coord", "color", "segment"),

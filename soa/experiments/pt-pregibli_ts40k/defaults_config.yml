@@ -27,7 +27,7 @@ num_data_channels:
   value: 3
   description: 'Number of channels in the dataset'
 batch_size:
-  value: 1
+  value: 2
 ignore_index:
   value: -1 # noise
 num_workers: 
@@ -40,7 +40,7 @@ val_split:
 model:
   value: 'pt_transformer'
 model_hash:
-  value: 'ptv1-pregibli-gib4-nl4-out4-nknn4'
+  value: 'ptv2-pregibli-gib16-ob32-nl4-out16-nknn16'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input''${experiment_path}/wandb/ptv2_resume' # v2
@@ -57,7 +57,7 @@ gib_dict:
   }
   description: 'Dictionary of GIBs'
 num_observers:
-  value: -1
+  value: 32
 kernel_size:
   value: 0.1
 # --- GIBLi config
@@ -99,7 +99,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 40 # -1 for infinite
+  value: 100 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -133,7 +133,7 @@ precision: # 16 or 32 FPU precision
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: True
+  value: False
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'
@@ -151,7 +151,7 @@ resume_from_checkpoint:
 checkpoint_dir:
   value: '${experiment_path}/checkpoints/' # v2
 resume_checkpoint_name:
-  value: ptv3_normlas_val_MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+  value: MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:

@@ -338,7 +338,7 @@ class PointTransformerSeg50(PointTransformerSeg):
 
 from core.models.giblinet.GIBLi import GIBLiLayer, GIBLiNet
 from core.models.giblinet.GIBLi_utils import Neighboring
-from core.models.giblinet.conversions import get_offset_vector, build_batch_tensor, build_batch_tensor_autograd
+from core.models.giblinet.conversions import get_offset_vector, build_batch_tensor, batch_to_packed
 
 class GIBLiBottleneck(nn.Module):
     expansion = 1
@@ -358,7 +358,7 @@ class GIBLiBottleneck(nn.Module):
         super(GIBLiBottleneck, self).__init__()
         # self.linear1 = nn.Linear(in_planes, planes, bias=False)
         neigh_strat = Neighboring('knn', num_neighbors)
-        self.linear1  = GIBLiLayer(in_planes, planes, -1, k_size, gib_dict, neigh_strat, gib_layers)
+        self.linear1  = GIBLiLayer(in_planes, planes, 32, k_size, gib_dict, neigh_strat, gib_layers)
         self.bn1 = nn.BatchNorm1d(planes)
         self.transformer = PointTransformerLayer(planes, planes, share_planes, nsample)
         self.bn2 = nn.BatchNorm1d(planes)
@@ -369,9 +369,9 @@ class GIBLiBottleneck(nn.Module):
     def forward(self, pxo):
         p, x, o = pxo  # (n, 3), (n, c), (b)
         identity = x
-        bx = self.linear1(build_batch_tensor(x, o))
-        torch.cuda.empty_cache()
-        x = bx.view(x.shape[0], -1)
+        x, mask = build_batch_tensor(x, o)
+        x = self.linear1(x)
+        x = batch_to_packed(x, mask)[0]        
         x = self.relu(self.bn1(x))
         x = self.relu(self.bn2(self.transformer([p, x, o])))
         x = self.bn3(self.linear3(x))
@@ -557,10 +557,9 @@ class PreGIBLiPointTransformerSeg(PointTransformerSeg):
         feats = data_dict['feat']
         
         x = torch.cat([coords, feats], dim=-1)
-        x = build_batch_tensor(x, data_dict['offset'])
+        x, mask = build_batch_tensor(x, data_dict['offset'])
         x = self.gibli.gibli_forward(x)
-        
-        x = x.reshape(-1, x.shape[-1])
+        x = batch_to_packed(x, mask)[0]
         data_dict['feat'] = torch.cat([coords, x], dim=-1)
         
         return super().forward(data_dict)

@@ -24,27 +24,26 @@ class Lit_PointTransformer(LitWrapperModel):
                 ignore_index=-1,
                 **kwargs):
         
+        version = version.lower()
         
         if 'pre' in version:
-            
             if 'v3' in version:
                 model = ptv3.PreGIBLiPointTransformerV3(in_channels=in_channels, 
                                                         num_classes=num_classes, 
                                                         enable_flash=False,
                                                         order=["z", "z-trans", "hilbert", "hilbert-trans"],
-                                                        giblinet_params=kwargs['gib_params'])
-                
-                
+                                                        giblinet_params=kwargs['gib_params'])       
             elif 'v2' in version:
                 model = ptv2.PreGIBLiPointTransformerV2(in_channels=in_channels, 
                                                         num_classes=num_classes,
                                                         grid_sizes=(0.05, 0.10, 0.20, 0.40),
                                                         giblinet_params=kwargs['gib_params'])
-                
-            else:
+            elif 'v1' in version:
                 model = pts.PreGIBLiPointTransformerSeg50(in_channels=in_channels, 
                                                         num_classes=num_classes, 
                                                         giblinet_params=kwargs['gib_params'])
+            else:
+                ValueError("Invalid version")
         
         elif 'gibli' in version:
             if 'v1' in version: # gibli v1
@@ -55,8 +54,7 @@ class Lit_PointTransformer(LitWrapperModel):
                 model = ptv2.GIBLiPointTransformerV2(in_channels=in_channels,
                                                      num_classes=num_classes,
                                                      grid_sizes=(0.05, 0.10, 0.20, 0.40),
-                                                     **kwargs['gib_params'])
-                
+                                                     **kwargs['gib_params']) 
             elif 'v3' in version: # gibli v3
                 model = ptv3.GIBLiPointTransformerV3(in_channels=in_channels, num_classes=num_classes,
                                                       order=["z", "z-trans", "hilbert", "hilbert-trans"], enable_flash=False,
@@ -74,8 +72,10 @@ class Lit_PointTransformer(LitWrapperModel):
             elif version == 'v3':
                 model = ptv3.PointTransformerV3(in_channels=in_channels, num_classes=num_classes,
                                                 order=["z", "z-trans", "hilbert", "hilbert-trans"], enable_flash=False)     
-            else:
+            elif version == 'v1':
                 model = pts.PointTransformerSeg50(in_channels=in_channels, num_classes=num_classes)
+            else:
+                ValueError("Invalid version")
 
         self.version = version
 
@@ -122,10 +122,14 @@ class Lit_PointTransformer(LitWrapperModel):
 
             if metric:
                 for metric_name, metric_val in metric.items():
+                    metric_val = metric_val
                     met = metric_val(preds, y.reshape(-1))
-                    if isinstance(met, torch.Tensor):
+                    if met.numel() > 1: 
+                        if stage == 'val':   
+                            for i, m in enumerate(met.tolist()):
+                                self.log(f"class_{i}_{metric_name}", m, on_epoch=True, on_step=False, prog_bar=False, logger=logger)
                         met = met.mean()
-                    self.log(f"{stage}_{metric_name}", met, on_epoch=True, on_step=on_step, prog_bar=True, logger=True)
+                    self.log(f"{stage}_{metric_name}", met, on_epoch=True, on_step=on_step, prog_bar=True, logger=logger)
 
         return loss, preds, y
     
@@ -134,3 +138,13 @@ class Lit_PointTransformer(LitWrapperModel):
         torch.cuda.empty_cache()
         # release memory
         return super().on_train_batch_end(batch, batch_idx, dataloader_idx)
+    
+    
+    # def on_after_backward(self):
+    #     for name, param in self.model.named_parameters():
+    #         if 'gib_params' in name and 'disk' in name:
+    #             print(f"{name=},  {param=},  {param.grad=}")
+        
+    #     # print(f"Memory after backward: {torch.cuda.memory_allocated() / (1024 ** 2)} MB")
+    #     # print(torch.cuda.memory_summary())
+    #     return

@@ -30,9 +30,9 @@ class LitPointNet(LitWrapperModel):
                 criterion = pointnet2.get_loss()
             
             if 'pre' in model:
-                model = pointnet2.get_pre_gibli_model(in_channels=num_channels, num_classes=num_classes, **kwargs['gibli_params'])
+                model = pointnet2.get_pre_gibli_model(in_channels=3 + num_channels, num_classes=num_classes, **kwargs['gibli_params'])
             elif 'gibli' in model:
-                model = pointnet2.get_gibli_model(num_classes, num_channels=num_channels, gibli_params=kwargs['gibli_params'])
+                model = pointnet2.get_gibli_model(num_classes, num_channels=3 + num_channels, gibli_params=kwargs['gibli_params'])
             else:
                 model = pointnet2.get_model(num_classes, num_channels=num_channels)
         elif 'pointnet' in model:
@@ -40,9 +40,9 @@ class LitPointNet(LitWrapperModel):
                 criterion = pointnet.get_loss()
                 
             if 'pre' in model:
-                model = pointnet.get_pre_gibli_model(in_channels=num_channels, num_classes=num_classes, **kwargs['gibli_params'])
+                model = pointnet.get_pre_gibli_model(in_channels=3 + num_channels, num_classes=num_classes, **kwargs['gibli_params'])
             elif 'gibli' in model:
-                model = pointnet.get_gibli_model(num_classes, num_channels=num_channels, gibli_params=kwargs['gibli_params'])
+                model = pointnet.get_gibli_model(num_classes, num_channels=3 + num_channels, gibli_params=kwargs['gibli_params'])
             else:
                 model = pointnet.get_model(num_classes, num_channels=num_channels)
         else:
@@ -80,8 +80,8 @@ class LitPointNet(LitWrapperModel):
             x, y = batch
             
         x = torch.cat([x, feat], dim=-1)
-        x = build_batch_tensor(x, offset)
-        y = build_batch_tensor(y, offset)    
+        x = build_batch_tensor(x, offset)[0]
+        y = build_batch_tensor(y, offset)[0]    
         return x, y
     
 
@@ -98,7 +98,9 @@ class LitPointNet(LitWrapperModel):
         out = out.reshape(-1, out.shape[-1])
         y = y.reshape(-1).to(torch.long)
 
-        loss = self.criterion(out, y, trans_feat)
+    
+        # loss = self.criterion(out, y, trans_feat)
+        loss = self.criterion(out, y)
 
         # print(f"\nLoss: {loss}\n")
 
@@ -111,9 +113,12 @@ class LitPointNet(LitWrapperModel):
             if metric:
                 for metric_name, metric_val in metric.items():
                     met = metric_val(preds, y)
-                    if isinstance(met, torch.Tensor):
+                    if met.numel() > 1: 
+                        if stage == 'val':   
+                            for i, m in enumerate(met.tolist()):
+                                self.log(f"class_{i}_{metric_name}", m, on_epoch=True, on_step=False, prog_bar=False, logger=logger)
                         met = met.mean()
-                    self.log(f"{stage}_{metric_name}", met, on_epoch=True, on_step=on_step, prog_bar=True, logger=True)
+                    self.log(f"{stage}_{metric_name}", met, on_epoch=True, on_step=on_step, prog_bar=True, logger=logger)
 
         return loss, preds, y 
     

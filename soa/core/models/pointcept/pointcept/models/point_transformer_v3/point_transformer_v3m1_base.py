@@ -723,9 +723,9 @@ class PointTransformerV3(PointModule):
     
 ####################################################################################################
 
-from core.models.giblinet.GIBLi import GIBLiLayer, GIBLiNet
-from core.models.giblinet.GIBLi_utils import Neighboring
-from core.models.giblinet.conversions import get_offset_vector, build_batch_tensor
+
+from core.models.giblinet.GIBLi_parts import GIBLiLayer
+from core.models.giblinet.conversions import get_offset_vector, build_batch_tensor, batch_to_packed
 
 class GIBLiBlock(PointModule):
     def __init__(
@@ -749,10 +749,11 @@ class GIBLiBlock(PointModule):
         upcast_attention=True,
         upcast_softmax=True,
         ### gib parameters
-        k_size=0.1,
-        gib_dict=None,
-        num_neighbors=16,
-        gib_layers=1,
+        gib_dict={},
+        num_observers=[8, 8],
+        kernel_reach=0.1,
+        neighbor_size=[8, 16],
+        out_channels=64,
     ):
         super().__init__()
         self.channels = channels
@@ -770,8 +771,21 @@ class GIBLiBlock(PointModule):
             norm_layer(channels),
         )
         
-        neigh_strat = Neighboring('knn', num_neighbors)
-        self.gibli = GIBLiLayer(channels, channels, -1, k_size, gib_dict, neigh_strat, gib_layers)
+        
+        self.gibli = GIBLiLayer(
+            channels, gib_dict, num_observers, kernel_reach, neighbor_size, out_channels
+        )
+        
+        out_gibli_channels = out_channels + sum(num_observers)
+        self.mlp_gibli = PointSequential(
+            MLP(
+                in_channels=out_gibli_channels,
+                hidden_channels=int(channels * mlp_ratio),
+                out_channels=channels,
+                act_layer=act_layer,
+                drop=proj_drop,
+            )
+        )
         
         self.norm1 = PointSequential(norm_layer(channels))
         
@@ -803,15 +817,24 @@ class GIBLiBlock(PointModule):
             DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         )
 
+    def build_input_gibli(self, point: Point):
+        batched_coord, mask = build_batch_tensor(point.coord, point.offset)
+        input_dict = {
+            "coord": batched_coord,
+            "feat": build_batch_tensor(point.feat, point.offset)[0],
+            "mask": mask,
+        }
+        return input_dict
+    
     def forward(self, point: Point):
         shortcut = point.feat
         point = self.cpe(point)
         point.feat = shortcut + point.feat
         shortcut = point.feat
         if self.pre_norm:
-            bfeat = self.gibli(build_batch_tensor(point.feat, point.offset))
-            bfeat = bfeat.view(-1, point.feat.shape[-1])
-            point.feat = bfeat
+            input_dict = self.build_input_gibli(point)
+            bfeat = self.gibli(input_dict)
+            point.feat = self.mlp_gibli(batch_to_packed(bfeat, input_dict["mask"])[0])
             point = self.norm1(point)
         point = self.drop_path(self.attn(point))
         point.feat = shortcut + point.feat
@@ -866,10 +889,11 @@ class GIBLiPointTransformerV3(PointModule):
         pdnorm_affine=True,
         pdnorm_conditions=("ScanNet", "S3DIS", "Structured3D"),
         ### gib parameters
-        k_size=0.1,
-        gib_dict=None,
-        num_neighbors=16,
-        gib_layers=1,
+        gib_dict={},
+        num_observers=[8, 8],
+        kernel_reach=0.1,
+        neighbor_size=[8, 16],
+        out_channels=64,
     ):
         super().__init__()
         self.num_stages = len(enc_depths)
@@ -962,10 +986,12 @@ class GIBLiPointTransformerV3(PointModule):
                         enable_flash=enable_flash,
                         upcast_attention=upcast_attention,
                         upcast_softmax=upcast_softmax,
-                        k_size=k_size,
+                        ### gib parameters
                         gib_dict=gib_dict,
-                        num_neighbors=num_neighbors,
-                        gib_layers=gib_layers,
+                        num_observers=num_observers,
+                        kernel_reach=kernel_reach,
+                        neighbor_size=neighbor_size,
+                        out_channels=out_channels,
                     ),
                     name=f"block{i}",
                 )
@@ -1016,10 +1042,12 @@ class GIBLiPointTransformerV3(PointModule):
                             enable_flash=enable_flash,
                             upcast_attention=upcast_attention,
                             upcast_softmax=upcast_softmax,
-                            k_size=k_size,
+                            ### gib parameters
                             gib_dict=gib_dict,
-                            num_neighbors=num_neighbors,
-                            gib_layers=gib_layers,
+                            num_observers=num_observers,
+                            kernel_reach=kernel_reach,
+                            neighbor_size=neighbor_size,
+                            out_channels=out_channels,
                         ),
                         name=f"block{i}",
                     )
@@ -1093,9 +1121,7 @@ class PreGIBLiPointTransformerV3(PointTransformerV3):
         gibli = GIBLiNet(in_channels=3 + in_channels, num_classes=num_classes, **giblinet_params)
         input_dim = giblinet_params['out_gib_channels'][0] if isinstance(giblinet_params['out_gib_channels'], list) else giblinet_params['out_gib_channels']
         
-        
         super().__init__(input_dim + in_channels, num_classes, order, stride, enc_depths, enc_channels, enc_num_head, enc_patch_size, dec_depths, dec_channels, dec_num_head, dec_patch_size, mlp_ratio, qkv_bias, qk_scale, attn_drop, proj_drop, drop_path, pre_norm, shuffle_orders, enable_rpe, enable_flash, upcast_attention, upcast_softmax, cls_mode, pdnorm_bn, pdnorm_ln, pdnorm_decouple, pdnorm_adaptive, pdnorm_affine, pdnorm_conditions)
-
 
         self.gibli = gibli
 
@@ -1104,10 +1130,10 @@ class PreGIBLiPointTransformerV3(PointTransformerV3):
         feats = data_dict['feat']
         
         x = torch.cat([coords, feats], dim=-1)
-        x = build_batch_tensor(x, data_dict['offset'])
+        x, mask = build_batch_tensor(x, data_dict['offset'])
         x = self.gibli.gibli_forward(x)
         
-        x = x.reshape(-1, x.shape[-1])
+        x = batch_to_packed(x, mask)[0]
         data_dict['feat'] = torch.cat([coords, x], dim=-1)
         
         return super().forward(data_dict)

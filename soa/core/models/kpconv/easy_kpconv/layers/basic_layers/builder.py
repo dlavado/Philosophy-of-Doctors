@@ -78,10 +78,10 @@ def _find_optimal_num_groups(num_channels: int) -> int:
             if num_channels_per_group >= 8:
                 break
         num_groups = num_groups // 2
-    assert num_groups != 1, (
-        f"Cannot find 'num_groups' in GroupNorm with 'num_channels={num_channels}' automatically. "
-        "Please manually specify 'num_groups'."
-    )
+    # assert num_groups != 1, (
+    #     f"Cannot find 'num_groups' in GroupNorm with 'num_channels={num_channels}' automatically. "
+    #     "Please manually specify 'num_groups'."
+    # )
     return num_groups
 
 

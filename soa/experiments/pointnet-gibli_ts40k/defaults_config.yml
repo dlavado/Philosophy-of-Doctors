@@ -45,7 +45,7 @@ min_points:
 # model config
 # ------------------ #
 model:
-  value: 'pointnet-gibli'
+  value: 'pointnet2-gibli'
 model_hash:
   value: 'pointnet2_gibli_gib4_nknn8'
 in_channels:
@@ -111,7 +111,7 @@ precision: # 16 or 32 FPU precision
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: False
+  value: True
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'

@@ -15,7 +15,7 @@ preprocessed:
   value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: False
+  value: True
 data_path:
   value: ''
 add_normals:
@@ -27,7 +27,7 @@ num_data_channels:
   value: 3
   description: 'Number of channels in the dataset'
 batch_size:
-  value: 4
+  value: 1
 ignore_index:
   value: -1 # noise
 num_workers: 
@@ -45,23 +45,23 @@ min_points:
 # model config
 # ------------------ #
 model:
-  value: 'pointnet-pregibli'
+  value: 'pointnet2-pregibli'
 model_hash:
-  value: 'pointnet2_pregibli_gib4_nl4_nknn4'
+  value: 'pointnet2_pregibli_gib16_nl4_nknn16_ob16'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'
 #### GIBLi Parameters ####
 gib_dict:
   value: {
-    'cy'    : 4,
-    'ellip' : 4,
-    'disk'  : 4,
-    'cone'  : 4,
+    'cy'    : 8,
+    'ellip' : 8,
+    'disk'  : 8,
+    'cone'  : 8,
   }
   description: 'Dictionary of GIBs'
 num_observers:
-  value: -1
+  value: 16
 kernel_size:
   value: 0.1
 # --- GIBLi config
@@ -84,7 +84,7 @@ neighborhood_strategy:
   value: 'knn'
   description: 'Strategy for neighborhood operations'
 neighborhood_size:
-  value: "4" # "[16, 16, 16, 16]" # "[16, 48, 96, 192, 384]"
+  value: "[16, 16, 16, 16]" # "[16, 48, 96, 192, 384]"
   description: 'Size of the neighborhood for the strategy'
 neighborhood_kwargs:
   value: {}
@@ -103,7 +103,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: -1 # -1 for infinite
+  value: 150 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -124,7 +124,7 @@ class_weights:
   value: True
   description: 'Use class weights in the loss function'
 segmentation_losses:
-  value: null #{'focal': 0.2, 'tversky': 0.2, 'lovasz': 0.2}
+  value: {'focal': 0.2, 'tversky': 0.2, 'lovasz': 0.2}
   description: 'Additional losses for segmentation'
 # ------------------ #
 # Lit Trainer config
@@ -161,4 +161,3 @@ checkpoint_every_n_epochs: # This parameter and the next one are mutually exclus
   value: 1 # every n epochs
 checkpoint_every_n_steps:
   value: 0 # every n steps
-  
