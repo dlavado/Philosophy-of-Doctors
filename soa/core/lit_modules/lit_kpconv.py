@@ -6,7 +6,7 @@ import torch
 from core.lit_modules.lit_model_wrappers import LitWrapperModel
 
 
-from core.models.kpconv.examples.scene_segmentation.model import KPFCNN, GIBLi_KPFCNN, PreGIBLi_KPFCNN
+from core.models.kpconv.examples.scene_segmentation.model import KPFCNN, GIBLi_KPFCNN
 from core.models.kpconv.easy_kpconv.ops.calibrate_neighbors import calibrate_neighbors_pack_mode
 from core.models.kpconv.easy_kpconv.ops.conversion import batch_to_pack, pack_to_batch
 
@@ -37,27 +37,7 @@ class LitKPConv(LitWrapperModel):
         if neighbor_limits is None:
             neighbor_limits = calibrate_neighbors_pack_mode() #TODO
         
-        if 'pre' in model_version:
-            kpconv_params = {
-                "num_stages": num_stages,
-                "voxel_size": voxel_size,
-                "kpconv_radius": kpconv_radius,
-                "kpconv_sigma": kpconv_sigma,
-                "neighbor_limits": neighbor_limits,
-                # "input_dim": input_dim,
-                "init_dim": init_dim,
-                "kernel_size": kernel_size,
-                # "num_classes": num_classes,
-            }
-            model = PreGIBLi_KPFCNN(
-                        num_classes,
-                        input_dim,
-                        kpconv_params,
-                        kwargs['gibli_params']    
-                    )
-            
-        elif model_version == "kpconv":
-
+        if model_version == "kpconv":
             model = KPFCNN(
                         num_stages,
                         voxel_size,

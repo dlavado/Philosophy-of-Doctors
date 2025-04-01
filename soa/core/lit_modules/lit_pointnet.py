@@ -29,9 +29,7 @@ class LitPointNet(LitWrapperModel):
             if criterion is None:
                 criterion = pointnet2.get_loss()
             
-            if 'pre' in model:
-                model = pointnet2.get_pre_gibli_model(in_channels=3 + num_channels, num_classes=num_classes, **kwargs['gibli_params'])
-            elif 'gibli' in model:
+            if 'gibli' in model:
                 model = pointnet2.get_gibli_model(num_classes, num_channels=3 + num_channels, gibli_params=kwargs['gibli_params'])
             else:
                 model = pointnet2.get_model(num_classes, num_channels=num_channels)
@@ -39,9 +37,7 @@ class LitPointNet(LitWrapperModel):
             if criterion is None:
                 criterion = pointnet.get_loss()
                 
-            if 'pre' in model:
-                model = pointnet.get_pre_gibli_model(in_channels=3 + num_channels, num_classes=num_classes, **kwargs['gibli_params'])
-            elif 'gibli' in model:
+            if 'gibli' in model:
                 model = pointnet.get_gibli_model(num_classes, num_channels=3 + num_channels, gibli_params=kwargs['gibli_params'])
             else:
                 model = pointnet.get_model(num_classes, num_channels=num_channels)

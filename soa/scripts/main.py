@@ -1,5 +1,6 @@
 
 from datetime import datetime
+from math import ceil
 from typing import List
 import warnings
 import numpy as np
@@ -131,70 +132,16 @@ def init_callbacks(ckpt_dir):
 #####################################################################
 
 
-def init_pyramid_builder():
-    from core.models.giblinet.GIBLi_utils import BuildGraphPyramid
-    
-    neigh_strategy = wandb.config.neighborhood_strategy
-    
-    if neigh_strategy == 'knn':
-        neighborhood_kwargs = {}
-        neighborhood_update_kwargs = {}
-    # elif neigh_strategy == 'dbscan': #TODO: fix DBSCAN
-    #     neighborhood_kwargs = {'eps': wandb.config.dbscan_eps, 'min_points': wandb.config.dbscan_min_points}
-    #     neighborhood_update_kwargs = {'eps': wandb.config.dbscan_eps_update, 'min_points': wandb.config.dbscan_min_points_update}
-    elif neigh_strategy == 'radius_ball':
-        neighborhood_kwargs = {'radius': wandb.config.radius_ball_radius}
-        neighborhood_update_kwargs = {'radius': wandb.config.radius_ball_radius_update}
-    else:
-        raise ValueError(f"Neighborhood strategy {neigh_strategy} not supported.")
-    
-    if wandb.config.graph_strategy=="grid":
-        voxel_size = torch.tensor(ast.literal_eval(wandb.config.voxel_size))
-    else:
-        voxel_size = None
-    
-    neighborhood_size = ast.literal_eval(wandb.config.neighborhood_size) 
-    num_levels =  wandb.config.num_levels
-    if isinstance(neighborhood_size, int):
-        # if the neighborhood size is an integer, then increase its size by a factor of 2 for each level
-        neighborhood_size = [neighborhood_size * (2**i) for i in range(num_levels)]
-        
-    sampling_factor = wandb.config.graph_pooling_factor
-    if wandb.config.graph_strategy == 'fps':
-        sampling_factor = 1 / sampling_factor
-
-    return BuildGraphPyramid(num_layers=num_levels,
-                            graph_strategy=wandb.config.graph_strategy,
-                            sampling_factor=sampling_factor,
-                            num_neighbors=neighborhood_size,
-                            neighborhood_strategy=neigh_strategy,
-                            neighborhood_kwargs=neighborhood_kwargs,
-                            neighborhood_kwarg_update=neighborhood_update_kwargs,
-                            voxel_size = voxel_size
-                        )
-
 def init_pointnet(model_name='pointnet', criterion=None):
     from core.lit_modules.lit_pointnet import LitPointNet
     
-    if 'pre' in model_name:
-        gibli_params = {
-            #'in_channels': wandb.config.in_channels,
-            # 'num_classes': wandb.config.num_classes,
-            'num_levels': wandb.config.num_levels,
-            'out_gib_channels': ast.literal_eval(wandb.config.out_gib_channels),
-            'num_observers': wandb.config.num_observers,
-            'kernel_size': wandb.config.kernel_size,
-            'gib_dict': wandb.config.gib_dict,
-            'skip_connections': wandb.config.skip_connections,
-            'pyramid_builder': init_pyramid_builder(),
-        }
-    elif 'gibli' in model_name:
-        gibli_params = {
-            'k_size': wandb.config.k_size,
-            'gib_dict': wandb.config.gib_dict,
-            'num_neighbors': wandb.config.num_neighbors,
-            'gib_layers': wandb.config.gib_layers,
-        }
+    if 'gibli' in model_name:
+        gibli_params = {   'gib_dict': wandb.config.gib_dict,
+                            'num_observers': wandb.config.num_observers,
+                            'kernel_reach': wandb.config.kernel_reach,
+                            'neighbor_size': wandb.config.neighbor_size,
+                    }
+        
     else:
         gibli_params = {} 
 
@@ -215,25 +162,13 @@ def init_pointnet(model_name='pointnet', criterion=None):
 def init_kpconv(criterion, model_version='kpconv'):
     from core.lit_modules.lit_kpconv import LitKPConv
     
-    if 'pre' in model_version:
-        gibli_params = {
-            # 'in_channels': wandb.config.in_channels,
-            # 'num_classes': wandb.config.num_classes,
-            'num_levels': wandb.config.num_levels,
-            'out_gib_channels': ast.literal_eval(wandb.config.out_gib_channels),
-            'num_observers': wandb.config.num_observers,
-            'kernel_size': wandb.config.kernel_size,
-            'gib_dict': wandb.config.gib_dict,
-            'skip_connections': wandb.config.skip_connections,
-            'pyramid_builder': init_pyramid_builder(),
-        }
-    elif 'gibli' in model_version:
-        gibli_params = {
-            'k_size': wandb.config.k_size,
-            'gib_dict': wandb.config.gib_dict,
-            'num_neighbors': wandb.config.num_neighbors,
-            'gib_layers': wandb.config.gib_layers,
-        }
+    if 'gibli' in model_version:
+         gibli_params = {   
+                        'gib_dict': wandb.config.gib_dict,
+                        'num_observers': wandb.config.num_observers,
+                        'kernel_reach': wandb.config.kernel_reach,
+                        'neighbor_size': wandb.config.neighbor_size,
+                    }
     else:
         gibli_params = {} 
 
@@ -277,28 +212,14 @@ def init_randlanet(criterion):
 def init_point_transformer(criterion, model_version):
     from core.lit_modules.lit_point_transformer import Lit_PointTransformer
     
-    if 'pre' in model_version:
-        gib_params = {
-            #'in_channels': wandb.config.in_channels,
-            # 'num_classes': wandb.config.num_classes,
-            'num_levels': wandb.config.num_levels,
-            'out_gib_channels': ast.literal_eval(wandb.config.out_gib_channels),
-            'num_observers': wandb.config.num_observers,
-            'kernel_size': wandb.config.kernel_size,
-            'gib_dict': wandb.config.gib_dict,
-            'skip_connections': wandb.config.skip_connections,
-            'pyramid_builder': init_pyramid_builder(),
-        }
-    elif 'gibli' in model_version:
-        gib_params = {
-            'gib_dict': wandb.config.gib_dict,
-            'num_observers': wandb.config.num_observers,
-            'kernel_reach': wandb.config.kernel_reach,
-            'neighbor_size': wandb.config.neighbor_size,
-            'out_channels': wandb.config.out_channels,
-        }
+    if 'gibli' in model_version:
+        gibli_params = {   'gib_dict': wandb.config.gib_dict,
+                            'num_observers': wandb.config.num_observers,
+                            'kernel_reach': wandb.config.kernel_reach,
+                            'neighbor_size': wandb.config.neighbor_size,
+                    }
     else:
-        gib_params = {}
+        gibli_params = {}
 
     # Model definition
     model = Lit_PointTransformer(criterion=criterion,
@@ -310,12 +231,69 @@ def init_point_transformer(criterion, model_version):
                                  ignore_index=wandb.config.ignore_index,
                                  metric_initializer=su.init_metrics,
                                  #### gib parameters
-                                 gib_params=gib_params
+                                 gib_params=gibli_params
                             )
 
     return model
 
 
+def init_gibli_sota(sota_model_name:str, criterion):
+    from core.lit_modules.lit_gibli_sota import Lit_GIBLiSOTA
+    
+    # GIBLiLayer parameters
+    # len(num_observers) == len(neighbor_size) and it defines the number of neighborhoods that each GIBLiLayer considers
+    sota_kwargs = {
+        'gib_dict': wandb.config.gib_dict,
+        'num_observers': wandb.config.num_observers, # int or List[int]
+        'kernel_reach': wandb.config.kernel_reach,
+        'neighbor_size': wandb.config.neighbor_size, # int or List[int]
+        'feat_enc_channels': 16, # num channels to encode the features of query points
+    }
+    
+    # SOTA parameters
+    if sota_model_name == 'ptv1':
+        sota_kwargs.update({
+            "shared_channels": 1,
+            "num_neighbors": wandb.config.sota_neighbors,
+        })
+    elif sota_model_name == 'ptv2':
+        sota_kwargs.update({
+            "depth": wandb.config.depth,
+            "neighbours": wandb.config.sota_neighbors
+        })
+    # no modification to `ptv3`
+    elif sota_model_name == 'kpconv':
+        sota_kwargs.update({
+            'kernel_size': 3 if wandb.config.sota_kernel_size < 1 else int(wandb.config.sota_kernel_size), # this must be an int
+            'radius': wandb.config.kernel_reach,
+            'dimension': wandb.config.num_data_channels,
+            'kpconv_neighbors': wandb.config.sota_neighbors,
+        })
+    # no modification to `pointnet`
+    elif sota_model_name == 'pointnet2':
+        sota_kwargs.update({
+            'radius': wandb.config.kernel_reach,
+            'nsample': wandb.config.sota_neighbors,
+            'mlp': [64, 64],
+        })
+            
+    return Lit_GIBLiSOTA(in_channels=wandb.config.num_data_channels,
+                        num_classes=wandb.config.num_classes,
+                        model_name=sota_model_name,
+                        num_levels=wandb.config.num_levels,
+                        grid_size=wandb.config.grid_size,
+                        embed_channels=wandb.config.embed_channels,
+                        out_channels=wandb.config.out_channels,
+                        depth=wandb.config.depth,
+                        sota_kwargs=sota_kwargs,
+                        sota_update_kwargs={},
+                        criterion=criterion,
+                        optimizer_name=wandb.config.optimizer,
+                        ignore_index=wandb.config.ignore_index,
+                        learning_rate=wandb.config.learning_rate,
+                        metric_initializer=su.init_metrics,
+                    )
+    
 #####################################################################
 # INIT DATASETS
 #####################################################################
@@ -363,7 +341,6 @@ def init_ts40k(data_path, preprocessed=False):
                            load_into_memory=wandb.config.load_into_memory,
                         )
     return data_module
-
 
 
 def init_semantickitti(data_path):
@@ -429,7 +406,9 @@ def init_waymo(data_path):
 #####################################################################
 
 def init_model(model_name, criterion) -> pl.LightningModule:
-    if 'pointnet' in model_name:
+    if 'gibli_sota' in model_name:
+        return init_gibli_sota(wandb.config.model_hash, criterion)
+    elif 'pointnet' in model_name:
         return init_pointnet(model_name, criterion)
     elif 'kpconv' in model_name:
         return init_kpconv(criterion, model_name)
@@ -627,7 +606,7 @@ def main():
         enable_model_summary=True,
         enable_checkpointing=True,
         enable_progress_bar=True,
-        overfit_batches=0.1, # overfit on 10 batches
+        # overfit_batches=0.1, # overfit on 10 batches
         accumulate_grad_batches = wandb.config.accumulate_grad_batches,
     )
 

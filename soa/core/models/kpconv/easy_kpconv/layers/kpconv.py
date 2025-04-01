@@ -116,6 +116,7 @@ class KPConv(nn.Module):
         neighbor_weights = torch.transpose(neighbor_weights, 1, 2)  # (M, H, K) -> (M, K, H)
 
         # apply neighbor weights
+        # print(s_feats.shape)
         padded_s_feats = torch.cat((s_feats, torch.zeros_like(s_feats[:1, :])), 0)  # (N, C) -> (N+1, C)
         neighbor_feats = index_select(padded_s_feats, neighbor_indices, dim=0)  # (N+1, C) -> (M, H, C)
         weighted_feats = torch.matmul(neighbor_weights, neighbor_feats)  # (M, K, H) x (M, H, C) -> (M, K, C)

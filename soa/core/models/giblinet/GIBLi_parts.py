@@ -829,7 +829,7 @@ class GIBLiLayer(nn.Module):
                 in_channels:int,
                 gib_dict:Dict[str, int],
                 num_observers:Union[int, List[int]],
-                kernel_size:float,
+                kernel_reach:float,
                 neighbor_size:Union[int, List[int]]=4,
                 out_channels:int=16,
             ) -> None:
@@ -881,7 +881,7 @@ class GIBLiLayer(nn.Module):
         # self.mc_weights = nn.Parameter(torch.rand(num_samples, device='cuda'))
             
         # self.gibs = [torch.jit.script(GIB_Layer_Coll(gib_dict, kernel_size*(i+1), ob)) for i, ob in enumerate(num_observers)]
-        self.gibs = [GIB_Layer_Coll(gib_dict, kernel_size*(i+1), ob) for i, ob in enumerate(num_observers)]
+        self.gibs = [GIB_Layer_Coll(gib_dict, kernel_reach*(i+1), ob) for i, ob in enumerate(num_observers)]
         self.gibs = nn.ModuleList(self.gibs)
         self.num_observers = num_observers
         

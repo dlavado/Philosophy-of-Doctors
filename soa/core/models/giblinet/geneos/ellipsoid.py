@@ -225,6 +225,8 @@ class EllipsoidCollection(GIBCollection):
         # gauss_dist = torch.exp(-0.5 * gauss_dist)
 
         # return self.intensity * gauss_dist
+        if torch.isnan(x).any() or torch.isinf(x).any():
+            print("L has nan")
         return self.intensity*EllipsoidCollection.gaussian_3d(x, self.L, self.epsilon)
     
     

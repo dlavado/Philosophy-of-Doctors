@@ -27,7 +27,7 @@ num_data_channels:
   value: 3
   description: 'Number of channels in the dataset'
 batch_size:
-  value: 4
+  value: 2
 ignore_index:
   value: -1 # noise
 num_workers: 
@@ -45,30 +45,33 @@ min_points:
 # model config
 # ------------------ #
 model:
-  value: 'pointnet2-gibli'
+  value: 'pointnet-gibli'
 model_hash:
   value: 'pointnet2_gibli_gib4_nknn8'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'
 #### GIBLi Parameters ####
-k_size:
-  value: 0.1
-  description: 'Kernel size of GIBs'
 gib_dict:
   value: {
-    'cy'    : 4,
-    'ellip' : 4,
-    'disk'  : 4,
-    'cone'  : 4,
+    'cy'    : 8,
+    'ellip' : 8,
+    'disk'  : 8,
+    'cone'  : 8,
   }
   description: 'Dictionary of GIBs'
-num_neighbors:
+num_observers:
+  value: [16, 16]
+  description: 'Number of observers'
+kernel_reach:
+  value: 0.1
+  description: 'Kernel reach of GIBs'
+neighbor_size:
+  value: [16, 16]
+  description: 'Number of neighbors'
+out_channels:
   value: 8
-  description: 'Number of neighbors for GIBs'
-gib_layers:
-  value: 1
-  description: 'Number of GIB layers'
+  description: 'Number of output channels'
 # ------------------ #
 # training config
 # ------------------ #
@@ -111,7 +114,7 @@ precision: # 16 or 32 FPU precision
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: True
+  value: False
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'

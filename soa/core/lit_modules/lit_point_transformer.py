@@ -9,6 +9,8 @@ import torch
 import torch.nn as nn
 from core.lit_modules.lit_model_wrappers import LitWrapperModel
 
+from core.models.giblinet.GIBLi_SOTA import GIBLiNetPTV1, GIBLiNetPTV2, GIBLiNetPTV3
+
 
 class Lit_PointTransformer(LitWrapperModel):
 
@@ -26,26 +28,7 @@ class Lit_PointTransformer(LitWrapperModel):
         
         version = version.lower()
         
-        if 'pre' in version:
-            if 'v3' in version:
-                model = ptv3.PreGIBLiPointTransformerV3(in_channels=in_channels, 
-                                                        num_classes=num_classes, 
-                                                        enable_flash=False,
-                                                        order=["z", "z-trans", "hilbert", "hilbert-trans"],
-                                                        giblinet_params=kwargs['gib_params'])       
-            elif 'v2' in version:
-                model = ptv2.PreGIBLiPointTransformerV2(in_channels=in_channels, 
-                                                        num_classes=num_classes,
-                                                        grid_sizes=(0.05, 0.10, 0.20, 0.40),
-                                                        giblinet_params=kwargs['gib_params'])
-            elif 'v1' in version:
-                model = pts.PreGIBLiPointTransformerSeg50(in_channels=in_channels, 
-                                                        num_classes=num_classes, 
-                                                        giblinet_params=kwargs['gib_params'])
-            else:
-                ValueError("Invalid version")
-        
-        elif 'gibli' in version:
+        if 'gibli' in version:
             if 'v1' in version: # gibli v1
                 model = pts.GIBLiPointTransformerSeg50(in_channels=in_channels, 
                                                        num_classes=num_classes, 
@@ -134,10 +117,10 @@ class Lit_PointTransformer(LitWrapperModel):
         return loss, preds, y
     
 
-    def on_train_batch_end(self, batch, batch_idx, dataloader_idx):
-        torch.cuda.empty_cache()
-        # release memory
-        return super().on_train_batch_end(batch, batch_idx, dataloader_idx)
+    # def on_train_batch_end(self, batch, batch_idx, dataloader_idx):
+    #     torch.cuda.empty_cache()
+    #     # release memory
+    #     return super().on_train_batch_end(batch, batch_idx, dataloader_idx)
     
     
     # def on_after_backward(self):

@@ -233,9 +233,9 @@ class GIBLiNetStub(nn.Module):
         #### Project the feature space to higher dimensions #### 
         out_update = sota_update_kwargs.get('out_channels', [])
         if len(out_update) == 0:
-            out_update = [out_channels[0]] * (depth - 1)
+            out_update = [self.out_channels[0]] * (depth - 1)
         else:
-            out_update[depth-1-1] = out_channels[0]
+            out_update[depth-1-1] = self.out_channels[0]
         sota_update_kwargs['out_channels'] = out_update
         sota_kwargs['out_channels'] = self.out_channels[0]
         
@@ -244,7 +244,7 @@ class GIBLiNetStub(nn.Module):
         )
         
         self.last_decoder = GIBLiUpStub(
-            feat_channels=self.out_channels[1], skip_channels=self.out_channels[0], unpool_out_channels=self.embed_channels[0], 
+            feat_channels=self.out_channels[0], skip_channels=self.out_channels[0], unpool_out_channels=self.embed_channels[0], 
             bias=bias, skip=skip, concat=concat, backend=backend, 
             depth=depth, sota_class=sota_class, sota_kwargs=sota_kwargs, sota_update_kwargs=sota_update_kwargs
         )
@@ -258,9 +258,9 @@ class GIBLiNetStub(nn.Module):
             # Out channels update
             out_update = sota_update_kwargs.get('out_channels', [])
             if len(out_update) == 0:
-                out_update = [out_channels[i]] * (depth - 1)
+                out_update = [self.out_channels[i]] * (depth - 1)
             else:
-                out_update[depth-1-1] = out_channels[i] # else we update the last out_channel update to be the supposed out_channel
+                out_update[depth-1-1] = self.out_channels[i] # else we update the last out_channel update to be the supposed out_channel
             sota_update_kwargs['out_channels'] = out_update
             sota_kwargs['out_channels'] = self.embed_channels[i]
             
@@ -353,6 +353,7 @@ class GIBLiBlockPTV1(nn.Module):
     
     def __init__(self,
                  in_channels:int,
+                 out_channels:int,
                  #### gib params
                  gib_dict:Dict[str, int],
                  num_observers:Union[int, List[int]],
@@ -360,8 +361,7 @@ class GIBLiBlockPTV1(nn.Module):
                  neighbor_size:Union[int, List[int]]=4,
                  feat_enc_channels:int=16,
                  ### ptv1 params
-                 out_channels:int=16,
-                 shared_channels:int=8,
+                 shared_channels:int=1,
                  num_neighbors:int=16,
                 ):
         super().__init__()
@@ -370,7 +370,7 @@ class GIBLiBlockPTV1(nn.Module):
         self.gibli_layer = GIBLiLayer(in_channels=in_channels, 
                                 gib_dict=gib_dict,
                                 num_observers=num_observers,
-                                kernel_size=kernel_size,
+                                kernel_reach=kernel_size,
                                 neighbor_size=neighbor_size,
                                 out_channels=feat_enc_channels,
                             )
@@ -461,7 +461,7 @@ class GIBLiBlockPTV2(nn.Module):
         self.gibli_layer = GIBLiLayer(in_channels=in_channels, 
                                 gib_dict=gib_dict,
                                 num_observers=num_observers,
-                                kernel_size=kernel_size,
+                                kernel_reach=kernel_size,
                                 neighbor_size=neighbor_size,
                                 out_channels=feat_enc_channels,
                             )
@@ -547,7 +547,7 @@ class GIBLiBlockPTV3(nn.Module):
                  order_index=0,
                  cpe_indice_key=None,
                  enable_rpe=False,
-                 enable_flash=True,
+                 enable_flash=False,
                  upcast_attention=True,
                  upcast_softmax=True,
                 ) -> None:
@@ -558,7 +558,7 @@ class GIBLiBlockPTV3(nn.Module):
         self.gibli_layer = GIBLiLayer(in_channels=in_channels, 
                                 gib_dict=gib_dict,
                                 num_observers=num_observers,
-                                kernel_size=kernel_size,
+                                kernel_reach=kernel_size,
                                 neighbor_size=neighbor_size,
                                 out_channels=feat_enc_channels,
                             )
@@ -567,6 +567,8 @@ class GIBLiBlockPTV3(nn.Module):
         self.gibli_proj = MLP(sota_in_channels, sota_in_channels, in_channels, act_layer=nn.GELU, drop=0.2)
         self.act = nn.GELU()
         self.norm1 = PointBatchNorm(in_channels)
+        
+        num_heads = num_heads if in_channels % num_heads == 0 else 1
         
         self.pt_layer = Block(
                             channels=in_channels,
@@ -659,7 +661,7 @@ class GIBLiBlockKPConv(nn.Module):
             self.gibli_layer = GIBLiLayer(in_channels=in_channels, 
                                     gib_dict=gib_dict,
                                     num_observers=num_observers,
-                                    kernel_size=kernel_reach,
+                                    kernel_reach=kernel_reach,
                                     neighbor_size=neighbor_size,
                                     out_channels=feat_enc_channels,
                                 )
@@ -751,7 +753,7 @@ class GIBLiBlockPointNet(nn.Module):
         self.gibli_layer = GIBLiLayer(in_channels=in_channels, 
                                 gib_dict=gib_dict,
                                 num_observers=num_observers,
-                                kernel_size=kernel_reach,
+                                kernel_reach=kernel_reach,
                                 neighbor_size=neighbor_size,
                                 out_channels=feat_enc_channels,
                             )
@@ -832,7 +834,7 @@ class GIBLiBlockPointNet2(nn.Module):
         self.gibli_layer = GIBLiLayer(in_channels=in_channels, 
                                 gib_dict=gib_dict,
                                 num_observers=num_observers,
-                                kernel_size=kernel_reach,
+                                kernel_reach=kernel_reach,
                                 neighbor_size=neighbor_size,
                                 out_channels=feat_enc_channels,
                             )
@@ -889,10 +891,375 @@ class GIBLiBlockPointNet2(nn.Module):
     
 
 
-
-
-
 ###########################################################
+# GIBLi Net SOTA
+###########################################################
+
+class GIBLiNetPTV1(nn.Module):
+    def __init__(self, 
+            in_channels=3,
+            num_classes=6,
+            num_levels=4,
+            grid_size=0.1,
+            embed_channels=[16, 16, 32, 64],
+            out_channels=[32, 32, 64, 128],
+            depth=2,
+            sota_kwargs={},
+            sota_update_kwargs={}
+        ):
+        super(GIBLiNetPTV1, self).__init__()
+        
+        sota_kwargs_defaults = {
+            ### gibli params
+            'gib_dict': {'cy': 8, 'cone': 8, 'ellip': 8, 'disk': 8},
+            'num_observers': [8, 8],
+            'kernel_reach': 0.1,
+            'neighbor_size': [8, 16],
+            'feat_enc_channels': 16,
+            ### ptv1 params
+            'shared_channels': 1,
+            'num_neighbors': 8,
+        }
+        sota_kwargs_defaults.update(sota_kwargs)
+        sota_kwargs = sota_kwargs_defaults
+        
+        self.model = GIBLiNetStub(
+            in_channels=in_channels,
+            num_classes=num_classes,
+            ### U-NET Structure
+            num_levels=num_levels,
+            grid_size=grid_size,
+            embed_channels=embed_channels,
+            out_channels=out_channels,
+            ### SOTA MODULE
+            depth=depth,
+            sota_class=GIBLiBlockPTV1,
+            sota_kwargs=sota_kwargs,
+            sota_update_kwargs=sota_update_kwargs
+        )
+        
+    def forward(self, data_dict:Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        return self.model(data_dict)
+    
+    def maintain_convexity(self):
+        self.model.maintain_convexity()
+    
+    def get_gib_params(self) -> List[torch.Tensor]:
+        return self.model.get_gib_params()
+    
+    def get_cvx_coefficients(self) -> List[torch.Tensor]:
+        return self.model.get_cvx_coefficients()
+    
+
+class GIBLiNetPTV2(nn.Module):
+    def __init__(self, 
+            in_channels=3,
+            num_classes=6,
+            num_levels=4,
+            grid_size=0.1,
+            embed_channels=[16, 16, 32, 64],
+            out_channels=[32, 32, 64, 128],
+            depth=2,
+            sota_kwargs:Dict[str, Any]={},
+            sota_update_kwargs={} ### sota update kwargs should contain lists with the kwargs update at each depth, 
+        ):
+        super(GIBLiNetPTV2, self).__init__()
+        
+        # defaults
+        sota_kwargs_defaults = {
+            ### gibli params
+            'gib_dict': {'cy': 8, 'cone': 8, 'ellip': 8, 'disk': 8},
+            'num_observers': [8, 8],
+            'kernel_reach': 0.1,
+            'neighbor_size': [8, 16],
+            'feat_enc_channels': 16,
+            ### ptv2 params
+            'depth': 2,
+            'groups': 1,
+            'neighbours': 8,
+            'qkv_bias': True,
+            'pe_multiplier': False,
+            'pe_bias': True,
+            'attn_drop_rate': 0.0,
+            'drop_path_rate': 0.0,
+            'enable_checkpoint': False,
+        }
+        sota_kwargs_defaults.update(sota_kwargs)
+        sota_kwargs = sota_kwargs_defaults
+        
+        self.model = GIBLiNetStub(
+            in_channels=in_channels,
+            num_classes=num_classes,
+            ### U-NET Structure
+            num_levels=num_levels,
+            grid_size=grid_size,
+            embed_channels=embed_channels,
+            out_channels=out_channels,
+            ### SOTA MODULE
+            depth=depth,
+            sota_class=GIBLiBlockPTV2,
+            sota_kwargs=sota_kwargs,
+            sota_update_kwargs=sota_update_kwargs
+        )
+        
+    def forward(self, data_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        return self.model(data_dict)
+    
+    def maintain_convexity(self):
+        self.model.maintain_convexity()
+    
+    def get_gib_params(self) -> List[torch.Tensor]:
+        return self.model.get_gib_params()
+    
+    def get_cvx_coefficients(self) -> List[torch.Tensor]:
+        return self.model.get_cvx_coefficients()
+
+
+class GIBLiNetPTV3(nn.Module):
+    def __init__(self, 
+                in_channels=3,
+                num_classes=6,
+                num_levels=4,
+                grid_size=0.1,
+                embed_channels=[16, 16, 32, 64],
+                out_channels=[32, 32, 64, 128],
+                depth=2,
+                sota_kwargs:Dict[str, Any]={},
+                sota_update_kwargs={}
+            ):
+        super(GIBLiNetPTV3, self).__init__()
+        
+        # defaults
+        sota_kwargs_defaults = {
+            ### gibli params
+            'gib_dict': {'cy': 8, 'cone': 8, 'ellip': 8, 'disk': 8},
+            'num_observers': [8, 8],
+            'kernel_reach': 0.1,
+            'neighbor_size': [8, 16],
+            'feat_enc_channels': 16,
+            ### ptv3 params
+            'num_heads': 4,
+            'patch_size': 48,
+            'mlp_ratio': 4.0,
+            'qkv_bias': True,
+            'qk_scale': None,
+            'attn_drop': 0.0,
+            'proj_drop': 0.0,
+            'drop_path': 0.0,
+            'norm_layer': nn.LayerNorm,
+            'act_layer': nn.GELU,
+            'pre_norm': True,
+            'order_index': 0,
+            'cpe_indice_key': None,
+            'enable_rpe': False,
+            'enable_flash': False,
+            'upcast_attention': True,
+            'upcast_softmax': True,
+        }
+        sota_kwargs_defaults.update(sota_kwargs)
+        sota_kwargs = sota_kwargs_defaults
+                
+        self.model = GIBLiNetStub(
+            in_channels=in_channels,
+            num_classes=num_classes,
+            ### U-NET Structure
+            num_levels=num_levels,
+            grid_size=grid_size,
+            embed_channels=embed_channels,
+            out_channels=out_channels,
+            ### SOTA MODULE
+            depth=depth,
+            sota_class=GIBLiBlockPTV3,
+            sota_kwargs=sota_kwargs,
+            sota_update_kwargs=sota_update_kwargs
+        )
+        
+    def forward(self, data_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        return self.model(data_dict)
+    
+    def maintain_convexity(self):
+        self.model.maintain_convexity()
+    
+    def get_gib_params(self) -> List[torch.Tensor]:
+        return self.model.get_gib_params()
+    
+    def get_cvx_coefficients(self) -> List[torch.Tensor]:
+        return self.model.get_cvx_coefficients()
+
+
+class GIBLiNetKPConv(nn.Module):
+    def __init__(self, 
+            in_channels=3,
+            num_classes=6,
+            num_levels=4,
+            grid_size=0.1,
+            embed_channels=[16, 16, 32, 64],
+            out_channels=[32, 32, 64, 128],
+            depth=2,
+            sota_kwargs:Dict[str, Any]={},
+            sota_update_kwargs:Dict[str, Any]={}
+        ):
+        super(GIBLiNetKPConv, self).__init__()
+        
+        sota_kwargs_defaults = {
+            ### gibli params
+            'gib_dict': {'cy': 8, 'cone': 8, 'ellip': 8, 'disk': 8},
+            'num_observers': [8, 8],
+            'kernel_reach': 0.1,
+            'neighbor_size': [8, 16],
+            'feat_enc_channels': 16,
+            ### kpconv params
+            'out_channels': 16,
+            'kernel_size': 3,
+            'radius': 0.1,
+            'sigma': 0.1,
+            'groups': 1,
+            'dimension': 3,
+            'strided': False,
+            'kpconv_neighbors': 16,
+        }
+        sota_kwargs_defaults.update(sota_kwargs)
+        sota_kwargs = sota_kwargs_defaults
+        
+        self.model = GIBLiNetStub(
+            in_channels=in_channels,
+            num_classes=num_classes,
+            ### U-NET Structure
+            num_levels=num_levels,
+            grid_size=grid_size,
+            embed_channels=embed_channels,
+            out_channels=out_channels,
+            ### SOTA MODULE
+            depth=depth,
+            sota_class=GIBLiBlockKPConv,
+            sota_kwargs=sota_kwargs,
+            sota_update_kwargs=sota_update_kwargs
+        )
+        
+    def forward(self, data_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        return self.model(data_dict)
+    
+    def maintain_convexity(self):
+        self.model.maintain_convexity()
+    
+    def get_gib_params(self) -> List[torch.Tensor]:
+        return self.model.get_gib_params()
+    
+    def get_cvx_coefficients(self) -> List[torch.Tensor]:
+        return self.model.get_cvx_coefficients()
+
+
+class GIBLiNetPointNet(nn.Module):
+    def __init__(self, 
+            in_channels=3,
+            num_classes=6,
+            num_levels=4,
+            grid_size=0.1,
+            embed_channels=[16, 16, 32, 64],
+            out_channels=[32, 32, 64, 128],
+            depth=2,
+            sota_kwargs:Dict[str, Any]={},
+            sota_update_kwargs:Dict[str, Any]={},
+        ):
+        super(GIBLiNetPointNet, self).__init__()
+        
+        sota_kwargs_defaults = {        
+            ### gibli params
+            'gib_dict': {'cy': 8, 'cone': 8, 'ellip': 8, 'disk': 8},
+            'num_observers': [8, 8],
+            'kernel_reach': 0.1,
+            'neighbor_size': [8, 16],
+            'feat_enc_channels': 16,
+            ### pointnet params
+            'feature_transform': False,
+        }
+        sota_kwargs_defaults.update(sota_kwargs)
+        sota_kwargs = sota_kwargs_defaults
+        
+        self.model = GIBLiNetStub(
+            in_channels=in_channels,
+            num_classes=num_classes,
+            ### U-NET Structure
+            num_levels=num_levels,
+            grid_size=grid_size,
+            embed_channels=embed_channels,
+            out_channels=out_channels,
+            ### SOTA MODULE
+            depth=depth,
+            sota_class=GIBLiBlockPointNet,
+            sota_kwargs=sota_kwargs,
+            sota_update_kwargs=sota_update_kwargs
+        )
+        
+    def forward(self, data_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        return self.model(data_dict)
+    
+    def maintain_convexity(self):
+        self.model.maintain_convexity()
+    
+    def get_gib_params(self) -> List[torch.Tensor]:
+        return self.model.get_gib_params()
+    
+    def get_cvx_coefficients(self) -> List[torch.Tensor]:
+        return self.model.get_cvx_coefficients()
+
+
+class GIBLiNetPointNet2(nn.Module):
+    def __init__(self, 
+                    in_channels=3,
+                    num_classes=6,
+                    num_levels=4,
+                    grid_size=0.1,
+                    embed_channels=[16, 16, 32, 64],
+                    out_channels=[32, 32, 64, 128],
+                    depth=2,
+                    sota_kwargs:Dict[str, Any]={},
+                    sota_update_kwargs:Dict[str, Any]={}):
+        super(GIBLiNetPointNet2, self).__init__()
+            
+        sota_kwargs_defaults = {        
+            ### gibli params
+            'gib_dict': {'cy': 8, 'cone': 8, 'ellip': 8, 'disk': 8},
+            'num_observers': [8, 8],
+            'kernel_reach': 0.1,
+            'neighbor_size': [8, 16],
+            'feat_enc_channels': 16,
+            ### pointnet2 params
+            'npoint': -1,
+            'radius': 0.2,
+            'nsample': 8,
+            'mlp': [64, 64],
+        }
+        sota_kwargs_defaults.update(sota_kwargs)
+        sota_kwargs = sota_kwargs_defaults
+ 
+        self.model = GIBLiNetStub(
+            in_channels=in_channels,
+            num_classes=num_classes,
+            ### U-NET Structure
+            num_levels=num_levels,
+            grid_size=grid_size,
+            embed_channels=embed_channels,
+            out_channels=out_channels,
+            ### SOTA MODULE
+            depth=depth,
+            sota_class=GIBLiBlockPointNet2,
+            sota_kwargs=sota_kwargs,
+            sota_update_kwargs=sota_update_kwargs
+        )
+        
+    def forward(self, data_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        return self.model(data_dict)
+    
+    def maintain_convexity(self):
+        self.model.maintain_convexity()
+    
+    def get_gib_params(self) -> List[torch.Tensor]:
+        return self.model.get_gib_params()
+    
+    def get_cvx_coefficients(self) -> List[torch.Tensor]:
+        return self.model.get_cvx_coefficients()
+
 
 
 if __name__ == '__main__':

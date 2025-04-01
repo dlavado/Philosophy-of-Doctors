@@ -3,81 +3,85 @@
 # Author: Diogo Mateus
 
 project:
-  value: 'GIBLI-SOA'
+  value: 'TS40K'
 output_dir: 
   value: '${experiment_path}/outputs'
 # ------------------ #
 # dataset config
 # ------------------ #
 dataset:
-  value: 's3dis'
+  value: 'ts40k'
+preprocessed:
+  value: True
+  description: 'If True, uses the preprocessed the dataset'
+load_into_memory:
+  value: False
+add_normals:
+  value: True
+  description: 'If True, adds normals to the dataset'
 data_path:
   value: ''
 num_classes:
-  value: 13
-num_data_channels:
   value: 6
+num_data_channels:
+  value: 3
   description: 'Number of channels in the dataset'
 batch_size:
-  value: 16
+  value: 2
 ignore_index:
   value: -1 # noise
 num_workers: 
   value: 0
+val_split:
+  value: 0.1
+test_split:
+  value: 0.3
+fps_points:
+  value: 10000
+min_points:
+  value: null
+  description: 'Number of points to sample from the point cloud with farthest point sampling'
 # ------------------ #
 # model config
 # ------------------ #
 model:
-  value: 'pointnet-pregibli'
+  value: 'gibli_sota'
 model_hash:
-  value: 'pointnet2_pregibli_gib4_nl4_nknn4'
+  value: 'pointnet'
 in_channels:
   value: 3 # xyz coords
-  description: 'Number of channels in the input'
-#### GIBLi Parameters ####
+  description: 'Number of channels in the input''${experiment_path}/wandb/ptv2_resume' # v2
+# GIBLi-SOTA specific parameters
 gib_dict:
   value: {
-    'cy'    : 4,
-    'ellip' : 4,
-    'disk'  : 4,
-    'cone'  : 4,
+    'cy'    : 8,
+    # 'ellip' : 8,
+    'disk'  : 8,
+    'cone'  : 8,
   }
-  description: 'Dictionary of GIBs'
 num_observers:
-  value: -1
-kernel_size:
+  value: [8, 8]
+kernel_reach:
   value: 0.1
-# --- GIBLi config
+neighbor_size:
+  value: [16, 16]  
+  description: 'Number of neighbors for each GIBLi part; the len defines the number of parts'
+sota_neighbors:
+  value: 16
+sota_kernel_size: # kpconv kernel size
+  value: 0.1
+## U-Net specific parameters
 num_levels:
   value: 4
-  description: 'Number of levels in the model'
-out_gib_channels:
-  value: "4" #"[8, 16, 32, 32]"
-  description: 'Number of output channels for GIB' 
-skip_connections:
-  value: True
-  description: 'Whether to use skip connections in the model'
-graph_strategy:
-  value: 'grid' # 'fps' or 'grid'
-  description: 'Strategy for graph construction'
-graph_pooling_factor:
-  value: 2
-  description: 'Pooling factor for graph operations'
-neighborhood_strategy:
-  value: 'knn'
-  description: 'Strategy for neighborhood operations'
-neighborhood_size:
-  value: "4" # "[16, 16, 16, 16]" # "[16, 48, 96, 192, 384]"
-  description: 'Size of the neighborhood for the strategy'
-neighborhood_kwargs:
-  value: {}
-  description: 'Additional keyword arguments for neighborhood operations'
-neighborhood_update_kwargs:
-  value: {}
-  description: 'Additional keyword arguments for neighborhood updates'
-voxel_size:
-  value: "[0.05, 0.05, 0.05]"
-  description: 'Voxel size for voxelization'
+grid_size:
+  value: [0.01, 0.02, 0.03, 0.04]
+embed_channels:
+  value: 16 # [64, 128, 256, 512]
+out_channels:
+  value: 16 # [128, 256, 512, 1024]
+depth:
+  value: 1
+  description: 'Depth of the Block Sequence'
 # ------------------ #
 # training config
 # ------------------ #
@@ -86,7 +90,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: -1 # -1 for infinite
+  value: 3 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -107,7 +111,7 @@ class_weights:
   value: True
   description: 'Use class weights in the loss function'
 segmentation_losses:
-  value: null #{'focal': 0.2, 'tversky': 0.2, 'lovasz': 0.2}
+  value: {'focal': 0.2, 'tversky': 0.2, 'lovasz': 0.4}
   description: 'Additional losses for segmentation'
 # ------------------ #
 # Lit Trainer config
@@ -125,7 +129,7 @@ profiler:
   value: False
   description: 'PyTorch Lightning profiler'
 accumulate_grad_batches:
-  value: 1
+  value: 32
   description: 'Accumulate gradients on k batches before performing a backward pass'
 save_onnx:
   value: False
@@ -136,12 +140,10 @@ save_onnx:
 resume_from_checkpoint:
   value: False
 checkpoint_dir:
-  value: '${experiment_path}/pointnet/'
-  # value: '${experiment_path}/pointnet++/'
+  value: '${experiment_path}/checkpoints/' # v2
 resume_checkpoint_name:
-  value: MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+  value: ptv3_normlas_val_MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:
   value: 0 # every n steps
-  

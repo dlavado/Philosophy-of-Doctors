@@ -135,8 +135,7 @@ class PointNetEncoder(nn.Module):
         
 ##################################################################################################
         
-from core.models.giblinet.GIBLi import GIBLiLayer
-from core.models.giblinet.GIBLi_utils import Neighboring
+from core.models.giblinet.GIBLi_parts import GIBLiLayer
 
 
 class GIBLiPointNetEncoder(nn.Module):
@@ -145,22 +144,23 @@ class GIBLiPointNetEncoder(nn.Module):
                  feature_transform=False, 
                  channel=3,
                  ### gib parameters
-                k_size=0.1,
-                gib_dict=None,
-                num_neighbors=16,
-                gib_layers=1,
+                 gib_dict={},
+                 num_observers=[8, 8],
+                 kernel_reach=0.1,
+                 neighbor_size=[8, 16],
             ):
         super(GIBLiPointNetEncoder, self).__init__()
         self.stn = STN3d(channel)
-        neigh_strat = Neighboring('knn', num_neighbors)
         
-        self.gibli1 = GIBLiLayer(channel, channel, -1, k_size, gib_dict, neigh_strat, gib_layers)
-        self.gibli2 = GIBLiLayer(64, 64, -1, k_size, gib_dict, neigh_strat, gib_layers)
-        self.gibli3 = GIBLiLayer(128, 128, -1, k_size, gib_dict, neigh_strat, gib_layers)
+        self.gibli1 = nn.Sequential(GIBLiLayer(channel, gib_dict, num_observers, kernel_reach, neighbor_size, channel)
+        )
+        self.gibli2 = GIBLiLayer(64, gib_dict, num_observers, kernel_reach, neighbor_size, 64)
         
-        self.conv1 = torch.nn.Conv1d(channel, 64, 1)
-        self.conv2 = torch.nn.Conv1d(64, 128, 1)
-        self.conv3 = torch.nn.Conv1d(128, 1024, 1)
+        self.gibli3 = GIBLiLayer(128, gib_dict, num_observers, kernel_reach, neighbor_size, 128)
+        
+        self.conv1 = torch.nn.Conv1d(channel + sum(num_observers), 64, 1)
+        self.conv2 = torch.nn.Conv1d(64 + sum(num_observers), 128, 1)
+        self.conv3 = torch.nn.Conv1d(128 + sum(num_observers), 1024, 1)
         
         self.bn1 = nn.BatchNorm1d(64)
         self.bn2 = nn.BatchNorm1d(128)
@@ -169,6 +169,12 @@ class GIBLiPointNetEncoder(nn.Module):
         self.feature_transform = feature_transform
         if self.feature_transform:
             self.fstn = STNkd(k=64)
+            
+    def build_input_gibli(self, x):
+        return {
+            'coord' : x.transpose(2, 1)[..., :3],
+            'feat' : x.transpose(2, 1),
+        }
 
     def forward(self, x):
         B, D, N = x.size()
@@ -180,8 +186,8 @@ class GIBLiPointNetEncoder(nn.Module):
         x = torch.bmm(x, trans)
         if D > 3:
             x = torch.cat([x, feature], dim=2)
-        x = self.gibli1(x)
         x = x.transpose(2, 1)
+        x = self.gibli1(self.build_input_gibli(x)).transpose(2, 1)
         x = F.relu(self.bn1(self.conv1(x)))
 
         if self.feature_transform:
@@ -193,9 +199,9 @@ class GIBLiPointNetEncoder(nn.Module):
             trans_feat = None
 
         pointfeat = x
-        x = self.gibli2(x.transpose(2, 1)).transpose(2, 1)
+        x = self.gibli2(self.build_input_gibli(x)).transpose(2, 1)
         x = F.relu(self.bn2(self.conv2(x)))
-        x = self.gibli3(x.transpose(2, 1)).transpose(2, 1)
+        x = self.gibli3(self.build_input_gibli(x)).transpose(2, 1)
         x = self.bn3(self.conv3(x))
         x = torch.max(x, 2, keepdim=True)[0]
         x = x.view(-1, 1024)

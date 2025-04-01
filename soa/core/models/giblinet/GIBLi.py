@@ -9,91 +9,14 @@ sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 
-from core.models.giblinet.GIBLi_parts import GIB_Sequence, PointBatchNorm, Decoder, GIB_Layer_Coll
-from core.models.giblinet.GIBLi_utils import BuildGraphPyramid, Neighboring
+from core.models.giblinet.GIBLi_parts import GIB_Sequence, PointBatchNorm, Decoder
+from core.models.giblinet.GIBLi_utils import BuildGraphPyramid
 
 
 #################################################################
 # GIBLi: Geometric Inductive Bias Library for Point Clouds
 #################################################################
 
-class GIBLiLayer(nn.Module):
-    
-    def __init__(self, 
-                in_channels:int,
-                gib_dict:Dict[str, int],
-                num_observers:Union[int, List[int]],
-                kernel_size:float,
-                neighbor_size:Union[int, List[int]]=4,
-                out_feat_dim:int=16,
-            ) -> None:
-        
-        super(GIBLiLayer, self).__init__()
-        
-        if isinstance(neighbor_size, int):
-            self.neighboring_strategies = [Neighboring("knn", neighbor_size)]
-        else:
-            self.neighboring_strategies = [Neighboring("knn", k) for k in neighbor_size]
-            
-        if isinstance(num_observers, int):
-            num_observers = [num_observers for _ in range(len(self.neighboring_strategies))]
-            
-        assert len(num_observers) == len(self.neighboring_strategies), "The number of observers must be equal to the number of neighboring strategies"
-        
-        num_samples = 1000
-        self.mc_points = torch.rand((num_samples, 3), device='cuda')
-        # the mc_weights serve as the weights for the monte carlo integration;
-        # that is, the weights essentially determine the distance of mc_points from the center, and, thus, the volume of the neighborhhod
-        # self.mc_weights = nn.Parameter(torch.rand(num_samples, device='cuda'))
-            
-        self.gibs = [GIB_Layer_Coll(gib_dict, kernel_size, ob) for ob in num_observers]
-        
-        self.mlp = nn.Linear(in_channels, out_feat_dim)
-        self.act = nn.ReLU(inplace=True)
-    
-
-    def forward(self, data_dict) -> torch.Tensor:
-        """
-        data_dict: Dict[str, torch.Tensor]
-            A dictionary containing the following keys:
-                - 'coords': torch.Tensor of shape (B, N, 3)
-                - 'feats': torch.Tensor of shape (B, N, F)
-        """
-        # this assumes that the input is of shape (B, N, 3 + F), where N is the number of points and F is the number of features (F >= 0).
-        # the batch_dim is necessary for now
-       
-        coords = data_dict['coords']
-        feats = data_dict['feats']
-        
-        out = None
-        
-        for i, (neigh, gib) in enumerate(zip(self.neighboring_strategies, self.gibs)):
-            feats = gib(coords, coords, neigh(coords, coords), self.mc_points) # shape (B, N, num_observers)
-            
-            dist_weight = (len(self.neighboring_strategies) - i) / len(self.neighboring_strategies)
-            feats = feats * dist_weight
-            
-            if out is None:
-                out = feats
-            else:
-                out = torch.cat((out, feats), dim=-1)
-                
-        x_out = self.act(self.mlp(out))
-        
-        return torch.cat((x_out, out), dim=-1)
-
-    def maintain_convexity(self):
-        self.gib_seq.maintain_convexity()
-
-    def get_gib_params(self) -> List[torch.Tensor]:
-        return self.gib_seq.get_gib_params()
-
-    def get_cvx_coefficients(self) -> List[torch.Tensor]:
-        return self.gib_seq.get_cvx_coefficients()
-    
-    
-    
-    
 class GIBLiNet(nn.Module):
 
     def __init__(self, 
@@ -302,8 +225,6 @@ class GIBLiNet(nn.Module):
 # GIBLi with pops
 
 from core.models.giblinet.GIBLi_parts import DownBlock, Decoder_pops, GIBLiBlock
-
-
 
 class GIBLiNet_pops(nn.Module):
     

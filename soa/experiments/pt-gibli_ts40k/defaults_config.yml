@@ -15,7 +15,7 @@ preprocessed:
   value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: True
+  value: False
 add_normals:
   value: False
   description: 'If True, adds normals to the dataset'
@@ -45,12 +45,12 @@ in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'
 model_version:
-  value: 'gibli-v3' # 'v1' or 'v2' or 'v3'
+  value: 'gibli-v1' # 'v1' or 'v2' or 'v3'
   description: 'Point Transformer version'
 #### GIBLi Parameters ####
-kernel_size:
-  value: 0.1
-  description: 'Kernel size of GIBs'
+# kernel_size:
+#   value: 0.1
+#   description: 'Kernel size of GIBs'
 gib_dict:
   value: {
     'cy'    : 8,
@@ -113,7 +113,7 @@ precision: # 16 or 32 FPU precision
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: True
+  value: False
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'

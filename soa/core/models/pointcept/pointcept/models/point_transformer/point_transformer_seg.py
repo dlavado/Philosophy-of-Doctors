@@ -335,9 +335,7 @@ class PointTransformerSeg50(PointTransformerSeg):
         
 #########################################################################
 
-
-from core.models.giblinet.GIBLi import GIBLiLayer, GIBLiNet
-from core.models.giblinet.GIBLi_utils import Neighboring
+from core.models.giblinet.GIBLi_parts import GIBLiLayer
 from core.models.giblinet.conversions import get_offset_vector, build_batch_tensor, batch_to_packed
 
 class GIBLiBottleneck(nn.Module):
@@ -350,28 +348,39 @@ class GIBLiBottleneck(nn.Module):
                  share_planes=8, 
                  nsample=16,
                  ### gib parameters
-                 k_size=0.1,
-                 gib_dict=None,
-                 num_neighbors=16,
-                 gib_layers=1    
+                 gib_dict={},
+                 num_observers=[8, 8],
+                 kernel_reach=0.1,
+                 neighbor_size=[8, 16],
                 ):
         super(GIBLiBottleneck, self).__init__()
         # self.linear1 = nn.Linear(in_planes, planes, bias=False)
-        neigh_strat = Neighboring('knn', num_neighbors)
-        self.linear1  = GIBLiLayer(in_planes, planes, 32, k_size, gib_dict, neigh_strat, gib_layers)
+        self.linear1  = GIBLiLayer(in_channels=in_planes, out_channels=planes, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size) 
+        out_gibli_channels = planes + sum(num_observers)
+        self.gibli_proj = nn.Linear(out_gibli_channels, planes, bias=False)
+        
         self.bn1 = nn.BatchNorm1d(planes)
         self.transformer = PointTransformerLayer(planes, planes, share_planes, nsample)
         self.bn2 = nn.BatchNorm1d(planes)
         self.linear3 = nn.Linear(planes, planes * self.expansion, bias=False)
         self.bn3 = nn.BatchNorm1d(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
+        
+    def build_input_gibli(self, coord, feat, offset):
+        batched_coord, mask = build_batch_tensor(coord, offset)
+        input_dict = {
+            "coord": batched_coord,
+            "feat": build_batch_tensor(feat, offset)[0],
+            "mask": mask,
+        }
+        return input_dict
 
     def forward(self, pxo):
         p, x, o = pxo  # (n, 3), (n, c), (b)
         identity = x
-        x, mask = build_batch_tensor(x, o)
-        x = self.linear1(x)
-        x = batch_to_packed(x, mask)[0]        
+        input_dict = self.build_input_gibli(p, x, o)
+        x = self.gibli_proj(self.linear1(input_dict))
+        x = batch_to_packed(x, input_dict['mask'])[0]        
         x = self.relu(self.bn1(x))
         x = self.relu(self.bn2(self.transformer([p, x, o])))
         x = self.bn3(self.linear3(x))
@@ -388,10 +397,10 @@ class GIBLiPointTransformerSeg(nn.Module):
                  in_channels=6, 
                  num_classes=13,
                  ### gib parameters
-                 k_size=0.1,
-                 gib_dict=None,
-                 num_neighbors=None,
-                 gib_layers=1
+                 gib_dict={},
+                 num_observers=[8, 8],
+                 kernel_reach=0.1,
+                 neighbor_size=[8, 16],
                 ):
         super().__init__()
         self.in_channels = in_channels
@@ -399,10 +408,10 @@ class GIBLiPointTransformerSeg(nn.Module):
         fpn_planes, fpnhead_planes, share_planes = 128, 64, 8
         stride, nsample = [1, 4, 4, 4, 4], [8, 16, 16, 16, 16]
         
-        self.k_size = k_size
         self.gib_dict = gib_dict
-        self.num_neighbors = num_neighbors
-        self.gib_layers = gib_layers
+        self.neighbor_size = neighbor_size
+        self.kernel_reach = kernel_reach
+        self.num_observers = num_observers
         
         self.enc1 = self._make_enc(
             block,
@@ -473,7 +482,7 @@ class GIBLiPointTransformerSeg(nn.Module):
         self.in_planes = planes * block.expansion
         for _ in range(blocks):
             layers.append(
-                block(self.in_planes, self.in_planes, share_planes, nsample=nsample, k_size=self.k_size, gib_dict=self.gib_dict, num_neighbors=self.num_neighbors, gib_layers=self.gib_layers)
+                block(self.in_planes, self.in_planes, share_planes, nsample=nsample, gib_dict=self.gib_dict, num_observers=self.num_observers, kernel_reach=self.kernel_reach, neighbor_size=self.neighbor_size)
             )
         return nn.Sequential(*layers)
 
@@ -486,7 +495,7 @@ class GIBLiPointTransformerSeg(nn.Module):
         self.in_planes = planes * block.expansion
         for _ in range(blocks):
             layers.append(
-                block(self.in_planes, self.in_planes, share_planes, nsample=nsample, k_size=self.k_size, gib_dict=self.gib_dict, num_neighbors=self.num_neighbors, gib_layers=self.gib_layers)
+                block(self.in_planes, self.in_planes, share_planes, nsample=nsample, gib_dict=self.gib_dict, num_observers=self.num_observers, kernel_reach=self.kernel_reach, neighbor_size=self.neighbor_size)
             )
         return nn.Sequential(*layers)
     
@@ -535,41 +544,3 @@ class GIBLiPointTransformerSeg50(GIBLiPointTransformerSeg):
         )
         
         
-        
-
-class PreGIBLiPointTransformerSeg(PointTransformerSeg):
-    
-    
-    def __init__(self, 
-                block, blocks, in_channels=6, num_classes=13,
-                giblinet_params={}
-                ):
-        
-        gibli = GIBLiNet(in_channels= 3 + in_channels, num_classes=num_classes, **giblinet_params)
-        input_dim = giblinet_params['out_gib_channels'][0] if isinstance(giblinet_params['out_gib_channels'], list) else giblinet_params['out_gib_channels']
-        
-        super(PreGIBLiPointTransformerSeg, self).__init__(block, blocks, input_dim + in_channels, num_classes)
-        
-        self.gibli = gibli
-        
-    def forward(self, data_dict):
-        coords = data_dict['coord']
-        feats = data_dict['feat']
-        
-        x = torch.cat([coords, feats], dim=-1)
-        x, mask = build_batch_tensor(x, data_dict['offset'])
-        x = self.gibli.gibli_forward(x)
-        x = batch_to_packed(x, mask)[0]
-        data_dict['feat'] = torch.cat([coords, x], dim=-1)
-        
-        return super().forward(data_dict)
-    
-    
-@MODELS.register_module("PreGIBLiPointTransformer-Seg50")
-class PreGIBLiPointTransformerSeg50(PreGIBLiPointTransformerSeg):
-    def __init__(self, **kwargs):
-        super(PreGIBLiPointTransformerSeg50, self).__init__(
-            Bottleneck, [1, 2, 3, 5, 2], **kwargs
-        )
-    
-    

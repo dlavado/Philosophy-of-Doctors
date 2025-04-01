@@ -336,8 +336,7 @@ class PointNetFeaturePropagation(nn.Module):
     
 ####################################################################################################################
 
-from core.models.giblinet.GIBLi import GIBLiLayer
-from core.models.giblinet.GIBLi_utils import Neighboring
+from core.models.giblinet.GIBLi_parts import GIBLiLayer
 
 class GIBLiPointNetSetAbstraction(nn.Module):
     def __init__(self,
@@ -348,11 +347,11 @@ class GIBLiPointNetSetAbstraction(nn.Module):
                  mlp, 
                  group_all,
                  ### gib parameters
-                 k_size=0.1,
                  gib_dict={},
-                 num_neighbors=16,
-                 gib_layers=1,
-                 ):
+                 num_observers=[8, 8],
+                 kernel_reach=0.1,
+                 neighbor_size=[8, 16],
+                ):
         super(GIBLiPointNetSetAbstraction, self).__init__()
         self.npoint = npoint
         self.radius = radius
@@ -360,14 +359,23 @@ class GIBLiPointNetSetAbstraction(nn.Module):
         self.mlp_convs = nn.ModuleList()
         self.mlp_bns = nn.ModuleList()
         last_channel = in_channel
-        neigh_strat = Neighboring('knn', num_neighbors)
         self.giblis = nn.ModuleList()
+        
         for out_channel in mlp:
-            self.giblis.append(GIBLiLayer(last_channel, last_channel, 32, k_size, gib_dict, neigh_strat, gib_layers))
+            out_gibli_channels = last_channel + sum(num_observers)
+            self.giblis.append(nn.Sequential(GIBLiLayer(last_channel, gib_dict, num_observers, kernel_reach, neighbor_size, last_channel),
+                                             nn.Linear(out_gibli_channels, last_channel, bias=False)))
             self.mlp_convs.append(nn.Conv2d(last_channel, out_channel, 1))
             self.mlp_bns.append(nn.BatchNorm2d(out_channel))
             last_channel = out_channel
         self.group_all = group_all
+        
+        
+    def build_input_gibli(self, xyz:torch.Tensor, points:torch.Tensor):
+        return {
+            'coord' :  xyz.unsqueeze(2).repeat(1, 1, self.nsample, 1).reshape(xyz.shape[0], -1, xyz.shape[2]), # shape [B, P, S*C]
+            'feat'  :  points.reshape(points.shape[0], points.shape[1]*points.shape[2], -1) # shape [B, P*S, D]
+        }
 
     def forward(self, xyz, points):
         """
@@ -393,10 +401,15 @@ class GIBLiPointNetSetAbstraction(nn.Module):
         for i, gib in enumerate(self.giblis):
             # print(f"{new_points.shape=}")
             new_points = new_points.permute(0, 3, 2, 1) # [B, P, S, D]
-            gib_points = gib(new_points.reshape(B, P*S, -1)).reshape(B, P, S, -1)
+            # print(f"{new_points.shape=} {new_xyz.shape=}")
+            gibli_input = self.build_input_gibli(new_xyz, new_points)
+            # print(f"{gibli_input['coord'].shape=} {gibli_input['feat'].shape=}")
+            gib_points = gib(gibli_input).reshape(B, P, S, -1)
+            # gib_points = gib(new_points.reshape(B, P*S, -1)).reshape(B, P, S, -1)
             # print(f"{new_points.shape=}")
+            
             # res connect
-            new_points = new_points + 0.1*gib_points
+            new_points = new_points + gib_points
             conv = self.mlp_convs[i]
             bn = self.mlp_bns[i]
             new_points =  F.relu(bn(conv(new_points.permute(0, 3, 2, 1))))

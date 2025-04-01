@@ -131,8 +131,7 @@ class KPResidualBlock(nn.Module):
     
 ###################################################################################################
 
-from core.models.giblinet.GIBLi import GIBLiLayer
-from core.models.giblinet.GIBLi_utils import Neighboring
+from core.models.giblinet.GIBLi_parts import GIBLiLayer
 from core.models.giblinet.conversions import pack_to_batch, batch_to_pack
 
 class GIBLiKPResidualBlock(nn.Module):
@@ -163,10 +162,10 @@ class GIBLiKPResidualBlock(nn.Module):
         norm_cfg: LayerConfig = "GroupNorm",
         act_cfg: LayerConfig = "LeakyReLU",
         ### gib params
-        k_size=0.1,
-        gib_dict=None,
-        num_neighbors=16,
-        gib_layers=1,
+        gib_dict={},
+        num_observers=[8, 8],
+        kernel_reach=0.1,
+        neighbor_size=[8, 16],
     ):
         super().__init__()
 
@@ -176,8 +175,9 @@ class GIBLiKPResidualBlock(nn.Module):
 
         mid_channels = out_channels // 4
         
-        neigh_strat = Neighboring('knn', num_neighbors)
-        self.unary1 = GIBLiLayer(in_channels, mid_channels, 32, k_size, gib_dict, neigh_strat, gib_layers)
+        self.unary1 =  GIBLiLayer(in_channels=in_channels, out_channels=mid_channels, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size) 
+        out_gibli_channels = mid_channels + sum(num_observers)
+        self.gibli_proj = nn.Linear(out_gibli_channels, mid_channels, bias=False)
         # self.unary1 = UnaryBlockPackMode(in_channels, mid_channels, norm_cfg=norm_cfg, act_cfg=act_cfg)
         
         self.conv = KPConvBlock(
@@ -199,10 +199,22 @@ class GIBLiKPResidualBlock(nn.Module):
             self.unary_shortcut = nn.Identity()
 
         self.act = build_act_layer(act_cfg)
+        
+        
+    def build_input_gibli(self, coord, feat, lengths):
+        batched_coord, mask = pack_to_batch(coord, lengths)
+        input_dict = {
+            "coord": batched_coord,
+            "feat": pack_to_batch(feat, lengths)[0],
+            "mask": mask,
+        }
+        return input_dict
 
     def forward(self, q_points, s_points, s_feats, neighbor_indices, lengths):
         
-        residual = batch_to_pack(self.unary1(pack_to_batch(s_feats, lengths)[0]))[0] # (N, C)
+        gibli_dict = self.build_input_gibli(s_points, s_feats, lengths)
+        gibli_out = self.gibli_proj(self.unary1(gibli_dict))
+        residual = batch_to_pack(gibli_out, gibli_dict['mask'])[0]        
         residual = self.conv(q_points, s_points, residual, neighbor_indices)
         residual = self.unary2(residual)
 

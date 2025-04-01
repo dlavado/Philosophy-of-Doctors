@@ -160,10 +160,10 @@ class GIBLi_KPFCNN(nn.Module):
                  kernel_size=15,
                  num_classes=10,
                  # gib params
-                 k_size=0.1,
-                 gib_dict=None,
-                 num_neighbors=16,
-                 gib_layers=1,
+                 gib_dict={},
+                 num_observers=[8, 8],
+                 kernel_reach=0.1,
+                 neighbor_size=[8, 16],
             ):
         super().__init__()
     
@@ -182,36 +182,38 @@ class GIBLi_KPFCNN(nn.Module):
         first_sigma = self.first_sigma
 
         self.encoder1_1 = KPConvBlock(input_dim, first_dim, kernel_size, first_radius, first_sigma)
-        self.encoder1_2 = GIBLiKPResidualBlock(first_dim, first_dim * 2, kernel_size, first_radius, first_sigma, k_size=k_size, gib_dict=gib_dict, num_neighbors=num_neighbors, gib_layers=gib_layers)
+        self.encoder1_2 = GIBLiKPResidualBlock(\
+            first_dim, first_dim * 2, kernel_size, first_radius, first_sigma, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size
+        )
 
         self.encoder2_1 = GIBLiKPResidualBlock(\
-            first_dim * 2, first_dim * 2, kernel_size, first_radius, first_sigma, strided=True, k_size=k_size, gib_dict=gib_dict, num_neighbors=num_neighbors, gib_layers=gib_layers
+            first_dim * 2, first_dim * 2, kernel_size, first_radius, first_sigma, strided=True, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size
         )
-        self.encoder2_2 = GIBLiKPResidualBlock(first_dim * 2, first_dim * 4, kernel_size, first_radius * 2, first_sigma * 2, k_size=k_size, gib_dict=gib_dict, num_neighbors=num_neighbors, gib_layers=gib_layers)
-        self.encoder2_3 = GIBLiKPResidualBlock(first_dim * 4, first_dim * 4, kernel_size, first_radius * 2, first_sigma * 2, k_size=k_size, gib_dict=gib_dict, num_neighbors=num_neighbors, gib_layers=gib_layers)
+        self.encoder2_2 = GIBLiKPResidualBlock(first_dim * 2, first_dim * 4, kernel_size, first_radius * 2, first_sigma * 2, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size)
+        self.encoder2_3 = GIBLiKPResidualBlock(first_dim * 4, first_dim * 4, kernel_size, first_radius * 2, first_sigma * 2, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size)
 
         self.encoder3_1 = GIBLiKPResidualBlock(
-            first_dim * 4, first_dim * 4, kernel_size, first_radius * 2, first_sigma * 2, strided=True, k_size=k_size, gib_dict=gib_dict, num_neighbors=num_neighbors, gib_layers=gib_layers
+            first_dim * 4, first_dim * 4, kernel_size, first_radius * 2, first_sigma * 2, strided=True, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size
         )
-        self.encoder3_2 = GIBLiKPResidualBlock(first_dim * 4, first_dim * 8, kernel_size, first_radius * 4, first_sigma * 4, k_size=k_size, gib_dict=gib_dict, num_neighbors=num_neighbors, gib_layers=gib_layers)
-        self.encoder3_3 = GIBLiKPResidualBlock(first_dim * 8, first_dim * 8, kernel_size, first_radius * 4, first_sigma * 4, k_size=k_size, gib_dict=gib_dict, num_neighbors=num_neighbors, gib_layers=gib_layers)
+        self.encoder3_2 = GIBLiKPResidualBlock(first_dim * 4, first_dim * 8, kernel_size, first_radius * 4, first_sigma * 4, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size)
+        self.encoder3_3 = GIBLiKPResidualBlock(first_dim * 8, first_dim * 8, kernel_size, first_radius * 4, first_sigma * 4, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size)
 
         self.encoder4_1 = GIBLiKPResidualBlock(
-            first_dim * 8, first_dim * 8, kernel_size, first_radius * 4, first_sigma * 4, strided=True, k_size=k_size, gib_dict=gib_dict, num_neighbors=num_neighbors, gib_layers=gib_layers
+            first_dim * 8, first_dim * 8, kernel_size, first_radius * 4, first_sigma * 4, strided=True, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size
         )
-        self.encoder4_2 = GIBLiKPResidualBlock(first_dim * 8, first_dim * 16, kernel_size, first_radius * 8, first_sigma * 8, k_size=k_size, gib_dict=gib_dict, num_neighbors=num_neighbors, gib_layers=gib_layers)
+        self.encoder4_2 = GIBLiKPResidualBlock(first_dim * 8, first_dim * 16, kernel_size, first_radius * 8, first_sigma * 8, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size)
         self.encoder4_3 = GIBLiKPResidualBlock(
-            first_dim * 16, first_dim * 16, kernel_size, first_radius * 8, first_sigma * 8, k_size=k_size, gib_dict=gib_dict, num_neighbors=num_neighbors, gib_layers=gib_layers
+            first_dim * 16, first_dim * 16, kernel_size, first_radius * 8, first_sigma * 8, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size
         )
 
         self.encoder5_1 = GIBLiKPResidualBlock(
-            first_dim * 16, first_dim * 16, kernel_size, first_radius * 8, first_sigma * 8, strided=True, k_size=k_size, gib_dict=gib_dict, num_neighbors=num_neighbors, gib_layers=gib_layers
+            first_dim * 16, first_dim * 16, kernel_size, first_radius * 8, first_sigma * 8, strided=True, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size
         )
         self.encoder5_2 = GIBLiKPResidualBlock(
-            first_dim * 16, first_dim * 32, kernel_size, first_radius * 16, first_sigma * 16, k_size=k_size, gib_dict=gib_dict, num_neighbors=num_neighbors, gib_layers=gib_layers
+            first_dim * 16, first_dim * 32, kernel_size, first_radius * 16, first_sigma * 16, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size
         )
         self.encoder5_3 = GIBLiKPResidualBlock(
-            first_dim * 32, first_dim * 32, kernel_size, first_radius * 16, first_sigma * 16, k_size=k_size, gib_dict=gib_dict, num_neighbors=num_neighbors, gib_layers=gib_layers
+            first_dim * 32, first_dim * 32, kernel_size, first_radius * 16, first_sigma * 16, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size
         )
 
         self.decoder4 = UnaryBlockPackMode(first_dim * 48, first_dim * 16)
@@ -287,37 +289,6 @@ class GIBLi_KPFCNN(nn.Module):
 
         return output_dict
     
-    
-    
-from core.models.giblinet.GIBLi import GIBLiNet
-from core.models.giblinet.conversions import pack_to_batch, batch_to_pack
-
-class PreGIBLi_KPFCNN(nn.Module):
-    
-    def __init__(self, 
-                 num_classes,
-                 in_channels,
-                 kpconv_params,
-                 giblinet_params,
-        ):
-        
-        super(PreGIBLi_KPFCNN, self).__init__()
-        
-        
-        self.gibli = GIBLiNet(3, num_classes, **giblinet_params)  
-        
-        gibli_out = giblinet_params['out_gib_channels'][0] if isinstance(giblinet_params['out_gib_channels'], list) else giblinet_params['out_gib_channels']
-        self.kpfcnn = KPFCNN(input_dim=gibli_out + in_channels, num_classes=num_classes, **kpconv_params)
-        
-        
-    def forward(self, points, feats, lengths):
-        x_pack, mask = pack_to_batch(points, lengths)
-        x = self.gibli.gibli_forward(x_pack)
-        x = batch_to_pack(x, mask)[0]
-        feats = torch.cat([x, feats], dim=1)
-        torch.cuda.empty_cache()
-        x = self.kpfcnn(points, feats, lengths)
-        return x
         
 
 

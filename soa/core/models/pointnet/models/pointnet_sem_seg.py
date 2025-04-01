@@ -66,43 +66,6 @@ class get_gibli_model(nn.Module):
         x = x.view(batchsize, n_pts, self.k)
         return x, trans_feat
     
-    
-class get_pre_gibli_model(nn.Module):
-    
-    def __init__(self, 
-                 in_channels:int,
-                 num_classes:int,
-                 num_levels:int,
-                 out_gib_channels,
-                 num_observers:int,
-                 kernel_size:float,
-                 gib_dict:dict,
-                 skip_connections:bool,
-                 pyramid_builder,
-                ):
-        
-        super(get_pre_gibli_model, self).__init__()
-        
-        self.giblinet = GIBLiNet(
-                    in_channels, 
-                    num_classes, 
-                    num_levels, 
-                    out_gib_channels, 
-                    num_observers, 
-                    kernel_size, 
-                    gib_dict, 
-                    skip_connections,
-                    pyramid_builder
-                )
-        
-        num_channels = out_gib_channels[0] if isinstance(out_gib_channels, list) else out_gib_channels
-        self.pointnet = get_model(num_classes, num_channels=num_channels)
-        
-        
-    def forward(self, x):
-        x = self.giblinet.gibli_forward(x)
-        torch.cuda.empty_cache()
-        return self.pointnet(x)
 
 class get_loss(torch.nn.Module):
     def __init__(self, mat_diff_loss_scale=0.001):
