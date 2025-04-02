@@ -42,10 +42,14 @@ class GENEORegularizer(torch.nn.Module):
         """
         Penalizes non-positive parameters
         """
+        
+        # for geneo in geneo_params:
+        #     print(geneo.shape, geneo.requires_grad, geneo.dtype)
+        #     print(geneo.mean())
         cum = 0
         for geneo in geneo_params:
             cum += torch.sum(torch.relu(-geneo))
-        return cum
+        return cum / len(geneo_params)
         
         
     def forward(self, geneo_params:list[torch.Tensor], cvx_params:list[torch.Tensor]):

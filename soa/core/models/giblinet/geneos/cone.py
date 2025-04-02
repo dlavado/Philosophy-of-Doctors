@@ -283,6 +283,74 @@ class ConeCollection(GIBCollection):
     
     
     
+    
+class HollowConeCollection(ConeCollection):
+    
+    def __init__(self, kernel_reach: float, num_gibs, **kwargs):
+        """
+        A collection of Hollow Cone GIBs.
+
+        Parameters
+        ----------
+        `radius` - torch.Tensor:
+            Tensor of shape (num_gibs, 1) containing the radius of the cone's base for each GIB.
+
+        `intensity` - torch.Tensor:
+            Tensor of shape (num_gibs, 1) representing scalar intensities for each cone GIB.
+
+        `thickness` - torch.Tensor:
+            Tensor of shape (num_gibs, 1) containing the thickness of the cone's base for each GIB.
+        """
+
+        super().__init__(kernel_reach, num_gibs=num_gibs, **kwargs)
+
+        if kwargs.get('thickness') is None:
+            raise KeyError("Provide a thickness for the hollow cone in the kernel.")
+
+        self.thickness = kwargs['thickness']
+
+    def mandatory_parameters():
+        return ['radius', 'inc', 'thickness']
+
+    def gib_parameters():
+        return HollowConeCollection.mandatory_parameters() + ['intensity']
+
+    def gib_random_config(num_gibs, kernel_reach):
+        rand_config = GIBCollection.gib_random_config(num_gibs, kernel_reach)
+
+        geneo_params = {
+            'radius': torch.rand((num_gibs, 1)) * kernel_reach + 0.01,  # float \in [0.01, kernel_reach]
+            'inc': torch.rand((num_gibs, 1)) / 2,  # float \in [0, 0.5]
+            'thickness': torch.rand((num_gibs, 1)) * kernel_reach + 0.01,  # float \in [0.01, kernel_reach]
+        }
+        rand_config[GIB_PARAMS].update(geneo_params)
+
+        return rand_config
+
+    def gaussian(self, x: torch.Tensor, rad: torch.Tensor) -> torch.Tensor:
+        """
+        Computes the gaussian function of the Hollow Cone GIB for the input tensor.
+
+        Parameters
+        ----------
+        `x` - torch.Tensor:
+            Tensor of shape (..., G, K, 2) representing the input tensor.
+            Where G is the number of GIBs, and K is the number of neighbors and their dimensions.
+
+        `rad` - torch.Tensor:
+            Tensor of shape (..., G, K) representing the radius at the height of the support points.
+
+        Returns
+        -------
+        `gaussian` - torch.Tensor:
+            Tensor of shape (..., G, K) representing the gaussian function of the input tensor.
+        """
+        outer_gaussian = self.intensity * gaussian_2d(x, rad + self.epsilon)
+        inner_gaussian = self.intensity * gaussian_2d(x, rad - self.thickness + self.epsilon)
+        return outer_gaussian - inner_gaussian
+    
+    
+    
 
 if __name__ == "__main__":
     import sys

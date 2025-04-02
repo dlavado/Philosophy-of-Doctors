@@ -306,6 +306,70 @@ class EllipsoidCollection(GIBCollection):
         montecarlo_points = montecarlo_points[torch.norm(montecarlo_points, dim=-1) <= self.kernel_reach]
         q_output = self._prepped_forward(s_centered, valid_mask, montecarlo_points)
         return q_output
+    
+    
+    
+class HollowEllipsoidCollection(EllipsoidCollection):
+    
+    def __init__(self, kernel_reach: float, num_gibs, **kwargs):
+        """
+        A collection of Hollow Ellipsoid GIBs.
+
+        Parameters
+        ----------
+        `radii` - torch.Tensor:
+            Tensor of shape (num_gibs, 3) containing the radii of the ellipsoid for each GIB.
+
+        `intensity` - torch.Tensor:
+            Tensor of shape (num_gibs, 1) representing scalar intensities for each ellipsoid GIB.
+
+        `thickness` - torch.Tensor:
+            Tensor of shape (num_gibs, 1) containing the thickness of the hollow ellipsoid for each GIB.
+        """
+        super().__init__(kernel_reach, num_gibs=num_gibs, **kwargs)
+
+        if 'thickness' not in kwargs:
+            raise KeyError("Provide a thickness for the hollow ellipsoid in the kernel.")
+
+        self.thickness = kwargs['thickness']
+
+    def mandatory_parameters():
+        return ['L', 'thickness']
+    
+    def gib_parameters():
+        return HollowEllipsoidCollection.mandatory_parameters() + ['intensity']
+
+    def gib_random_config(num_gibs, kernel_reach):
+        rand_config = GIBCollection.gib_random_config(num_gibs, kernel_reach)
+
+        gib_params = {
+            'L': torch.tril(torch.randn(num_gibs, 3, 3)),  # Lower triangular matrix (G, 3, 3)
+            'thickness': torch.rand((num_gibs, 1, 1)) * kernel_reach + 0.01,  # thickness in range [0.01, kernel_reach]
+        }
+            
+        rand_config[GIB_PARAMS].update(gib_params)
+
+        return rand_config
+
+    def gaussian(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Computes the gaussian function of the Hollow Ellipsoid GIB for the input tensor.
+
+        Parameters
+        ----------
+        `x` - torch.Tensor:
+            Tensor of shape (..., G, K, 3) representing the input tensor.
+            Where G is the number of GIBs, and K is the number of neighbors and their dimensions.
+
+        Returns
+        -------
+        `gaussian` - torch.Tensor:
+            Tensor of shape (..., G, K) representing the gaussian function of the input tensor.
+        """
+        # print(f"{x.shape=} {self.L.shape=} {self.thickness.shape=}")
+        outer_gaussian = self.intensity * EllipsoidCollection.gaussian_3d(x, self.L, self.epsilon)
+        inner_gaussian = self.intensity * EllipsoidCollection.gaussian_3d(x, self.L / (1 + self.thickness), self.epsilon)
+        return outer_gaussian - inner_gaussian
 
     
     

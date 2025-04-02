@@ -10,6 +10,11 @@ from core.criterions.geneo_loss import GENEORegularizer
 import torch
 
 
+def disable_batchnorm(m):
+    if isinstance(m, torch.nn.BatchNorm1d) or isinstance(m, torch.nn.BatchNorm2d) or isinstance(m, torch.nn.BatchNorm3d):
+        m.eval()
+        m.track_running_stats = False
+
 
 class Lit_GIBLiSOTA(LitWrapperModel):
     
@@ -63,6 +68,8 @@ class Lit_GIBLiSOTA(LitWrapperModel):
         
         self.geneo_reg = GENEORegularizer(0.01)
         self.elastic_reg = ElasticNetRegularization(0.01, 0.5)
+        
+        # self.model.apply(disable_batchnorm)
     
         if metric_initializer is not None:
             self.train_metrics = metric_initializer(num_classes=num_classes, ignore_index=ignore_index)
@@ -118,4 +125,18 @@ class Lit_GIBLiSOTA(LitWrapperModel):
                     self.log(f"{stage}_{metric_name}", met, on_epoch=True, on_step=on_step, prog_bar=True, logger=logger)
 
         return loss, preds, y
+    
+    
+    def on_after_backward(self):
+        for name, param in self.model.named_parameters():
+            # if 'gib_params' in name and 'disk' in name:
+            if param.grad is not None:
+                print(f"{name},  grad.norm={param.grad.norm().item():.2e}")
+            else:
+                print(f"{name} has .grad to None")
+        
+        # print(f"Memory after backward: {torch.cuda.memory_allocated() / (1024 ** 2)} MB")
+        # print(torch.cuda.memory_summary())
+        return
+
     

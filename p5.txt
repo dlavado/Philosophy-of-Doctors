@@ -34,3 +34,6 @@ squeue
 scancel $JOB-ID
 
 tail -f log_file.txt
+
+squeue -O, --Format=JobId,Name,UserName,TimeUsed,tres-alloc:-1
+

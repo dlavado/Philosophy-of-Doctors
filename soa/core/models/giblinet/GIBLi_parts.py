@@ -324,14 +324,22 @@ class GIB_Layer_Coll(nn.Module):
 
         # --- Initializing GIBs ---
         for key in self.gib_dict:
-            if 'cy' in key:
+            if 'cy' == key:
                 g_class = cylinder.CylinderCollection
-            elif 'disk' in key:
+            elif 'disk' == key:
                 g_class = disk.DiskCollection
-            elif 'cone' in key:
+            elif 'cone' == key:
                 g_class = cone.ConeCollection
-            elif 'ellip' in key:
+            elif 'ellip' == key:
                 g_class = ellipsoid.EllipsoidCollection
+            elif 'h-cy' == key:
+                g_class = cylinder.HollowCylinderCollection
+            elif 'h-disk' == key:
+                g_class = disk.HollowDiskCollection
+            elif 'h-cone' == key:
+                g_class = cone.HollowConeCollection
+            elif 'h-ellip' == key:
+                g_class
             else:
                 raise ValueError(f"Invalid GIB Type: `{key}`, must be one of ['cy', 'cone', 'disk', 'ellip']")
             
@@ -667,12 +675,12 @@ class Unpool_wSkip(nn.Module):
         self.proj = nn.Sequential(
             nn.Linear(feat_channels, out_channels, bias=bias),
             PointBatchNorm(out_channels),
-            nn.ReLU(inplace=True),
+            nn.GELU(),
         )
         self.proj_skip = nn.Sequential(
             nn.Linear(skip_channels, out_channels, bias=bias),
             PointBatchNorm(out_channels),
-            nn.ReLU(inplace=True),
+            nn.GELU(),
         )
 
     def forward(self, curr_points: Tuple[torch.Tensor, torch.Tensor], 
@@ -886,7 +894,7 @@ class GIBLiLayer(nn.Module):
         self.num_observers = num_observers
         
         self.mlp = nn.Linear(in_channels, out_channels)
-        self.act = nn.ReLU(inplace=True)
+        self.act = nn.GELU()
         self.bn = PointBatchNorm(out_channels)
     
     def maintain_convexity(self):
@@ -1002,7 +1010,7 @@ class GIBLiBlock(nn.Module):
         self.sota_module = sota_class(sota_in_channels, **sota_args)
         
         self.point_norm = PointBatchNorm(out_channels)
-        self.act = nn.ReLU(inplace=True)
+        self.act = nn.GELU()
         
     
     def process_input_for_gibli(self, data_dict) -> Dict[str, torch.Tensor]:
@@ -1149,12 +1157,12 @@ class Upsample_pops(nn.Module):
         self.proj = nn.Sequential(
             nn.Linear(feat_channels, out_channels, bias=bias),
             PointBatchNorm(out_channels),
-            nn.ReLU(inplace=True),
+            nn.GELU(),
         )
         self.proj_skip = nn.Sequential(
             nn.Linear(skip_channels, out_channels, bias=bias),
             PointBatchNorm(out_channels),
-            nn.ReLU(inplace=True),
+            nn.GELU(),
         )
 
     def forward(self, curr_dict, skip_dict, upsampling_idxs) -> torch.Tensor:

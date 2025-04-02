@@ -123,11 +123,14 @@ class Lit_PointTransformer(LitWrapperModel):
     #     return super().on_train_batch_end(batch, batch_idx, dataloader_idx)
     
     
-    # def on_after_backward(self):
-    #     for name, param in self.model.named_parameters():
-    #         if 'gib_params' in name and 'disk' in name:
-    #             print(f"{name=},  {param=},  {param.grad=}")
+    def on_after_backward(self):
+        for name, param in self.model.named_parameters():
+            # if 'gib_params' in name and 'disk' in name:
+            if param.grad is not None:
+                print(f"{name},  grad.norm={param.grad.norm().item():.2e}")
+            else:
+                print(f"{name} has .grad to None")
         
-    #     # print(f"Memory after backward: {torch.cuda.memory_allocated() / (1024 ** 2)} MB")
-    #     # print(torch.cuda.memory_summary())
-    #     return
+        # print(f"Memory after backward: {torch.cuda.memory_allocated() / (1024 ** 2)} MB")
+        # print(torch.cuda.memory_summary())
+        return

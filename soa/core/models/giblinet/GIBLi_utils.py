@@ -28,7 +28,7 @@ class PointBatchNorm(nn.Module):
 
     def __init__(self, embed_channels):
         super().__init__()
-        self.norm = nn.BatchNorm1d(embed_channels)
+        self.norm = nn.BatchNorm1d(embed_channels, momentum=0.01)
         
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         

@@ -698,7 +698,10 @@ if __name__ == '__main__':
         )
     else:
         # default mode
-        sweep_config = os.path.join(experiment_path, 'defaults_config.yml')
+        if main_parser.arch is None:
+            sweep_config = os.path.join(experiment_path, 'defaults_config.yml')
+        else:
+            sweep_config = os.path.join(experiment_path, f'{main_parser.arch}_config.yml')
 
         print("wandb init.")
 

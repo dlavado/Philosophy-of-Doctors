@@ -240,6 +240,72 @@ class CylinderCollection(GIBCollection):
         return q_output
     
     
+    
+class HollowCylinderCollection(CylinderCollection):
+    
+    def __init__(self, kernel_reach:float, num_gibs, **kwargs):
+        """
+        A collection of Hollow Cylinder GIBs.
+
+        Parameters
+        ----------
+        `radius` - torch.Tensor:
+            tensor of shape (num_gibs, 1) containing the radius of the cylinder's base for each GIB;
+
+        `intensity` - torch.Tensor:
+            tensor of shape (num_gibs, 1) representing scalar intensities for each cylinder GIB;
+
+        `thickness` - torch.Tensor:
+            tensor of shape (num_gibs, 1) containing the thickness of the cylinder's base for each GIB;
+        """
+
+        super().__init__(kernel_reach, num_gibs=num_gibs, **kwargs)
+        
+        if kwargs.get('thickness') is None:
+            raise KeyError("Provide a thickness for the hollow cylinder in the kernel.")
+
+        self.thickness = kwargs['thickness']
+        
+    def mandatory_parameters():
+        return ['radius', 'thickness']
+    
+    def gib_parameters():
+        return HollowCylinderCollection.mandatory_parameters() + ['intensity']
+
+    def gib_random_config(num_gibs, kernel_reach):
+        rand_config = GIBCollection.gib_random_config(num_gibs, kernel_reach)
+
+        geneo_params = {
+            'radius' : torch.rand((num_gibs, 1)) * kernel_reach + 0.01, # float \in [0.1, 1]
+            'thickness' : torch.rand((num_gibs, 1)) * kernel_reach + 0.01, # float \in [0.1, 1]
+        }   
+        rand_config[GIB_PARAMS].update(geneo_params)
+
+        return rand_config
+    
+    
+    def gaussian(self, x:torch.Tensor) -> torch.Tensor:
+        """
+        Computes the gaussian function of the Hollow Cylinder GIB for the input tensor.
+
+        Parameters
+        ----------
+        `x` - torch.Tensor:
+            Tensor of shape (..., G, K, 2) representing the input tensor.
+            Where G is the number of GIBs, and K is the number of neighbors and their dimensions.
+
+        Returns
+        -------
+        `gaussian` - torch.Tensor:
+            Tensor of shape (..., G, K) representing the gaussian function of the input tensor.
+        """
+        return self.intensity * gaussian_2d(x, self.radius + self.epsilon) - self.intensity * gaussian_2d(x, self.radius - self.thickness + self.epsilon)
+    
+    
+    
+
+    
+    
 
 
 if __name__ == "__main__":

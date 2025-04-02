@@ -283,7 +283,7 @@ class GIBLiNetStub(nn.Module):
         self.seg_head = nn.Sequential(
             nn.Linear(self.out_channels[0], self.out_channels[0]),
             nn.BatchNorm1d(self.out_channels[0]),
-            nn.ReLU(inplace=True),
+            nn.GELU(),
             nn.Linear(self.out_channels[0], num_classes)
         ) if num_classes > 0 else nn.Identity()
         
@@ -357,7 +357,7 @@ class GIBLiBlockPTV1(nn.Module):
                  #### gib params
                  gib_dict:Dict[str, int],
                  num_observers:Union[int, List[int]],
-                 kernel_size:float,
+                 kernel_reach:float,
                  neighbor_size:Union[int, List[int]]=4,
                  feat_enc_channels:int=16,
                  ### ptv1 params
@@ -370,7 +370,7 @@ class GIBLiBlockPTV1(nn.Module):
         self.gibli_layer = GIBLiLayer(in_channels=in_channels, 
                                 gib_dict=gib_dict,
                                 num_observers=num_observers,
-                                kernel_reach=kernel_size,
+                                kernel_reach=kernel_reach,
                                 neighbor_size=neighbor_size,
                                 out_channels=feat_enc_channels,
                             )
@@ -440,7 +440,7 @@ class GIBLiBlockPTV2(nn.Module):
                  #### gib params
                  gib_dict:Dict[str, int],
                  num_observers:Union[int, List[int]],
-                 kernel_size:float,
+                 kernel_reach:float,
                  neighbor_size:Union[int, List[int]],
                  feat_enc_channels:int,
                  out_channels:int,
@@ -461,7 +461,7 @@ class GIBLiBlockPTV2(nn.Module):
         self.gibli_layer = GIBLiLayer(in_channels=in_channels, 
                                 gib_dict=gib_dict,
                                 num_observers=num_observers,
-                                kernel_reach=kernel_size,
+                                kernel_reach=kernel_reach,
                                 neighbor_size=neighbor_size,
                                 out_channels=feat_enc_channels,
                             )
@@ -527,7 +527,7 @@ class GIBLiBlockPTV3(nn.Module):
                  #### gib params
                  gib_dict:Dict[str, int],
                  num_observers:Union[int, List[int]],
-                 kernel_size:float,
+                 kernel_reach:float,
                  neighbor_size:Union[int, List[int]],
                  feat_enc_channels:int,
                  out_channels:int,
@@ -558,7 +558,7 @@ class GIBLiBlockPTV3(nn.Module):
         self.gibli_layer = GIBLiLayer(in_channels=in_channels, 
                                 gib_dict=gib_dict,
                                 num_observers=num_observers,
-                                kernel_reach=kernel_size,
+                                kernel_reach=kernel_reach,
                                 neighbor_size=neighbor_size,
                                 out_channels=feat_enc_channels,
                             )
@@ -1269,6 +1269,33 @@ if __name__ == '__main__':
     from utils.constants import TS40K_FULL_PREPROCESSED_PATH
     from torchinfo import summary
     
+    
+    def test_module_gradients(model, dataloader, loss_fn=torch.nn.MSELoss()):
+        model.train()  # Ensure we're in training mode
+        batch = next(iter(dataloader))  # Get a sample batch
+        
+        # Move batch to the same device as the model
+        device = next(model.parameters()).device
+        batch = batch.to(device) if isinstance(batch, torch.Tensor) else {k: v.to(device) for k, v in batch.items()}
+        
+        # Forward pass
+        model.zero_grad()
+        outputs = model(batch)
+        if isinstance(outputs, dict):
+            outputs = outputs['feat']
+            
+        loss = loss_fn(outputs, torch.randn_like(outputs))        
+        loss.backward()
+        
+        print("Model parameters with gradients:")
+        grad_norms = {
+            n: (p.grad.norm().item() if p.grad is not None else 0.0)
+            for n, p in model.named_parameters()
+        }
+        
+        for n, g in grad_norms.items():
+            print(f"{n}: {g:.2e}")
+    
     dataset = TS40K_FULL_Preprocessed(TS40K_FULL_PREPROCESSED_PATH,
                                       sample_types='all', load_into_memory=False)
     
@@ -1283,268 +1310,49 @@ if __name__ == '__main__':
     dl_ts40k = lit_dataset.train_dataloader()
     
     
-    
-    # model = GIBLiSequenceStub(
-    #     in_channels=3,
-    #     depth=4,
-    #     sota_class=GIBLiBlockPTV1,
-    #     sota_kwargs={
-    #         'gib_dict': {'cy': 8, 'cone': 8, 'ellip': 8, 'disk': 8},
-    #         'num_observers': [16, 16],
-    #         'kernel_size': 0.1,
-    #         'neighbor_size': [16, 16],
-    #         'feat_enc_channels': 16,
-    #         ### ptv1 params
-    #         'out_channels': 8,
-    #         'shared_channels': 1,
-    #         'num_neighbors': 8,
-    #     },
-    #     sota_update_kwargs={
-    #         'out_channels': [2, 2, 2, 1],
-    #         'num_neighbors': [2, 2, 1, 1],
-            
-    #     }
-    # ).cuda()
-        
-        
-    # model = GIBLiNetStub(
+    # model = GIBLiNetPTV1(
     #     in_channels=3,
     #     num_classes=6,
-    #     ### U-NET Structure
     #     num_levels=4,
     #     grid_size=0.1,
     #     embed_channels=[16, 16, 32, 64],
     #     out_channels=[32, 32, 64, 128],
-    #     ### SOTA MODULE
     #     depth=2,
-    #     sota_class=GIBLiBlockPTV1,
-    #     sota_kwargs={
-    #         'gib_dict': {'cy': 8, 'cone': 8, 'ellip': 8, 'disk': 8},
-    #         'num_observers': [8, 8],
-    #         'kernel_size': 0.1,
-    #         'neighbor_size': [8, 16],
-    #         'feat_enc_channels': 16,
-    #         ### ptv1 params
-    #         # 'out_channels': 8,
-    #         'shared_channels': 1,
-    #         'num_neighbors': 8,
-    #     },
-    #     sota_update_kwargs={
-    #         'out_channels': [8, 16, 32],
-    #         'num_neighbors': [8, 16, 16],
-            
-    #     }    
+    #     sota_kwargs={}
     # ).cuda()
     
-    # test ptv2
-    # model = GIBLiSequenceStub(
-    #     in_channels=3,
-    #     depth=4,
-    #     sota_class=GIBLiBlockPTV2,
-    #     sota_kwargs={
-    #         ### giblilayer params
-    #         'gib_dict': {'cy': 8, 'cone': 8, 'ellip': 8, 'disk': 8},
-    #         'num_observers': [16, 16],
-    #         'kernel_size': 0.1,
-    #         'neighbor_size': [16, 16],
-    #         'feat_enc_channels': 16,
-    #         'out_channels': 8,
-    #         ### ptv2 params
-    #         'depth': 2,
-    #         'groups': 1,
-    #         'neighbours': 8,
-    #         'qkv_bias': True,
-    #         'pe_multiplier': False,
-    #         'pe_bias': True,
-    #         'attn_drop_rate': 0.0,
-    #         'drop_path_rate': 0.0,
-    #         'enable_checkpoint': False,
-    #     },
-    #     sota_update_kwargs={
-    #         'out_channels': [16, 16, 16],   # len = depth - 1   
-    #         'neighbours': [8, 16, 16],   
-    #     }
-    # ).cuda()
-    
-    
-    # model = GIBLiNetStub(
-    #     in_channels=3,
-    #     num_classes=6,
-    #     ### U-NET Structure
-    #     num_levels=4,
-    #     grid_size=0.1,
-    #     embed_channels=[16, 16, 32, 64],
-    #     out_channels=[32, 32, 64, 128],
-    #     ### SOTA MODULE
-    #     depth=2,
-    #     sota_class=GIBLiBlockPTV2,
-    #     sota_kwargs={
-    #         'gib_dict': {'cy': 8, 'cone': 8, 'ellip': 8, 'disk': 8},
-    #         'num_observers': [8, 8],
-    #         'kernel_size': 0.1,
-    #         'neighbor_size': [8, 16],
-    #         'feat_enc_channels': 16,
-    #         'out_channels': 8,
-    #         'depth': 2,
-    #         ### ptv2 params
-    #         'groups': 1,
-    #         'neighbours': 8,
-    #         'qkv_bias': True,
-    #         'pe_multiplier': False,
-    #         'pe_bias': True,
-    #         'attn_drop_rate': 0.0,
-    #         'drop_path_rate': 0.0,
-    #         'enable_checkpoint': False,
-    #     },
-    #     sota_update_kwargs={
-    #         'out_channels': [8, 16, 32],
-    #     }
-    # ).cuda()
-    
-    ### TEST ptv3
-    # model = GIBLiNetStub(
-    #     in_channels=3,
-    #     num_classes=6,
-    #     ### U-NET Structure
-    #     num_levels=4,
-    #     grid_size=0.1,
-    #     embed_channels=[16, 16, 32, 64],
-    #     out_channels=[32, 32, 64, 128],
-    #     ### SOTA MODULE
-    #     depth=2,
-    #     sota_class=GIBLiBlockPTV3,
-    #     sota_kwargs={
-    #         'out_channels': 8,
-    #         ### giblilayer params
-    #         'gib_dict': {'cy': 8, 'cone': 8, 'ellip': 8, 'disk': 8},
-    #         'num_observers': [8, 8],
-    #         'kernel_size': 0.1,
-    #         'neighbor_size': [8, 16],
-    #         'feat_enc_channels': 16,
-    #         ### ptv3 params
-    #         'num_heads': 3,
-    #         'patch_size': 48,
-    #         'mlp_ratio': 4.0,
-    #         'qkv_bias': True,
-    #         'qk_scale': None,
-    #         'attn_drop': 0.0,
-    #         'proj_drop': 0.0,
-    #         'drop_path': 0.0,
-    #         'norm_layer': nn.LayerNorm,
-    #         'act_layer': nn.GELU,
-    #         'pre_norm': True,
-    #         'order_index': 0,
-    #         'cpe_indice_key': None,
-    #         'enable_rpe': False,
-    #         'enable_flash': False,
-    #         'upcast_attention': True,
-    #         'upcast_softmax': True,
-    #     },
-    #     sota_update_kwargs={
-    #         'out_channels': [16, 16, 16],   # len = depth - 1   
-    #         'num_heads': [4, 4, 4],
-    #     }
-    # ).cuda()
-    
-    
-    ### test kpconv
-    # model = GIBLiNetStub(
-    #     in_channels=3,
-    #     num_classes=6,
-    #     ### U-NET Structure
-    #     num_levels=4,
-    #     grid_size=0.1,
-    #     embed_channels=[16, 16, 32, 64],
-    #     out_channels=[32, 32, 64, 128],
-    #     ### SOTA MODULE
-    #     depth=2,
-    #     sota_class=GIBLiBlockKPConv,
-    #     sota_kwargs={
-    #         'out_channels': 16,
-    #         ### giblilayer params
-    #         'gib_dict': {'cy': 8, 'cone': 8, 'ellip': 8, 'disk': 8},
-    #         'num_observers': [8, 8],
-    #         'kernel_reach': 0.1,
-    #         'neighbor_size': [8, 16],
-    #         'feat_enc_channels': 16,
-    #         ### kpconv params
-    #         'kernel_size': 3,
-    #         'radius': 0.1,
-    #         'sigma': 0.1,
-    #         'groups': 1,
-    #         'dimension': 3,
-    #         'strided': False,
-    #         'kpconv_neighbors': 16,
-    #     },
-        
-    #     sota_update_kwargs={
-    #         'out_channels': [16, 16, 16],   # len = depth - 1   
-    #     }
-    # ).cuda()
-    
-    
-    ### test pointnet
-    
-    # model = GIBLiNetStub(
-    #     in_channels=3,
-    #     num_classes=6,
-    #     ### U-NET Structure
-    #     num_levels=4,
-    #     grid_size=0.1,
-    #     embed_channels=[16, 16, 32, 64],
-    #     out_channels=[32, 32, 64, 128],
-    #     ### SOTA MODULE
-    #     depth=2,
-    #     sota_class=GIBLiBlockPointNet,
-    #     sota_kwargs={
-    #         'out_channels': 16,
-    #         ### giblilayer params
-    #         'gib_dict': {'cy': 8, 'cone': 8, 'ellip': 8, 'disk': 8},
-    #         'num_observers': [8, 8],
-    #         'kernel_reach': 0.1,
-    #         'neighbor_size': [8, 16],
-    #         'feat_enc_channels': 16,
-    #         ### pointnet params
-    #         'feature_transform': False,
-    #     },
-    #     sota_update_kwargs={
-    #         'out_channels': [16, 16, 16],   # len = depth - 1   
-    #     }
-    # ).cuda()
-    
-    ### test pointnet2
-    
-    model = GIBLiNetStub(
+    model = GIBLiSequenceStub(
         in_channels=3,
-        num_classes=6,
-        ### U-NET Structure
-        num_levels=4,
-        grid_size=0.01,
-        embed_channels=[16, 16, 32, 64],
-        out_channels=[32, 32, 64, 128],
-        ### SOTA MODULE
-        depth=2,
-        sota_class=GIBLiBlockPointNet2,
+        depth=1,
+        sota_class=GIBLiBlockPTV1,
         sota_kwargs={
-            'out_channels': 16,
-            ### giblilayer params
             'gib_dict': {'cy': 8, 'cone': 8, 'ellip': 8, 'disk': 8},
-            'num_observers': [8, 8],
+            'num_observers': [8],
             'kernel_reach': 0.1,
-            'neighbor_size': [8, 16],
+            'neighbor_size': [8],
             'feat_enc_channels': 16,
-            ### pointnet2 params
-            'npoint': -1,
-            'radius': 0.2,
-            'nsample': 8, # num_neighbors
-            'mlp': [64, 64],
-        },
-    ).cuda()
+            'shared_channels': 1,
+            'num_neighbors': 8,
+            'out_channels': 6,
+        }
+        ).cuda()
+
+    # Initialize weights with Xavier initialization
+    def init_weights(m):
+        if isinstance(m, nn.Linear):
+            nn.init.xavier_uniform_(m.weight)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+
+    model.apply(init_weights)
     
     ### print model summary
     summary(model)
     
     
+    test_module_gradients(model, dl_ts40k)
+    
+    ####
     sample_dict = next(iter(dl_ts40k))
     sample_dict = {key: value.cuda() for key, value in sample_dict.items()}
     out = model(sample_dict)

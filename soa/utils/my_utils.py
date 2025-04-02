@@ -41,6 +41,8 @@ def main_arg_parser():
     parser.add_argument('--dataset', type=str, default='ts40k', help='Dataset to use')
 
     parser.add_argument('--model', type=str, default='scenenet', help='Model to use')
+    
+    parser.add_argument('--arch', type=str, default=None, help='Architecture to use')
 
     parser.add_argument('--predict', action='store_true', default=False, help='If True, the script is in prediction mode')
     
