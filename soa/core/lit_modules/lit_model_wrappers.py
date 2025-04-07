@@ -176,3 +176,10 @@ class LitWrapperModel(pl.LightningModule):
         
         raise NotImplementedError(f'Optimizer {self.hparams.optimizer_name} not implemented')
     
+    
+    def init_kaiming_weights(self, layer):
+        if isinstance(layer, nn.Linear):
+            torch.nn.init.kaiming_normal_(layer.weight, mode='fan_in', nonlinearity='relu')
+            if layer.bias is not None:
+                torch.nn.init.zeros_(layer.bias)  # Optional: Initialize biases to zero
+    

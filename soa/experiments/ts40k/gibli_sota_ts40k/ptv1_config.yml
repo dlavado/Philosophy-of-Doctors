@@ -17,7 +17,7 @@ preprocessed:
 load_into_memory:
   value: False
 add_normals:
-  value: True
+  value: False
   description: 'If True, adds normals to the dataset'
 data_path:
   value: ''
@@ -73,6 +73,9 @@ neighbor_size:
 depth:
   value: 2
   description: 'Depth of the Block Sequence'
+sota_neighbors:
+  value: 16
+  description: 'Number of neighbors for the SOTA model'
 ## U-Net specific parameters
 num_levels:
   value: 4

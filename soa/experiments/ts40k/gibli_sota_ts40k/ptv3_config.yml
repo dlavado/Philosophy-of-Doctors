@@ -15,9 +15,9 @@ preprocessed:
   value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: False
-add_normals:
   value: True
+add_normals:
+  value: False
   description: 'If True, adds normals to the dataset'
 data_path:
   value: ''
@@ -124,7 +124,7 @@ precision: # 16 or 32 FPU precision
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: False
+  value: True
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'

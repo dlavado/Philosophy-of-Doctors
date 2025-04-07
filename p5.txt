@@ -37,3 +37,5 @@ tail -f log_file.txt
 
 squeue -O, --Format=JobId,Name,UserName,TimeUsed,tres-alloc:-1
 
+sinfo -o "%50N  %10c  %20m  %1000G"
+

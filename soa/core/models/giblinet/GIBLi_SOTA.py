@@ -185,12 +185,19 @@ class GIBLiUpStub(nn.Module):
         self.unpool = Upsample_pops(feat_channels, skip_channels, unpool_out_channels, bias, skip, concat, backend)
         f_channels  = unpool_out_channels*2 if concat else unpool_out_channels
         self.block  = GIBLiSequenceStub(in_channels=f_channels, depth=depth, sota_class=sota_class, sota_kwargs=sota_kwargs, sota_update_kwargs=sota_update_kwargs)
-        
+
+        out_channels = sota_kwargs['out_channels']
+        if isinstance(out_channels, list):
+            out_channels = out_channels[-1]
+
+        self.residual_proj = nn.Linear(f_channels, out_channels) if f_channels != out_channels else nn.Identity()
+
     def forward(self, curr_dict, skip_dict, skip_idxs) -> Dict[str, torch.Tensor]: 
         data_dict = self.unpool(curr_dict, skip_dict, skip_idxs)
+        residual = self.residual_proj(data_dict['feat'])
         data_dict = self.block(data_dict)
+        data_dict['feat'] += residual  # residual connection
         return data_dict
-    
     
     def maintain_convexity(self):
        self.block.maintain_convexity()

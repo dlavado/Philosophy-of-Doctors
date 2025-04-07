@@ -176,7 +176,7 @@ class GIBLiKPResidualBlock(nn.Module):
         mid_channels = out_channels // 4
         
         self.unary1 =  GIBLiLayer(in_channels=in_channels, out_channels=mid_channels, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size) 
-        out_gibli_channels = mid_channels + sum(num_observers)
+        out_gibli_channels = mid_channels + sum(self.unary1.num_observers)
         self.gibli_proj = nn.Linear(out_gibli_channels, mid_channels, bias=False)
         # self.unary1 = UnaryBlockPackMode(in_channels, mid_channels, norm_cfg=norm_cfg, act_cfg=act_cfg)
         

@@ -878,6 +878,9 @@ class GIBLiLayer(nn.Module):
             
         if isinstance(num_observers, int):
             num_observers = [num_observers for _ in range(len(self.neighboring_strategies))]
+        else: # list
+            # this ensures len(num_observers) == len(self.neighboring_strategies)
+            num_observers = num_observers + [num_observers[-1] for _ in range(len(self.neighboring_strategies) - len(num_observers))]    
             
         assert len(num_observers) == len(self.neighboring_strategies), "The number of observers must be equal to the number of neighboring strategies"
         

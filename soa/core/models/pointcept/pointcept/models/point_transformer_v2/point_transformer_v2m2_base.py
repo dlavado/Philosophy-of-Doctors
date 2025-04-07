@@ -643,7 +643,7 @@ class GIBLiBlock(nn.Module):
         )
         
         self.fc1 = GIBLiLayer(in_channels=embed_channels, out_channels=embed_channels, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size) 
-        out_gibli_channels = embed_channels + sum(num_observers)
+        out_gibli_channels = embed_channels + sum(self.fc1.num_observers)
         self.gibli_proj = nn.Linear(out_gibli_channels, embed_channels, bias=False)
         
         self.fc3 = nn.Linear(embed_channels, embed_channels, bias=False)

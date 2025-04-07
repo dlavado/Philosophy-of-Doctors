@@ -73,15 +73,18 @@ neighbor_size:
 depth:
   value: 2
   description: 'Depth of the Block Sequence'
+sota_neighbors:
+  value: 16
+  description: 'Number of neighbors for the SOTA model'
 ## U-Net specific parameters
 num_levels:
   value: 4
 grid_size:
   value: [0.01, 0.02, 0.03, 0.04]
 embed_channels:
-  value: [64, 128, 256, 512]
+  value: 16 # [64, 128, 256, 512]
 out_channels:
-  value: [128, 256, 512, 1024]
+  value: 16 # [128, 256, 512, 1024]
 # ------------------ #
 # training config
 # ------------------ #

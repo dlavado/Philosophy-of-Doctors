@@ -776,7 +776,7 @@ class GIBLiBlock(PointModule):
             channels, gib_dict, num_observers, kernel_reach, neighbor_size, out_channels
         )
         
-        out_gibli_channels = out_channels + sum(num_observers)
+        out_gibli_channels = out_channels + sum(self.gibli.num_observers)
         self.mlp_gibli = PointSequential(
             MLP(
                 in_channels=out_gibli_channels,

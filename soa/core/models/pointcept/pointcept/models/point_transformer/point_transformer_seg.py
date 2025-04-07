@@ -356,7 +356,7 @@ class GIBLiBottleneck(nn.Module):
         super(GIBLiBottleneck, self).__init__()
         # self.linear1 = nn.Linear(in_planes, planes, bias=False)
         self.linear1  = GIBLiLayer(in_channels=in_planes, out_channels=planes, gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size) 
-        out_gibli_channels = planes + sum(num_observers)
+        out_gibli_channels = planes + sum(self.linear1.num_observers)
         self.gibli_proj = nn.Linear(out_gibli_channels, planes, bias=False)
         
         self.bn1 = nn.BatchNorm1d(planes)

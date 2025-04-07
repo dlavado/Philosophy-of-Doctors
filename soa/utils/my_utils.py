@@ -42,7 +42,7 @@ def main_arg_parser():
 
     parser.add_argument('--model', type=str, default='scenenet', help='Model to use')
     
-    parser.add_argument('--arch', type=str, default=None, help='Architecture to use')
+    parser.add_argument('--arch', type=str, default='', help='Architecture to use')
 
     parser.add_argument('--predict', action='store_true', default=False, help='If True, the script is in prediction mode')
     
@@ -51,20 +51,7 @@ def main_arg_parser():
     parser.add_argument('--resumable', action='store_true', default=None, help='If True, the script is resumable')
     
     return parser
-    
 
-def resolve_optimizer(optimizer_name:str, model, learning_rate):
-        optimizer_name = optimizer_name.lower()
-        if  optimizer_name == 'adam':
-            return torch.optim.Adam(model.parameters(), lr=learning_rate)
-        elif optimizer_name == 'sgd':
-            return torch.optim.SGD(model.parameters(), lr=learning_rate)
-        elif optimizer_name == 'rmsprop':
-            return torch.optim.RMSprop(model.parameters(), lr=learning_rate)
-        elif optimizer_name == 'lbfgs':
-            return torch.optim.LBFGS(model.parameters(), lr=learning_rate, max_iter=20)
-        
-        raise NotImplementedError(f'Optimizer {optimizer_name} not implemented')
     
 
 def init_metrics(task='multiclass', tau=0.5, num_classes=2, ignore_index=-1):

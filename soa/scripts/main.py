@@ -698,10 +698,10 @@ if __name__ == '__main__':
         )
     else:
         # default mode
-        if main_parser.arch is None:
-            sweep_config = os.path.join(experiment_path, 'defaults_config.yml')
-        else:
+        if main_parser.arch in ['ptv1', 'ptv2', 'ptv3', 'kpconv', 'pointnet', 'pointnet2']:
             sweep_config = os.path.join(experiment_path, f'{main_parser.arch}_config.yml')
+        else:
+            sweep_config = os.path.join(experiment_path, 'defaults_config.yml')
 
         print("wandb init.")
 
@@ -712,9 +712,8 @@ if __name__ == '__main__':
                 mode=main_parser.wandb_mode,
         )
 
-
-    # if wandb.config.add_normals:
-    #     wandb.config.update({'num_data_channels': wandb.config.num_data_channels + 3}, allow_val_change=True) # override data path
+    if wandb.config.add_normals:
+        wandb.config.update({'num_data_channels': wandb.config.num_data_channels + 3}, allow_val_change=True) # override data path
 
     if main_parser.wandb_mode == 'disabled':
         ckpt_dir = C.get_checkpoint_dir(model_name, dataset_name)

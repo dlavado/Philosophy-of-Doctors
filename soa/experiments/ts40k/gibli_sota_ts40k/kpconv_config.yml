@@ -73,6 +73,13 @@ neighbor_size:
 depth:
   value: 2
   description: 'Depth of the Block Sequence'
+## KPConv specific parameters
+sota_neighbors:
+  value: 16
+  description: 'Number of neighbors for the SOTA model'
+sota_kernel_size:
+  value: 3
+  description: 'Size of the kernel'
 ## U-Net specific parameters
 num_levels:
   value: 4

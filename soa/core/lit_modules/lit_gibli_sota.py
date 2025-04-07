@@ -66,6 +66,8 @@ class Lit_GIBLiSOTA(LitWrapperModel):
     
         super().__init__(model, criterion, optimizer_name, learning_rate, None, num_classes=num_classes, **kwargs)
         
+        self.model.apply(self.init_kaiming_weights)
+        
         self.geneo_reg = GENEORegularizer(0.01)
         self.elastic_reg = ElasticNetRegularization(0.01, 0.5)
         
@@ -127,16 +129,16 @@ class Lit_GIBLiSOTA(LitWrapperModel):
         return loss, preds, y
     
     
-    def on_after_backward(self):
-        for name, param in self.model.named_parameters():
-            # if 'gib_params' in name and 'disk' in name:
-            if param.grad is not None:
-                print(f"{name},  grad.norm={param.grad.norm().item():.2e}")
-            else:
-                print(f"{name} has .grad to None")
+    # def on_after_backward(self):
+    #     for name, param in self.model.named_parameters():
+    #         # if 'gib_params' in name and 'disk' in name:
+    #         if param.grad is not None:
+    #             print(f"{name},  grad.norm={param.grad.norm().item():.2e}")
+    #         else:
+    #             print(f"{name} has .grad to None")
         
-        # print(f"Memory after backward: {torch.cuda.memory_allocated() / (1024 ** 2)} MB")
-        # print(torch.cuda.memory_summary())
-        return
+    #     # print(f"Memory after backward: {torch.cuda.memory_allocated() / (1024 ** 2)} MB")
+    #     # print(torch.cuda.memory_summary())
+    #     return
 
     
