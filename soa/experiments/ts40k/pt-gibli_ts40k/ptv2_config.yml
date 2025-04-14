@@ -45,7 +45,7 @@ in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'
 model_version:
-  value: 'gibli-v3' # 'v1' or 'v2' or 'v3'
+  value: 'gibli-v2' # 'v1' or 'v2' or 'v3'
   description: 'Point Transformer version'
 #### GIBLi Parameters ####
 gib_dict:

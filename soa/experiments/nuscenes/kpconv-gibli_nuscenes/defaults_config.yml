@@ -24,13 +24,16 @@ ignore_index:
   value: -1 # noise
 num_workers: 
   value: 0
+add_normals:
+  value: False
+  description: 'If True, adds normals to the dataset'
 # ------------------ #
 # model config
 # ------------------ #
 model:
   value: 'kpconv-gibli'
 model_hash:
-  value: 'stg5_ksize15_r12_s2.0_gibli_gib4_nknn8'
+  value: 'stg5_ksize15_r12_s2.0_gibli_gib8_nknn16_ob32'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'
@@ -49,30 +52,37 @@ init_dim:
 neighbor_limits:
     value: "[10, 10, 10, 10, 10]" # if None, recompute neighbors
 #### GIBLi Parameters ####
-k_size:
-  value: 0.1
-  description: 'Kernel size of GIBs'
 gib_dict:
   value: {
-    'cy'    : 4,
-    'ellip' : 4,
-    'disk'  : 4,
-    'cone'  : 4,
+    'cy'    :  8,
+    'ellip' :  8,
+    'disk'  :  8,
+    'cone'  :  8,
+    'h-cy'  :  8,
+    'h-ellip': 8,
+    'h-disk' : 8,
+    'h-cone' : 8,
   }
   description: 'Dictionary of GIBs'
-num_neighbors:
+num_observers:
+  value: [32]
+  description: 'Number of observers'
+kernel_reach:
+  value: 0.1
+  description: 'Kernel reach of GIBs'
+neighbor_size:
+  value: [16]
+  description: 'Number of neighbors'
+out_channels:
   value: 8
-  description: 'Number of neighbors for GIBs'
-gib_layers:
-  value: 1
-  description: 'Number of GIB layers'
+  description: 'Number of output channels'
 # ------------------ #
 # training config
 # ------------------ #
 optimizer:
   value: 'adamw' #'adam' 
 learning_rate:
-  value: 0.0001
+  value: 0.00001
 max_epochs:
   value: 100 # -1 for infinite
 accelerator:
@@ -95,7 +105,7 @@ class_weights:
   value: True
   description: 'Use class weights in the loss function'
 segmentation_losses:
-  value: null #{'focal': 0.2, 'tversky': 0.2, 'lovasz': 0.2}
+  value: {'focal': 0.2, 'tversky': 0.2, 'lovasz': 0.8}
   description: 'Additional losses for segmentation'
 # ------------------ #
 # Lit Trainer config
@@ -103,17 +113,17 @@ segmentation_losses:
 fast_dev_run:
   value: True
 precision: # 16 or 32 FPU precision
-  value: 16
+  value: 32
   description: 'FPU precision'
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: False
+  value: True
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'
 accumulate_grad_batches:
-  value: 1
+  value: 16
   description: 'Accumulate gradients on k batches before performing a backward pass'
 save_onnx:
   value: False

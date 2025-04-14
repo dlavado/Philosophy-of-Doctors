@@ -15,7 +15,7 @@ preprocessed:
   value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: False
+  value: True
 add_normals:
   value: False
   description: 'If True, adds normals to the dataset'
@@ -27,7 +27,7 @@ num_data_channels:
   value: 3
   description: 'Number of channels in the dataset'
 batch_size:
-  value: 1
+  value: 6
 ignore_index:
   value: -1 # noise
 num_workers: 
@@ -64,16 +64,16 @@ gib_dict:
   }
   description: 'Dictionary of GIBs'
 num_observers:
-  value: [16]
+  value: [4]
   description: 'Number of observers'
 kernel_reach:
   value: 0.1
   description: 'Kernel reach of GIBs'
 neighbor_size:
-  value: [16]
+  value: [4]
   description: 'Number of neighbors'
 out_channels:
-  value: 32
+  value: 8
   description: 'Number of output channels'
 # ------------------ #
 # training config
@@ -117,7 +117,7 @@ precision: # 16 or 32 FPU precision
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: False
+  value: True
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'

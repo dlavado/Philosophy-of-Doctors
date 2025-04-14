@@ -72,19 +72,23 @@ gib_dict:
     'ellip' : 8,
     'disk'  : 8,
     'cone'  : 8,
+    'h-cy'  : 8,
+    'h-ellip': 8,
+    'h-disk' : 8,
+    'h-cone' : 8,
   }
   description: 'Dictionary of GIBs'
 num_observers:
-  value: [16, 16]
+  value: [32]
   description: 'Number of observers'
 kernel_reach:
   value: 0.1
   description: 'Kernel reach of GIBs'
 neighbor_size:
-  value: [16, 32]
+  value: [16]
   description: 'Number of neighbors'
 out_channels:
-  value: 32
+  value: 8
   description: 'Number of output channels'
 # ------------------ #
 # training config

@@ -1,0 +1,100 @@
+%!TEX root = ../template.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% chapter1.tex
+%% NOVA thesis document file
+%%
+%% Chapter with introduction
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\typeout{NT FILE 02_sota.tex}%
+
+\chapter{Research Context and State-of-the-Art}\label{cha:sota}
+
+%-----------------------------
+\section{Overview of 3D Scene Understanding}
+This section provides an overview of 3D scene understanding methodologies, classifying them based on their data representations and processing strategies. Each class has its own strengths and limitations, particularly in handling sparsity, scalability, and generalization.
+
+\subsection{Projection-based Methods}
+% Describe how 3D data is projected to 2D for processing with standard CNNs. Highlight benefits (use of pretrained 2D backbones) and limitations (loss of depth, occlusion issues).
+
+\subsection{Voxel-based Methods}
+% Explain 3D voxelization and the use of 3D convolutions. Discuss challenges such as memory cost, resolution loss, and sparsity handling.
+
+\subsection{Point-based Methods}
+% Introduce methods like PointNet/PointNet++ and more recent attention- or transformer-based approaches. Emphasize their ability to process raw data but also note their difficulty with modeling local structure.
+
+\subsection{Hybrid-based Methods}
+% Cover approaches that combine multiple representations (e.g., voxel + point-based or point + image-based). Mention trade-offs and current trends.
+
+
+
+
+%-----------------------------
+\section{Learning Challenges in 3D}
+% Set up the limitations in current 3D pipelines that motivate new research directions.
+
+\subsection{Scalability and Diminishing Returns}
+% Discuss the trend of increasing model/data size for incremental performance gains (e.g., Point Transformer V2 vs. V1). Note the cost of training, inference latency, and limited transferability across domains.
+
+\subsection{Local Aggregation and Structural Ambiguity}
+% Explain the difficulty of defining consistent neighborhoods in unstructured 3D data, leading to noisy or unstable feature aggregation. Mention common solutions (e.g., KNN, radius search) and their sensitivity to density and noise.
+
+
+
+%-----------------------------
+\section{Convolutional Operations on 3D Data}
+% Review the adaptations of convolution for 3D. Cover both spatial and graph-based operators.
+
+\subsection{From 2D to 3D{:} The Challenge of Irregularity}
+% Explain why 2D convolutions benefit from grid structure and why that breaks down in point clouds. Cover sparse 3D convolutions and point-based kernels (KPConv, FlexConv, etc.).
+
+\subsection{Dynamic or Learned Neighborhoods}
+% Introduce methods that learn neighborhoods or use attention (e.g., Point Transformer) to mitigate fixed aggregation issues.
+
+
+
+
+
+%-----------------------------
+\section{Inductive Biases in 3D Deep Learning}
+% Discuss the broader role of inductive biases in ML, then focus on how geometric priors can guide 3D scene understanding.
+
+\subsection{Understanding Inductive Biases}
+% Define inductive bias in ML. Give classic 2D examples (e.g., translation equivariance in CNNs) and motivate why they matter in data-scarce or noisy regimes.
+
+\subsection{Types of Geometric Inductive Biases in 3D}
+% Survey work that explicitly or implicitly encodes geometric priors: 
+% - Distance and orientation-aware features  
+% - Rotation or scale equivariance  
+% - Topological or surface-aware aggregation
+
+\subsection{Group Equivariance Methodologies}
+% Discuss works that explicitly build equivariant architectures (e.g., Tensor Field Networks, SE(3)-Transformers, EGNN). 
+% Explain benefits: generalization, sample efficiency, physical plausibility.
+
+\subsection{Geometric Descriptors and Local Frames}
+% Cover methods that encode local geometry using frames, angles, and curvatures. E.g., models that include normals, local reference frames, or curvature-aware kernels.
+
+\subsection{Effectiveness and Limitations}
+% What has been shown to work well? Where do gaps remain? What are the limits of these biases in current models?
+
+
+
+
+
+%-----------------------------
+\section{3D Scene Understanding for Power Grid Inspection}
+
+\subsection{Manual and Automated Inspection Practices}
+% Summarize current real-world practices and why automation is needed. Mention drone-based scanning, LiDAR use, and inspection routines.
+
+\subsection{Existing Datasets and Tools}
+% List available datasets, if any (e.g., TOWER, TS40K, LIDAR360). Point out scarcity of open data and how this affects research.
+
+\subsection{Domain-specific 3D Challenges}
+% Emphasize the particular needs in power grid scenes: 
+% - Sparse and noisy point clouds  
+% - Small object detection (e.g., insulators, faults)  
+% - Safety-critical interpretation (low error tolerance)
+
+

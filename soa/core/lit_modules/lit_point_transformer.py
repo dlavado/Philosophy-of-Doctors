@@ -120,8 +120,8 @@ class Lit_PointTransformer(LitWrapperModel):
     
 
     # def on_train_batch_end(self, batch, batch_idx, dataloader_idx):
-    #     torch.cuda.empty_cache()
     #     # release memory
+    #     self.release_memory()
     #     return super().on_train_batch_end(batch, batch_idx, dataloader_idx)
     
     

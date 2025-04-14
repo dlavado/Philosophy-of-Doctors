@@ -8,6 +8,7 @@ import sys
 import os
 import yaml
 import ast
+import re
 
 # Vanilla PyTorch
 import torch
@@ -51,7 +52,6 @@ def replace_variables(string):
     Returns:
     - Updated string with replaced variables
     """
-    import re
 
     pattern = r'\${(\w+)}'
     matches = re.finditer(pattern, string)
@@ -70,9 +70,41 @@ def replace_variables(string):
     return string
 
 
+def replace_wandb_variables(template: str, config=None):
+    """
+    Replace `${...}` variables in a string with values from wandb.config.
+
+    Args:
+    - template (str): A string containing `${var}` placeholders.
+    - config (dict, optional): Optionally pass a config dict (e.g., wandb.config or a mock for testing).
+
+    Returns:
+    - str: The formatted string with all variables replaced.
+    """
+    if config is None:
+        config = wandb.config
+
+    pattern = r"\${(\w+)}"
+    matches = re.findall(pattern, template)
+
+    for var in matches:
+        if var not in config:
+            raise KeyError(f"Variable '{var}' not found in wandb config.")
+        value = config[var]
+        # Format list or dicts nicely for string usage
+        if isinstance(value, dict):
+            value = '-'.join(f"{k}{v}" for k, v in value.items())
+        elif isinstance(value, (list, tuple)):
+            value = '-'.join(map(str, value))
+        template = template.replace(f"${{{var}}}", str(value))
+
+    return template
+
+
 #####################################################################
 # INIT CALLBACKS
 #####################################################################
+
 
 def init_callbacks(ckpt_dir):
     # Call back definition
@@ -113,7 +145,7 @@ def init_callbacks(ckpt_dir):
     callbacks.extend(model_ckpts)
 
     if wandb.config.auto_scale_batch_size:
-        batch_finder = BatchSizeFinder(mode='power')
+        batch_finder = BatchSizeFinder(mode='binsearch', init_val=wandb.config.batch_size)
         callbacks.append(batch_finder)
 
     # early_stop_callback = EarlyStopping(monitor=wandb.config.early_stop_metric, 
@@ -407,7 +439,7 @@ def init_waymo(data_path):
 
 def init_model(model_name, criterion) -> pl.LightningModule:
     if 'gibli_sota' in model_name:
-        return init_gibli_sota(wandb.config.model_hash, criterion)
+        return init_gibli_sota(model_hash, criterion)
     elif 'pointnet' in model_name:
         return init_pointnet(model_name, criterion)
     elif 'kpconv' in model_name:
@@ -509,7 +541,8 @@ def main():
             cfg_path = os.path.join(exp, 'files', 'config.yaml')
             pre_cfg = yaml.safe_load(open(cfg_path))
             exp_hash = pre_cfg['model_hash']['value']
-            if exp_hash == wandb.config.model_hash:
+            exp_hash = replace_wandb_variables(exp_hash, pre_cfg)
+            if exp_hash == model_hash:
                 print(f"{'='*5}> Resuming from experiment: {exp}")
                 resume_ckpt_path = os.path.join(os.path.join(exp, 'files', 'checkpoints'), 'last.ckpt')
                 break
@@ -714,6 +747,17 @@ if __name__ == '__main__':
 
     if wandb.config.add_normals:
         wandb.config.update({'num_data_channels': wandb.config.num_data_channels + 3}, allow_val_change=True) # override data path
+        
+    
+    if wandb.config.get('model_hash'):
+        # update model_hash in config
+        model_hash = replace_wandb_variables(wandb.config.model_hash, wandb.config)
+        print(f"====> Model hash: {model_hash}")
+        # configs or sweep lock initial keys
+        wandb.config.update({'derived_model_hash': model_hash}, allow_val_change=True)
+    else:
+        model_hash = None
+        
 
     if main_parser.wandb_mode == 'disabled':
         ckpt_dir = C.get_checkpoint_dir(model_name, dataset_name)

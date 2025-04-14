@@ -40,7 +40,7 @@ val_split:
 model:
   value: 'pt_transformer'
 model_hash:
-  value: 'ptv3-gibli-gib16-nknn16'
+  value: 'ptv3-gibli-gib8-nknn16-ob16'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'

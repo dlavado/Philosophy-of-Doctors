@@ -15,9 +15,9 @@ preprocessed:
   value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: False
-add_normals:
   value: True
+add_normals:
+  value: False
   description: 'If True, adds normals to the dataset'
 data_path:
   value: ''
@@ -54,17 +54,17 @@ in_channels:
 # GIBLi-SOTA specific parameters
 gib_dict:
   value: {
-    'cy'    : 2,
-    'ellip' : 2,
-    'disk'  : 2,
-    'cone'  : 2,
-    'h-cy'  : 2,
-    'h-ellip': 2,
-    'h-disk' : 2,
-    'h-cone' : 2,
+    'cy'    : 8,
+    'ellip' : 8,
+    'disk'  : 8,
+    'cone'  : 8,
+    'h-cy'  : 8,
+    'h-ellip': 8,
+    'h-disk' : 8,
+    'h-cone' : 8,
   }
 num_observers:
-  value: [16]
+  value: [32]
 kernel_reach:
   value: 0.1
 neighbor_size:

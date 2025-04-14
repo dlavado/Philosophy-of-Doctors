@@ -95,7 +95,11 @@ class LitWrapperModel(pl.LightningModule):
     #     # for name, param in self.model.named_parameters():
     #     #     if 'geneo' in name:
     #     #         print(f'\t{name} -- value: {param.data.item():.5f} grad: {param.grad}')
-    #     return super().on_before_backward(loss)                
+    #     return super().on_before_backward(loss)      
+    
+    def on_before_backward(self, loss):
+        self.release_memory()
+        return super().on_before_backward(loss)          
     
     def on_train_epoch_end(self) -> None:
         if self.train_metrics is not None:
@@ -183,3 +187,11 @@ class LitWrapperModel(pl.LightningModule):
             if layer.bias is not None:
                 torch.nn.init.zeros_(layer.bias)  # Optional: Initialize biases to zero
     
+    
+    def release_memory(self):
+        """
+        Release GPU memory
+        """
+        import gc
+        gc.collect()
+        torch.cuda.empty_cache()

@@ -21,7 +21,7 @@ parameters:
   load_into_memory:
     value: True
   add_normals:
-    values: [True, False]
+    value: False
   data_path:
     value: ''
   num_classes:
@@ -29,7 +29,7 @@ parameters:
   num_data_channels:
     value: 3
   batch_size:
-    value: 8
+    value: 3
   ignore_index:
     value: -1
   num_workers: 
@@ -80,28 +80,26 @@ parameters:
         min: 1
         distribution: int_uniform
   num_observers:
-    values: [[8], [16], [32], [64]]
+    values: [[8], [16], [32]]
   kernel_reach:
-    max: 0.5
+    max: 1.0
     min: 0.1
     distribution: uniform
   neighbor_size:
-    values: [[16, 32], [32, 64], [16, 64], [8, 16], [8, 32], [8, 64]]
+    values: [[16, 32], [8, 16], [8, 32], [8, 8, 8], [8, 8, 16]]
   out_channels:
-    values: [16, 32, 64, 128]
+    values: [16, 32, 64]
   model_hash:
     value: 'ptv3-gibli-gib${gib_dict}-obs${num_observers}-neigh${neighbor_size}-out${out_channels}'
   # ------------------ #
   # training config
   # ------------------ #
   optimizer:
-    values: ['adam', 'adamw'] 
+    value: 'adamw'
   learning_rate:
-    max: 0.0001
-    min: 0.000001
-    distribution: uniform
+     values: [0.0001, 0.00005, 0.00001, 0.000005, 0.000001]
   max_epochs:
-    value: 50
+    value: 30
   accelerator:
     value: 'gpu'
   devices:
@@ -143,11 +141,12 @@ parameters:
   auto_lr_find:
     value: False
   auto_scale_batch_size:
-    value: True
+    value: False
   profiler:
     value: False
   accumulate_grad_batches:
-    values: [2, 8, 16]
+    # values: [2, 4, 8, 16]
+    value: 16
   save_onnx:
     value: False
   # ------------------ #
