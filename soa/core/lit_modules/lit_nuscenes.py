@@ -134,10 +134,10 @@ class LitNuScenes(pl.LightningDataModule):
             self.train_ds = NuScenesDataset(**self.data_config.train, split="train")
             self.val_ds = NuScenesDataset(**self.data_config.train, split="val")
         if stage == 'test':
-            self.test_ds = NuScenesDataset(**self.test_config)
+            self.test_ds = NuScenesDataset(**self.data_config.test, split="test")
             
         if stage == 'predict':
-            self.predict_ds = NuScenesDataset(**self.test_config)
+            self.predict_ds = NuScenesDataset(**self.data_config.test, split="test")
             
             
     def train_dataloader(self):

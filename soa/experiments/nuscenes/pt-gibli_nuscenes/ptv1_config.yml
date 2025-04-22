@@ -33,7 +33,7 @@ add_normals:
 model:
   value: 'pt_transformer'
 model_hash:
-  value: 'ptv3-gibli-gib8-nknn16-ob32'
+  value: 'ptv1-gibli-gib8-nknn16-ob32'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'

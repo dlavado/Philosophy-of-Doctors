@@ -66,6 +66,42 @@
 
 
 # %%
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Constants from the inequality
+A = 17.6
+B = 0.0036
+threshold = 0.79974
+
+# Define alpha (x-axis) range
+alpha = np.linspace(0, 0.06, 500)
+
+# Compute the corresponding beta values for the boundary line
+# 0.79974 = alpha * 17.6 + beta * 0.0036 => beta = (0.79974 - alpha * 17.6) / 0.0036
+beta_boundary = (threshold - A * alpha) / B
+
+# Set up the plot
+plt.figure(figsize=(8, 6))
+plt.plot(alpha, beta_boundary, label=r'$0.79974 = \alpha \cdot 17.6 + \beta \cdot 0.0036$', color='blue')
+plt.fill_between(alpha, 0, beta_boundary, where=(beta_boundary >= 0), color='lightgreen', alpha=0.5, label='Profitable Region')
+
+# Formatting
+plt.xlabel(r'$\alpha$ (Cost per False Positive)')
+plt.ylabel(r'$\beta$ (Cost per False Negative)')
+plt.title('Region Where ML Automation Is Profitable')
+plt.ylim(0, np.clip(np.max(beta_boundary), 0, 1000))
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+
+# Show plot
+plt.show()
+
+
+
+# %%
 import sys
 sys.path.append('../')
 import utils.constants as C
