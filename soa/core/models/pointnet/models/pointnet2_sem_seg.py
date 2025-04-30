@@ -63,9 +63,9 @@ class get_gibli_model(nn.Module):
                 ):
         super(get_gibli_model, self).__init__()
         self.sa1 = GIBLiPointNetSetAbstraction(1024, 1, 32, num_channels + 3, [32, 32, 64], False, **kwargs['gibli_params'])
-        self.sa2 = GIBLiPointNetSetAbstraction(256, 0.2, 32, 64 + 3, [64, 64, 128], False, **kwargs['gibli_params'])
-        self.sa3 = GIBLiPointNetSetAbstraction(64, 0.4, 32, 128 + 3, [128, 128, 256], False, **kwargs['gibli_params'])
-        self.sa4 = GIBLiPointNetSetAbstraction(16, 0.8, 32, 256 + 3, [256, 256, 512], False, **kwargs['gibli_params'])
+        self.sa2 = PointNetSetAbstraction(256, 0.2, 32, 64 + 3, [64, 64, 128], False,) # **kwargs['gibli_params'])
+        self.sa3 = PointNetSetAbstraction(64, 0.4, 32, 128 + 3, [128, 128, 256], False) # **kwargs['gibli_params'])
+        self.sa4 = PointNetSetAbstraction(16, 0.8, 32, 256 + 3, [256, 256, 512], False) # **kwargs['gibli_params'])
         self.fp4 = PointNetFeaturePropagation(768, [256, 256])
         self.fp3 = PointNetFeaturePropagation(384, [256, 256])
         self.fp2 = PointNetFeaturePropagation(320, [256, 128])

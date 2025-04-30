@@ -979,7 +979,7 @@ class GIBLiPointTransformerV2(nn.Module):
         self.enc_stages = nn.ModuleList()
         self.dec_stages = nn.ModuleList()
         for i in range(self.num_stages):
-            enc = GIBLiEncoder(
+            enc = Encoder(
                 depth=enc_depths[i],
                 in_channels=enc_channels[i],
                 embed_channels=enc_channels[i + 1],
@@ -995,12 +995,12 @@ class GIBLiPointTransformerV2(nn.Module):
                 ],
                 enable_checkpoint=enable_checkpoint,
                 ### gib parameters
-                gib_dict=gib_dict,
-                num_observers=num_observers,
-                kernel_reach=kernel_reach,
-                neighbor_size=neighbor_size
+                # gib_dict=gib_dict,
+                # num_observers=num_observers,
+                # kernel_reach=kernel_reach,
+                # neighbor_size=neighbor_size
             )
-            dec = GIBLiDecoder(
+            dec = Decoder(
                 depth=dec_depths[i],
                 in_channels=dec_channels[i + 1],
                 skip_channels=enc_channels[i],
@@ -1017,10 +1017,10 @@ class GIBLiPointTransformerV2(nn.Module):
                 enable_checkpoint=enable_checkpoint,
                 unpool_backend=unpool_backend,
                 ### gib parameters
-                gib_dict=gib_dict,
-                num_observers=num_observers,
-                kernel_reach=kernel_reach,
-                neighbor_size=neighbor_size
+                # gib_dict=gib_dict,
+                # num_observers=num_observers,
+                # kernel_reach=kernel_reach,
+                # neighbor_size=neighbor_size
             )
             self.enc_stages.append(enc)
             self.dec_stages.append(dec)

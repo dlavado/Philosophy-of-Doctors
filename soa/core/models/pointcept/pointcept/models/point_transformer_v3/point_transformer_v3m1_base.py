@@ -966,35 +966,67 @@ class GIBLiPointTransformerV3(PointModule):
                     name="down",
                 )
             for i in range(enc_depths[s]):
-                enc.add(
-                    GIBLiBlock(
-                        channels=enc_channels[s],
-                        num_heads=enc_num_head[s],
-                        patch_size=enc_patch_size[s],
-                        mlp_ratio=mlp_ratio,
-                        qkv_bias=qkv_bias,
-                        qk_scale=qk_scale,
-                        attn_drop=attn_drop,
-                        proj_drop=proj_drop,
-                        drop_path=enc_drop_path_[i],
-                        norm_layer=ln_layer,
-                        act_layer=act_layer,
-                        pre_norm=pre_norm,
-                        order_index=i % len(self.order),
-                        cpe_indice_key=f"stage{s}",
-                        enable_rpe=enable_rpe,
-                        enable_flash=enable_flash,
-                        upcast_attention=upcast_attention,
-                        upcast_softmax=upcast_softmax,
-                        ### gib parameters
-                        gib_dict=gib_dict,
-                        num_observers=num_observers,
-                        kernel_reach=kernel_reach,
-                        neighbor_size=neighbor_size,
-                        out_channels=out_channels,
-                    ),
-                    name=f"block{i}",
-                )
+                
+                if s == 0 and i == 0:
+                    enc.add(
+                        GIBLiBlock(
+                            channels=enc_channels[s],
+                            num_heads=enc_num_head[s],
+                            patch_size=enc_patch_size[s],
+                            mlp_ratio=mlp_ratio,
+                            qkv_bias=qkv_bias,
+                            qk_scale=qk_scale,
+                            attn_drop=attn_drop,
+                            proj_drop=proj_drop,
+                            drop_path=enc_drop_path_[i],
+                            norm_layer=ln_layer,
+                            act_layer=act_layer,
+                            pre_norm=pre_norm,
+                            order_index=i % len(self.order),
+                            cpe_indice_key=f"stage{s}",
+                            enable_rpe=enable_rpe,
+                            enable_flash=enable_flash,
+                            upcast_attention=upcast_attention,
+                            upcast_softmax=upcast_softmax,
+                            ### gib parameters
+                            gib_dict=gib_dict,
+                            num_observers=num_observers,
+                            kernel_reach=kernel_reach,
+                            neighbor_size=neighbor_size,
+                            out_channels=out_channels,
+                        ),
+                        name=f"block{i}",
+                    )
+                else:
+                    enc.add(
+                        Block(
+                            channels=enc_channels[s],
+                            num_heads=enc_num_head[s],
+                            patch_size=enc_patch_size[s],
+                            mlp_ratio=mlp_ratio,
+                            qkv_bias=qkv_bias,
+                            qk_scale=qk_scale,
+                            attn_drop=attn_drop,
+                            proj_drop=proj_drop,
+                            drop_path=enc_drop_path_[i],
+                            norm_layer=ln_layer,
+                            act_layer=act_layer,
+                            pre_norm=pre_norm,
+                            order_index=i % len(self.order),
+                            cpe_indice_key=f"stage{s}",
+                            enable_rpe=enable_rpe,
+                            enable_flash=enable_flash,
+                            upcast_attention=upcast_attention,
+                            upcast_softmax=upcast_softmax,
+                            ### gib parameters
+                            # gib_dict=gib_dict,
+                            # num_observers=num_observers,
+                            # kernel_reach=kernel_reach,
+                            # neighbor_size=neighbor_size,
+                            # out_channels=out_channels,
+                        ),
+                        name=f"block{i}",
+                    )
             if len(enc) != 0:
                 self.enc.add(module=enc, name=f"enc{s}")
 
@@ -1023,7 +1055,7 @@ class GIBLiPointTransformerV3(PointModule):
                 )
                 for i in range(dec_depths[s]):
                     dec.add(
-                        GIBLiBlock(
+                        Block(
                             channels=dec_channels[s],
                             num_heads=dec_num_head[s],
                             patch_size=dec_patch_size[s],
@@ -1043,11 +1075,11 @@ class GIBLiPointTransformerV3(PointModule):
                             upcast_attention=upcast_attention,
                             upcast_softmax=upcast_softmax,
                             ### gib parameters
-                            gib_dict=gib_dict,
-                            num_observers=num_observers,
-                            kernel_reach=kernel_reach,
-                            neighbor_size=neighbor_size,
-                            out_channels=out_channels,
+                            # gib_dict=gib_dict,
+                            # num_observers=num_observers,
+                            # kernel_reach=kernel_reach,
+                            # neighbor_size=neighbor_size,
+                            # out_channels=out_channels,
                         ),
                         name=f"block{i}",
                     )

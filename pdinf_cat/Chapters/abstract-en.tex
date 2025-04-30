@@ -8,39 +8,52 @@
 
 \typeout{NT FILE abstract-en.tex}%
 
-Regardless of the language in which the dissertation is written, usually there are at least two abstracts: one abstract in the same language as the main text, and another abstract in some other language.
+% \begin{enumerate}
+%   \item What is the problem?
+%   \item Why is this problem interesting/challenging?
+%   \item What is the proposed approach/solution/contribution?
+%   \item What results (implications/consequences) from the solution?
+% \end{enumerate}
 
-The abstracts' order varies with the school.  If your school has specific regulations concerning the abstracts' order, the \gls{novathesis} (\LaTeX) template will respect them.  Otherwise, the default rule in the \gls{novathesis} template is to have in first place the abstract in \emph{the same language as main text}, and then the abstract in \emph{the other language}. For example, if the dissertation is written in Portuguese, the abstracts' order will be first Portuguese and then English, followed by the main text in Portuguese. If the dissertation is written in English, the abstracts' order will be first English and then Portuguese, followed by the main text in English.
+% \keywords{
+%   One keyword \and
+%   Another keyword \and
+%   Yet another keyword \and
+%   One keyword more \and
+%   The last keyword
+% }
+
+This thesis addresses the challenge of building interpretable and efficient
+machine learning systems for 3D scene understanding in safety-critical domains,
+with a particular focus on power grid inspection. While deep learning has
+achieved strong results in 3D perception tasks, most models operate as black
+boxes, lack geometric structure, and require substantial computational
+resources, limiting their applicability in real-world infrastructure
+monitoring.
 %
-However, this order can be customized by adding one of the following to the file \verb+5_packages.tex+.
+We investigate geometric inductive biases (GIBs) as a main approach to
+introduce structure, interpretability, and efficiency into 3D learning
+pipelines. Our contributions include: (i) SCENE-Net, a white-box model based on
+Group Equivariant Non-Expansive Operators (GENEOs); (ii) SCENE-Net v2, a
+grey-box extension using GIBs as feature extractors; (iii) GIBLi, a modular
+GIB-layer for raw point clouds designed for integration with modern deep
+networks; and (iv) TS40K, a domain-specific benchmark for rural power grid
+inspection. In parallel, we propose a cost-aware decision support system that
+leverages these components within human-in-the-loop workflows for inspection
+automation.
 
-\begin{verbatim}
-    \ntsetup{abstractorder={<LANG_1>,...,<LANG_N>}}
-    \ntsetup{abstractorder={<MAIN_LANG>={<LANG_1>,...,<LANG_N>}}}
-\end{verbatim}
+Together, these contributions establish a unified framework for interpretable
+geometric reasoning in 3D vision. Our goal is to bridge the gap between
+structured inductive biases and high-performance black-box models, enabling
+robust, transparent, and operationally viable machine learning tools for
+large-scale inspection scenarios.
 
-For example, for a main document written in German with abstracts written in German, English and Italian (by this order) use:
-\begin{verbatim}
-    \ntsetup{abstractorder={de={de,en,it}}}
-\end{verbatim}
 
-Concerning its contents, the abstracts should not exceed one page and may answer the following questions (it is essential to adapt to the usual practices of your scientific area):
-
-\begin{enumerate}
-  \item What is the problem?
-  \item Why is this problem interesting/challenging?
-  \item What is the proposed approach/solution/contribution?
-  \item What results (implications/consequences) from the solution?
-\end{enumerate}
-
-% Palavras-chave do resumo em Inglês
-% \begin{keywords}
-% Keyword 1, Keyword 2, Keyword 3, Keyword 4, Keyword 5, Keyword 6, Keyword 7, Keyword 8, Keyword 9
-% \end{keywords}
 \keywords{
-  One keyword \and
-  Another keyword \and
-  Yet another keyword \and
-  One keyword more \and
-  The last keyword
+  3D Scene Understanding \and
+  Geometric Inductive Biases \and
+  Interpretable Machine Learning \and
+  Power Grid Inspection \and
+  3D Semantic Segmentation \and
+  LiDAR Point Clouds
 }

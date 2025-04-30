@@ -540,7 +540,7 @@ class GIBLiPointTransformerSeg38(GIBLiPointTransformerSeg):
 class GIBLiPointTransformerSeg50(GIBLiPointTransformerSeg):
     def __init__(self, **kwargs):
         super(GIBLiPointTransformerSeg50, self).__init__(
-            GIBLiBottleneck, [1, 2, 3, 5, 2], **kwargs
+            Bottleneck, [1, 2, 3, 5, 2], **kwargs
         )
         
         
