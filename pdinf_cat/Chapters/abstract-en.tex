@@ -1,0 +1,59 @@
+%!TEX root = ../template.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% abstract-en.tex
+%% NOVA thesis document file
+%%
+%% Abstract in English
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\typeout{NT FILE abstract-en.tex}%
+
+% \begin{enumerate}
+%   \item What is the problem?
+%   \item Why is this problem interesting/challenging?
+%   \item What is the proposed approach/solution/contribution?
+%   \item What results (implications/consequences) from the solution?
+% \end{enumerate}
+
+% \keywords{
+%   One keyword \and
+%   Another keyword \and
+%   Yet another keyword \and
+%   One keyword more \and
+%   The last keyword
+% }
+
+This thesis addresses the challenge of building interpretable and efficient
+machine learning systems for 3D scene understanding in safety-critical domains,
+with a particular focus on power grid inspection. While deep learning has
+achieved strong results in 3D perception tasks, most models operate as black
+boxes, lack geometric structure, and require substantial computational
+resources, limiting their applicability in real-world infrastructure
+monitoring.
+%
+We investigate geometric inductive biases (GIBs) as a main approach to
+introduce structure, interpretability, and efficiency into 3D learning
+pipelines. Our contributions include: (i) SCENE-Net, a white-box model based on
+Group Equivariant Non-Expansive Operators (GENEOs); (ii) SCENE-Net v2, a
+grey-box extension using GIBs as feature extractors; (iii) GIBLi, a modular
+GIB-layer for raw point clouds designed for integration with modern deep
+networks; and (iv) TS40K, a domain-specific benchmark dataset for rural power grid
+inspection. In parallel, we propose a cost-aware decision support system that
+leverages these components within human-in-the-loop workflows for inspection
+automation.
+
+Together, these contributions establish a unified framework for interpretable
+geometric reasoning in 3D vision. Our goal is to bridge the gap between
+structured inductive biases and high-performance black-box models, enabling
+robust, transparent, and operationally viable machine learning tools for
+large-scale inspection scenarios.
+
+
+\keywords{
+  3D Scene Understanding \and
+  Geometric Inductive Biases \and
+  Interpretable Machine Learning \and
+  Power Grid Inspection \and
+  3D Semantic Segmentation \and
+  LiDAR Point Clouds
+}

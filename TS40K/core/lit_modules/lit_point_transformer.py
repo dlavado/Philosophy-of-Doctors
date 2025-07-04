@@ -23,10 +23,14 @@ class Lit_PointTransformer(LitWrapperModel):
                 metric_initializer=None, 
                 ignore_index=-1,
                 **kwargs):
-    
 
         if version == 'v2':
-            model = ptv2.PointTransformerV2(in_channels=in_channels, num_classes=num_classes)
+            model = ptv2.PointTransformerV2(in_channels=in_channels, 
+                                            num_classes=num_classes,
+                                            # patch_embed_channels=256,
+                                            # patch_embed_groups=8,
+                                            # patch_embed_depth=2,
+                                        )
         elif version == 'v3':
             model = ptv3.PointTransformerV3(in_channels=in_channels, num_classes=num_classes,
                                             order=["z", "z-trans", "hilbert", "hilbert-trans"], enable_flash=False)     
@@ -40,13 +44,16 @@ class Lit_PointTransformer(LitWrapperModel):
         
         if metric_initializer is not None:
             self.train_metrics = metric_initializer(num_classes=num_classes, ignore_index=ignore_index)
-            self.val_metrics = metric_initializer(num_classes=num_classes, ignore_index=ignore_index)
+            self.val_metrics = metric_initializer(num_classes=num_classes)
             self.test_metrics = metric_initializer(num_classes=num_classes)
 
 
 
     def forward(self, x):
-        return self.model(self.process_input_tensor(x))
+        x_dict = self.process_input_tensor(x)
+        # for k, v in x_dict.items():
+        #     print(f"{k} shape = {v.shape}")
+        return self.model(x_dict)
     
     def prediction(self, model_output):
         # model_output shape = (batch_size*num_points, classes)
@@ -79,10 +86,11 @@ class Lit_PointTransformer(LitWrapperModel):
         `batch` - torch.Tensor with shape (B*N, 1)
         """
 
-        coords = inpt[:, :, :3].contiguous()
+        coords = inpt[..., :3].contiguous()
         coords = coords.view(-1, 3)
         if inpt.shape[-1] > 3:
-            feat = inpt[:, :, 3:].contiguous()
+            # feat = inpt[:, :, 3:].contiguous()
+            feat = inpt.contiguous() # coords included in the features
             # print(f"feat shape = {feat.shape}")
             feat = feat.view(-1, feat.shape[-1])
         else:
@@ -93,6 +101,7 @@ class Lit_PointTransformer(LitWrapperModel):
 
         # batch e.g. [0, 0, 0, 1, 1, 1, 2, 2, 2, ...] with shape (B*N, 1)
         batch = torch.cat([torch.full((inpt.shape[1],), i, device=inpt.device) for i in range(inpt.shape[0])], dim=0)
+        # batch = torch.arange(inpt.shape[0], device=inpt.device).repeat_interleave(inpt.shape[1])
 
         return {"coord": coords.to(torch.float32),
                 "feat": feat.to(torch.float32),
@@ -106,10 +115,24 @@ class Lit_PointTransformer(LitWrapperModel):
         x, y = batch # x shape = (batch_size, num_points, in_channels), y shape = (batch_size, num_points)
         y = y.to(torch.long)
 
+        # print(f"x shape = {x.shape}")
+        # print(f"y shape = {y.shape}")
+
         out = self(x) # out shape = (batch_size*num_points, num_classes)
+
+        # print(f"out shape = {out.shape}, y shape = {y.shape}")
+
+        # print(torch.max(out), torch.min(out))
+
+        # check if out has nan
+        if torch.isnan(out).any():
+            ValueError("out has nan")
     
         loss = self.criterion(out, y.reshape(-1))
         preds = self.prediction(out) # preds shape = (batch_size*num_points)
+
+        # print(f"{loss=}")
+        # print(f"{torch.unique(preds)=}")
 
         # print(f"preds shape = {preds.shape}")
         # print(preds)

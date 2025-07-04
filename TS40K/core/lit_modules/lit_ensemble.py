@@ -73,7 +73,7 @@ class Lit_EnsembleModel(LitWrapperModel):
 
         if metric_initializer is not None:
             self.train_metrics = metric_initializer(num_classes=num_classes, ignore_index=ignore_index)
-            self.val_metrics = metric_initializer(num_classes=num_classes, ignore_index=ignore_index)
+            self.val_metrics = metric_initializer(num_classes=num_classes)
             self.test_metrics = metric_initializer(num_classes=num_classes)
 
 

@@ -32,7 +32,6 @@ class ToTensor:
         return tuple([torch.from_numpy(s.astype(np.float64)) for s in sample])
 
 class To:
-
     def __init__(self, dtype:torch.dtype=torch.float32) -> None:
         self.dtype = dtype
 
@@ -206,7 +205,6 @@ class EDP_Labels:
         return pcd, labels, *args
     
     def edp_labels(self, labels:torch.Tensor) -> torch.Tensor:
-
         #cast each label to its corresponding EDP label
         new_labels = torch.tensor([eda.DICT_NEW_LABELS[label.item()] if label.item() >= 0 else label.item() for label in labels.squeeze()]).reshape(labels.shape)
         # print(f"labels NEW unique: {torch.unique(new_labels)}, labels shape: {new_labels.shape}")
@@ -283,10 +281,147 @@ class Add_Normal_Vectors:
 
         return pointcloud, labels
 
+
+
+class Remove_Label:
+
+    def __init__(self, remove_label:int) -> None:
+        self.remove_label = remove_label
+
+    def __call__(self, sample) -> Any:
+        """
+        Remove the points with the remove label
+        """
+
+        pointcloud, labels = sample
+
+        mask = labels != self.remove_label
+
+        pointcloud = pointcloud[mask]
+        labels = labels[mask]
+
+        return pointcloud, labels
+
+class Merge_Label:
+
+    def __init__(self, merge_labels:dict[int, int]) -> None:
+        """
+        merge_labels = {
+            label_to_transform: new_label
+        }
+        """
+        self.merge_labels = merge_labels
+
+    def __call__(self, sample) -> Any:
+        """
+        Merge the labels according to the provided dictionary
+        """
+
+        pointcloud, labels = sample
+
+        for key, value in self.merge_labels.items():
+            labels[labels == key] = value
+
+        return pointcloud, labels
+
+class Add_Normal_Vector:
+
+    def __call__(self, sample) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Add the normal vector to the point cloud
+        """
+
+        pointcloud, labels = sample
+
+        normals = eda.estimate_normals(pointcloud.numpy())
+        normals = torch.from_numpy(normals).to(pointcloud.device).to(torch.float32)
+        pointcloud = torch.cat([pointcloud, normals], dim=-1)
+
+        return pointcloud, labels
+
+
+class Repeat_Points:
+
+    def __init__(self, num_points:int) -> None:
+        """
+        Repeat the points in the point cloud until the number of points is equal to the number of points to sample;
+
+        Useful for batch training.
+        """
+        self.num_points = num_points
+
+    def __call__(self, sample) -> Any:
+
+        pointcloud, labels = sample
+        if pointcloud.ndim == 3: # batched point clouds
+           point_dim = 1
+        else:
+            point_dim = 0
+        if pointcloud.shape[point_dim] < self.num_points:
+            # duplicate the points until the number of points is equal to the number of points to sample
+            random_indices = torch.randint(0, pointcloud.shape[point_dim] - 1, size=(self.num_points - pointcloud.shape[point_dim],))
+
+            if pointcloud.ndim == 3:    
+                pointcloud = torch.cat([pointcloud, pointcloud[:, random_indices]], dim=point_dim)
+                labels = torch.cat([labels, labels[:, random_indices]], dim=point_dim)
+            else:
+                pointcloud = torch.cat([pointcloud, pointcloud[random_indices]], dim=point_dim)
+                labels = torch.cat([labels, labels[random_indices]], dim=point_dim)
+
+        return pointcloud, labels
+        
+
+
+class Remove_Noise_DBSCAN:
+
+    def __init__(self, eps=0.1, min_points=150) -> None:
+        """
+        Best parameters across samples: (tensor(0.1000), tensor(150.)) with mean score: 0.91946
+        Best parameters across samples: (tensor(0.1000), tensor(150.)) with mean noise removal density: 0.95495
+
+        These parameters assume that the points cloud is normalized to [0, 1]
+
+        Parameters
+        ----------
+
+        `eps` - float:
+            The maximum distance between two samples for one to be considered as in the neighborhood of the other.
+
+        `min_points` - int:
+            The number of samples in a neighborhood for a point to be considered as a core point.
+        """
+         
+        self.eps = eps
+        self.min_points = min_points
+
+    def __call__(self, sample) -> Tuple[torch.Tensor, torch.Tensor]:
+
+        pointcloud, labels = sample
+
+        if pointcloud.ndim == 3: # batched point clouds (B, P, F) ; (B, P)
+            data = torch.cat([pointcloud, labels], dim=-1)
+            for i in range(pointcloud.shape[0]):
+                data[i] = self.remove_noise(data[i])
+
+        else: # single point cloud (P, F) ; (P,)
+            data = torch.cat([pointcloud, labels.unsqueeze(-1)], dim=-1)
+            data = self.remove_noise(data)
+
+        return data[..., :-1], data[..., -1]
+    
+
+    def remove_noise(self, data:torch.Tensor) -> torch.Tensor:
+
+        data = eda.remove_noise(data.cpu().numpy(), self.eps, self.min_points)
+        return torch.from_numpy(data)
+            
+
+
 class Random_Point_Sampling:
 
     def __init__(self, num_points: Union[int, torch.Tensor]) -> None:
         self.num_points = num_points
+        self.repeat = Repeat_Points(num_points)
 
     def __call__(self, sample) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -299,10 +434,7 @@ class Random_Point_Sampling:
             pointcloud, labels = sample[:, :, :-1], sample[:, :, -1]
 
         if pointcloud.shape[1] < self.num_points:
-            random_indices = torch.randint(0, pointcloud.shape[1] - 1, size=(self.num_points - pointcloud.shape[1],))
-
-            pointcloud = torch.cat([pointcloud, pointcloud[:, random_indices]], dim=1)
-            labels = torch.cat([labels, labels[:, random_indices]], dim=1)
+            pointcloud, labels = self.repeat((pointcloud, labels))
         
         else:
             random_indices = torch.randperm(pointcloud.shape[1])[:self.num_points]
@@ -329,11 +461,8 @@ class Inverse_Density_Sampling:
 
         if isinstance(sample, tuple):
             pointcloud, labels = sample
-        else: # torch tensor
-            if sample.ndim == 3: # batched point clouds
-                pointcloud, labels = sample[:, :, :-1], sample[:, :, -1]
-            else:
-                pointcloud, labels = sample[:, :-1], sample[:, -1] # preprocessed sample
+        else:
+            pointcloud, labels = sample[..., :-1], sample[..., -1] # preprocessed sample
 
         idis_pointcloud = torch.empty((pointcloud.shape[0], self.num_points, pointcloud.shape[2]), device=pointcloud.device)
         idis_labels = torch.empty((pointcloud.shape[0], self.num_points), dtype=torch.long, device=pointcloud.device)
@@ -382,57 +511,35 @@ class Farthest_Point_Sampling:
     def __init__(self, num_points: Union[int, torch.Tensor], fps_labels=True) -> None:
         self.num_points = num_points # if tensor, then it is the batch size and corresponds to dim 0 of the input tensor
         self.fps_labels = fps_labels # if True, then the labels are also sampled with the point cloud
+        self.repeat = Repeat_Points(num_points)
 
 
     def __call__(self, sample) -> Tuple[torch.Tensor, torch.Tensor]:
         from torch_cluster import fps
 
-        # print(f"Sample: {sample[0].shape}, {sample[1].shape}")
         if self.fps_labels:
             if isinstance(sample, tuple): 
-                pointcloud, labels = sample # shape = (B, P, 3), (B, P)
+                pointcloud, labels = sample 
             else:
-                pointcloud, labels = sample[:, :, :-1], sample[:, :, -1] # shape = (B, P, 3), (B, P)
+                pointcloud, labels = sample[..., :-1], sample[..., -1]
         else:
             pointcloud, target = sample
-            labels = torch.zeros((pointcloud.shape[0], pointcloud.shape[1]), dtype=torch.long, device=pointcloud.device) # shape = (B, P)
+            labels = torch.zeros_like(target)
 
-        if pointcloud.shape[1] < self.num_points: # if the number of points in the point cloud is less than the number of points to sample
-            # print(f"sample shape {pointcloud.shape} < num_points {self.num_points}")
-            # duplicate the points until the number of points is equal to the number of points to sample
-            random_indices = torch.randint(0, pointcloud.shape[1] - 1, size=(self.num_points - pointcloud.shape[1],))
+        # if the number of points in the point cloud is less than the number of points to sample
+        pointcloud, labels = self.repeat((pointcloud, labels))
 
-            pointcloud = torch.cat([pointcloud, pointcloud[:, random_indices]], dim=1)
-            labels = torch.cat([labels, labels[:, random_indices]], dim=1)
+        fps_indices = fps(pointcloud, batch=None, ratio=self.num_points/pointcloud.shape[0], random_start=True)
 
-        # ply = eda.np_to_ply(pointcloud[0].detach().cpu().numpy())
-        # eda.color_pointcloud(ply, labels[0].detach().cpu().numpy())
-        # eda.visualize_ply([ply])
+        pointcloud = pointcloud[fps_indices] # shape = (N, 3 + F + 1)
 
-        # add labels to the point cloud, shape = (B, P, 4)
-        data = torch.concat([pointcloud, labels.unsqueeze(-1)], dim=-1)
-
-        # pointcloud = self.farthest_point_sampling_with_features(data, self.num_points) # shape = (B, N, 3 + F)
-        with torch.no_grad():
-            indices = fps(data[0], batch=None, ratio=self.num_points/data.shape[1], random_start=True) # shape = (B, N, 3 + F)
-            pointcloud = data[0, indices] # shape = (N, 3 + F)
-
-            if pointcloud.shape[0] < self.num_points: # if the number of points in the point cloud is less than the number of points to sample
-                pointcloud = torch.cat([pointcloud, pointcloud[torch.randint(0, pointcloud.shape[0] - 1, size=(self.num_points - pointcloud.shape[0],))]], dim=0)
-            elif pointcloud.shape[0] > self.num_points:
-                pointcloud = pointcloud[:self.num_points] # shape = (N, 3 + F)
-
-        pointcloud, labels = pointcloud[:, :-1], pointcloud[:, -1] # shape = (N, 3), (N,)
-
-        # ply = eda.np_to_ply(pointcloud.detach().cpu().numpy())
-        # eda.color_pointcloud(ply, labels.detach().cpu().numpy())
-        # eda.visualize_ply([ply])
-
-        # print(f"Sampled point cloud shape: {pointcloud.shape}, labels shape: {labels.shape}")
-        # print(f"Sampled point cloud unique labels: {torch.unique(labels)}")
+        if pointcloud.shape[0] < self.num_points: # if the number of points in the point cloud is less than the number of points to sample
+            pointcloud = torch.cat([pointcloud, pointcloud[torch.randint(0, pointcloud.shape[0] - 1, size=(self.num_points - pointcloud.shape[0],))]], dim=0)
+        elif pointcloud.shape[0] > self.num_points:
+            pointcloud = pointcloud[:self.num_points] # shape = (N, 3 + F)
 
         if self.fps_labels:
-            return pointcloud, labels
+            return pointcloud, labels[fps_indices]
         else:
             return pointcloud, target
     
@@ -613,7 +720,58 @@ class Farthest_Point_Sampling:
         return selected_points
 
         
+
+
+
+
+class SMOTE_3D_Upsampling:
+    
+        def __init__(self, sampling_strategy=0.8, k=5, num_points_resampled=11024) -> None:
+            self.sampling_strategy = sampling_strategy
+            self.k = k
+            self.num_points_resampled = num_points_resampled
+    
+        def __call__(self, sample) -> Tuple[torch.Tensor, torch.Tensor]:
+            """
+            Synthetic Minority Over-sampling Technique for 3D point clouds
+            """
+            from utils.SMOTE_3D import SMOTE3D
+    
+            if isinstance(sample, tuple):
+                pointcloud, labels = sample
+            else:
+                pointcloud, labels = sample[..., :-1], sample[..., -1] # shape = (B, P, 3), (B, P)
+    
+            smote = SMOTE3D(k_neighbors=self.k, sampling_strategy=self.sampling_strategy, num_points_resampled=self.num_points_resampled)
+
+            if pointcloud.dim() < 3: # not batched point clouds
+                pointcloud, labels = smote.fit_resample_batch(pointcloud[None], labels[None])
+            else:
+                pointcloud, labels = smote.fit_resample_batch(pointcloud, labels)
+                
+            # the result is two lists of tensors, we need to convert them to tensors
+            if len(pointcloud) > 1:
+                raise ValueError("The SMOTE_3D output cannot be stacked, provide a single tensor")
+            
+            pointcloud, labels = pointcloud[0], labels[0] # shape = (P, 3), (P,)
+
+            # pointcloud = pointcloud[None] # encapsulate the batch dimension
+
+            return pointcloud, labels
+        
+        
+        
+        
 class Normalize_PCD:
+
+    def __init__(self, range=[0,1]) -> None:
+        
+        assert len(range) == 2
+        assert range[0] < range[1]
+
+        self.range = range
+
+
 
     def __call__(self, sample) -> torch.Tensor:
         """
@@ -629,20 +787,23 @@ class Normalize_PCD:
 
     def normalize(self, pointcloud:torch.Tensor) -> torch.Tensor:
         """
-         (x - min(x)) / (max(x) - min(x))
+        normalize = (x - min(x)) / (max(x) - min(x))
+        now x \in pointcloud is such that x \in [0, 1] (i.e., range)
         """
 
-        pointcloud = pointcloud.float()
+        point_dim = 1 if pointcloud.dim() == 3 else 0
 
-        if pointcloud.dim() == 3: # batched point clouds
-            min_x = pointcloud.min(dim=1, keepdim=True).values
-            max_x = pointcloud.max(dim=1, keepdim=True).values
-            pointcloud = (pointcloud - min_x) / (max_x - min_x)
+        xyz = pointcloud[..., :3]
+            
+        min_x = xyz.min(dim=point_dim, keepdim=True).values
+        max_x = xyz.max(dim=point_dim, keepdim=True).values
         
-        else: # single point cloud
-            min_x = pointcloud.min(dim=0, keepdim=True).values
-            max_x = pointcloud.max(dim=0, keepdim=True).values
-            pointcloud = (pointcloud - min_x) / (max_x - min_x)
+        xyz = (xyz - min_x) / (max_x - min_x)
+
+        # put pointcloud in range
+        xyz = xyz * (self.range[1] - self.range[0]) + self.range[0]
+
+        pointcloud[..., :3] = xyz
 
         return pointcloud
 
@@ -670,45 +831,6 @@ class Normalize_PCD:
             pointcloud = pointcloud / max_dist
 
         return pointcloud
-
-
-
-class SMOTE_3D_Upsampling:
-    
-        def __init__(self, sampling_strategy=0.8, k=5, num_points_resampled=11024) -> None:
-            self.sampling_strategy = sampling_strategy
-            self.k = k
-            self.num_points_resampled = num_points_resampled
-    
-        def __call__(self, sample) -> Tuple[torch.Tensor, torch.Tensor]:
-            """
-            Synthetic Minority Over-sampling Technique for 3D point clouds
-            """
-            from utils.SMOTE_3D import SMOTE3D
-    
-            if isinstance(sample, tuple):
-                pointcloud, labels = sample
-            else:
-                pointcloud, labels = sample[:, :, :-1], sample[:, :, -1] # shape = (B, P, 3), (B, P)
-    
-           
-            smote = SMOTE3D(k_neighbors=self.k, sampling_strategy=self.sampling_strategy, num_points_resampled=self.num_points_resampled)
-
-            if pointcloud.dim() < 3: # not batched point clouds
-                pointcloud, labels = smote.fit_resample_batch(pointcloud[None], labels[None])
-            else:
-                pointcloud, labels = smote.fit_resample_batch(pointcloud, labels)
-                
-            # the result is two lists of tensors, we need to convert them to tensors
-            if len(pointcloud) > 1:
-                raise ValueError("The SMOTE_3D output cannot be stacked, provide a single tensor")
-            
-            pointcloud, labels = pointcloud[0], labels[0] # shape = (P, 3), (P,)
-
-            # pointcloud = pointcloud[None] # encapsulate the batch dimension
-
-            return pointcloud, labels
-        
 
 
 

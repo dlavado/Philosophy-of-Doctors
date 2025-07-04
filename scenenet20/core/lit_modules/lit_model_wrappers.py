@@ -136,7 +136,7 @@ class LitWrapperModel(pl.LightningModule):
             if print_metrics:
                 # if metric is per class
                 if isinstance(metric_val, torch.Tensor) and metric_val.ndim > 0: 
-                    print(f'\t{prefix}_{metric_name}: {metric_val}; mean: {metric_val[metric_val > 0].mean():.4f}') # class 0 is noise
+                    print(f'\t{prefix}_{metric_name}: {metric_val}; mean: {metric_val.mean():.4f}')
                 else:
                     print(f'\t{prefix}_{metric_name}: {metric_val}')
 
@@ -154,6 +154,8 @@ class LitWrapperModel(pl.LightningModule):
         optimizer_name = optimizer_name.lower()
         if  optimizer_name == 'adam':
             return torch.optim.Adam(self.model.parameters(), lr=self.hparams.learning_rate)
+        elif optimizer_name == 'adamw':
+            return torch.optim.AdamW(self.model.parameters(), lr=self.hparams.learning_rate)
         elif optimizer_name == 'sgd':
             return torch.optim.SGD(self.model.parameters(), lr=self.hparams.learning_rate)
         elif optimizer_name == 'rmsprop':
@@ -162,4 +164,8 @@ class LitWrapperModel(pl.LightningModule):
             return torch.optim.LBFGS(self.model.parameters(), lr=self.hparams.learning_rate, max_iter=20)
         
         raise NotImplementedError(f'Optimizer {self.hparams.optimizer_name} not implemented')
+    
+    def tensor_memory_in_mb(self, tensor:torch.Tensor):
+        return tensor.element_size() * tensor.numel() / (1024 ** 2)  # Convert bytes to MB
+
     

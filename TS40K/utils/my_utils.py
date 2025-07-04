@@ -7,15 +7,10 @@ import random
 import pytorch_lightning as pl
 import sys
 
-from torchmetrics import MetricCollection, JaccardIndex, F1Score, Accuracy, Precision, Recall, ConfusionMatrix
+from torchmetrics import MetricCollection, JaccardIndex, F1Score, Accuracy, Precision, Recall, ConfusionMatrix, FBetaScore
 import wandb
 
 sys.path.insert(0, '..')
-
-from core.criterions.dice_loss import BinaryDiceLoss, BinaryDiceLoss_BCE
-from core.criterions.tversky_loss import FocalTverskyLoss, TverskyLoss
-from core.criterions.w_mse import WeightedMSE
-from core.criterions.geneo_loss import GENEO_Loss, Tversky_Wrapper_Loss
 
 
 
@@ -55,32 +50,32 @@ def main_arg_parser():
     return parser
 
 
-def _resolve_geneo_criterions(criterion_name):
-    criterion_name = criterion_name.lower()
-    if criterion_name == 'geneo':
-        return GENEO_Loss
-    elif criterion_name == 'geneo_tversky':
-        return Tversky_Wrapper_Loss
-    else:
-        raise NotImplementedError(f'GENEO Criterion {criterion_name} not implemented')
+# def _resolve_geneo_criterions(criterion_name):
+#     criterion_name = criterion_name.lower()
+#     if criterion_name == 'geneo':
+#         return GENEO_Loss
+#     elif criterion_name == 'geneo_tversky':
+#         return Tversky_Wrapper_Loss
+#     else:
+#         raise NotImplementedError(f'GENEO Criterion {criterion_name} not implemented')
 
 
-def resolve_criterion(criterion_name):
-    criterion_name = criterion_name.lower()
-    if criterion_name == 'mse':
-        return WeightedMSE
-    elif criterion_name == 'dice':
-        return BinaryDiceLoss
-    elif criterion_name == 'dice_bce':
-        return BinaryDiceLoss_BCE
-    elif criterion_name == 'tversky':
-        return TverskyLoss
-    elif criterion_name == 'focal_tversky':
-        return FocalTverskyLoss
-    elif 'geneo' in criterion_name: 
-        return _resolve_geneo_criterions(criterion_name)
-    else:
-        raise NotImplementedError(f'Criterion {criterion_name} not implemented')
+# def resolve_criterion(criterion_name):
+#     criterion_name = criterion_name.lower()
+#     if criterion_name == 'mse':
+#         return WeightedMSE
+#     elif criterion_name == 'dice':
+#         return BinaryDiceLoss
+#     elif criterion_name == 'dice_bce':
+#         return BinaryDiceLoss_BCE
+#     elif criterion_name == 'tversky':
+#         return TverskyLoss
+#     elif criterion_name == 'focal_tversky':
+#         return FocalTverskyLoss
+#     elif 'geneo' in criterion_name: 
+#         return _resolve_geneo_criterions(criterion_name)
+#     else:
+#         raise NotImplementedError(f'Criterion {criterion_name} not implemented')
     
 
 def resolve_optimizer(optimizer_name:str, model, learning_rate):
@@ -98,13 +93,14 @@ def resolve_optimizer(optimizer_name:str, model, learning_rate):
     
 
 def init_metrics(task='multiclass', tau=0.5, num_classes=2, ignore_index=-1):
-    params = {'task': task, 'num_classes': num_classes, 'ignore_index': -1, 'threshold': tau}
+    params = {'task': task, 'num_classes': num_classes, 'ignore_index': ignore_index, 'threshold': tau}
     # 'multidim_average': 'global'
     return MetricCollection([
         JaccardIndex(**params, average=None),
         # JaccardIndex(**params, average=None),
-        ConfusionMatrix(**params, normalize='true'),
+        # ConfusionMatrix(**params, normalize='true'),
         F1Score(**params, average='macro'),
+        FBetaScore(**params, average=None, beta=2.0), # F2 Score, prioritizes recall
         Precision(**params, average=None),
         Recall(**params, average=None),
         Accuracy(**params, average='micro'),

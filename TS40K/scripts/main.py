@@ -28,17 +28,15 @@ from pytorch_lightning.loggers import WandbLogger
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 
-from utils.constants import *
+import utils.constants as C
 import utils.my_utils as su
 import utils.pointcloud_processing as eda
 
-
-from core.datasets.torch_transforms import Farthest_Point_Sampling
 import core.lit_modules.lit_callbacks as lit_callbacks
 from core.lit_modules.lit_scenenet import LitSceneNet_multiclass
 from core.lit_modules.lit_ts40k import LitTS40K_FULL, LitTS40K_FULL_Preprocessed
-from core.criterions.geneo_loss import GENEO_Loss
-from core.datasets.torch_transforms import *
+from core.lit_modules.lit_labelec import LitLabelec, LitLabelec_Preprocessed
+import core.datasets.torch_transforms as tt
 
 #####################################################################
 # PARSER
@@ -95,7 +93,7 @@ def init_callbacks(ckpt_dir):
                 save_last=False,
                 every_n_epochs=wandb.config.checkpoint_every_n_epochs,
                 every_n_train_steps=wandb.config.checkpoint_every_n_steps,
-                verbose=False,
+                verbose=True,
             )
         )
 
@@ -108,7 +106,7 @@ def init_callbacks(ckpt_dir):
             mode="min",
             every_n_epochs=wandb.config.checkpoint_every_n_epochs,
             every_n_train_steps=wandb.config.checkpoint_every_n_steps,
-            verbose=False,
+            verbose=True,
         )
     )
 
@@ -203,6 +201,7 @@ def init_pointnet(model_name='pointnet'):
                         num_classes=wandb.config.num_classes,
                         num_channels=wandb.config.num_data_channels,
                         learning_rate=wandb.config.learning_rate,
+                        ignore_index=wandb.config.ignore_index,
                         metric_initializer=su.init_metrics,
                     )
     return model
@@ -223,6 +222,7 @@ def init_kpconv(criterion):
                       num_classes=wandb.config.num_classes,
                       input_dim=wandb.config.num_data_channels,
                       learning_rate=wandb.config.learning_rate,
+                      ignore_index=wandb.config.ignore_index,
                       metric_initializer=su.init_metrics,
                     )
     return model
@@ -239,6 +239,7 @@ def init_randlanet(criterion):
                          num_neighbors=wandb.config.num_neighbors,
                          decimation=wandb.config.decimation,
                          learning_rate=wandb.config.learning_rate,
+                         
                          metric_initializer=su.init_metrics,
     )
 
@@ -250,13 +251,14 @@ def init_point_transformer(criterion, model_version='v3'):
 
     # Model definition
     model = Lit_PointTransformer(criterion=criterion,
-                                   in_channels=wandb.config.num_data_channels,
-                                   num_classes=wandb.config.num_classes,
-                                   version=model_version,
-                                   optimizer_name=wandb.config.optimizer,
-                                   learning_rate=wandb.config.learning_rate,
-                                   metric_initializer=su.init_metrics,
-    )
+                                 in_channels=wandb.config.num_data_channels,
+                                 num_classes=wandb.config.num_classes,
+                                 version=model_version,
+                                 optimizer_name=wandb.config.optimizer,
+                                 learning_rate=wandb.config.learning_rate,
+                                 ignore_index=wandb.config.ignore_index,
+                                 metric_initializer=su.init_metrics,
+                            )
 
     return model
 
@@ -317,53 +319,51 @@ def init_ts40k(data_path, preprocessed=False):
     sample_types = 'all'
     
     if preprocessed:
-        if wandb.config.model == 'unet':
-            # vxg_size = ast.literal_eval(wandb.config.voxel_grid_size) # default is 64^3
-            # vox_size = ast.literal_eval(wandb.config.voxel_size) # only use vox_size after training or with batch_size = 1
-            # voxel_method = Voxelization_withPCD if wandb.config.model == 'scenenet' else Voxelization
-            # transform = voxel_method(keep_labels='all', vxg_size=vxg_size, vox_size=vox_size)
-            #data_path = TS40K_FULL_PREPROCESSED_VOXELIZED_PATH
-
-            transform = Compose([
-                           Ignore_Label(0) # turn noise class into ignore
-                        ])
-
-        elif 'scenenet' in wandb.config.model or wandb.config.model == 'cnn':
+        if 'scenenet' in wandb.config.model or wandb.config.model == 'cnn':
             vxg_size = ast.literal_eval(wandb.config.voxel_grid_size) # default is 64^3
             vox_size = ast.literal_eval(wandb.config.voxel_size) # only use vox_size after training or with batch_size = 1
             transform = Compose([
-                            # Ignore_Label(0), # turn noise class into ignore,
-                            Voxelization_withPCD(keep_labels='all', vxg_size=vxg_size, vox_size=vox_size)
+                            tt.Voxelization_withPCD(keep_labels='all', vxg_size=vxg_size, vox_size=vox_size)
                         ])
         else:
-            transform = None
+            transform = []
+            # transform = [
+            #         tt.Remove_Label(1), # GROUND
+            #         tt.Repeat_Points(10_000), # repeat points to 10k so that we can batchfy the data
+            # ]
 
+        if wandb.config.add_normals:
+            transform.append(tt.Add_Normal_Vector())
+
+        transform = Compose(transform)
+    
         return LitTS40K_FULL_Preprocessed(
-                            data_path,
-                            wandb.config.batch_size,
-                            sample_types=sample_types,
-                            transform=transform,
-                            transform_test=transform,
-                            num_workers=wandb.config.num_workers,
-                            val_split=wandb.config.val_split,
-                            load_into_memory=wandb.config.load_into_memory,
-        )
+                        data_path,
+                        wandb.config.batch_size,
+                        sample_types=sample_types,
+                        transform=transform,
+                        transform_test=transform,
+                        num_workers=wandb.config.num_workers,
+                        val_split=wandb.config.val_split,
+                        load_into_memory=wandb.config.load_into_memory,
+                        use_full_test_set=False
+                    )
 
     if wandb.config.model == 'scenenet' or wandb.config.model == 'unet':
         vxg_size = ast.literal_eval(wandb.config.voxel_grid_size) # default is 64^3
         vox_size = ast.literal_eval(wandb.config.voxel_size) # only use vox_size after training or with batch_size = 1
 
-        voxel_method = Voxelization_withPCD if wandb.config.model == 'scenenet' else Voxelization
+        voxel_method = tt.Voxelization_withPCD if wandb.config.model == 'scenenet' else tt.Voxelization
 
         composed = Compose([
-                            Farthest_Point_Sampling(wandb.config.fps_points),
+                            tt.Farthest_Point_Sampling(wandb.config.fps_points),
                             voxel_method(keep_labels='all', vxg_size=vxg_size, vox_size=vox_size)
                         ])
     else:
         composed = Compose([
-                            Normalize_PCD(),
-                            Farthest_Point_Sampling(wandb.config.fps_points),
-                            To(torch.float32),
+                            tt.Normalize_PCD(),
+                            tt.Farthest_Point_Sampling(wandb.config.fps_points),
+                            tt.To(torch.float32),
                         ])
     
     data_module = LitTS40K_FULL(
@@ -377,8 +377,65 @@ def init_ts40k(data_path, preprocessed=False):
                            val_split=wandb.config.val_split,
                            load_into_memory=wandb.config.load_into_memory,
                         )
-    
     return data_module
+
+
+def init_labelec(data_path, preprocessed=False):
+
+
+    if preprocessed:
+        transform = Compose([
+             tt.Merge_Label({2:3, 1:3}), # merge low vegetation and ground with medium vegetation
+        ])
+
+        if wandb.config.add_normals:
+            transform.transforms.append(tt.Add_Normal_Vector())
+
+        return LitLabelec_Preprocessed(
+            data_path,
+            transform=transform,
+            test_transform=transform,
+            load_into_memory=wandb.config.load_into_memory,
+            batch_size=wandb.config.batch_size,
+            val_split=wandb.config.val_split,
+            num_workers=wandb.config.num_workers,
+        )
+
+    transform = Compose([
+        tt.EDP_Labels(),
+        tt.Merge_Label({2:3, 1:3}), # merge low vegetation and ground with medium vegetation
+        tt.Repeat_Points(100_000),
+        # tt.Farthest_Point_Sampling(100_000),
+        tt.Normalize_PCD([0, 1]),
+        tt.To(torch.float32),
+    ])
+
+    if wandb.config.add_normals:
+        transform.transforms.append(tt.Add_Normal_Vector())
+
+    test_transform = Compose([
+        tt.EDP_Labels(),
+        # tt.Merge_Label({eda.LOW_VEGETATION: eda.MEDIUM_VEGETAION}),
+        # tt.Farthest_Point_Sampling(100_000),
+        tt.Repeat_Points(100_000),
+        tt.Normalize_PCD([0, 1]),
+    ])
+
+    if wandb.config.add_normals:
+        test_transform.transforms.append(tt.Add_Normal_Vector())
+
+
+    return LitLabelec(
+        data_path,
+        save_chunks=False,
+        transform=transform,
+        test_transform=test_transform,
+        add_rgb=wandb.config.add_rgb,
+        load_into_memory=wandb.config.load_into_memory,
+        batch_size=wandb.config.batch_size,
+        val_split=wandb.config.val_split,
+        num_workers=wandb.config.num_workers,
+    )
  
 
 #####################################################################
@@ -436,14 +493,14 @@ def init_criterion(class_weights=None):
                                           weight=class_weights) # default criterion; idx zero is noise
     return criterion
 
-
-
 def main():
     # ------------------------
     # 0 INIT CALLBACKS
     # ------------------------
 
-    if not wandb.config.resume_from_checkpoint:
+    # if wandb is disbabled, use local directory
+    if main_parser.wandb_mode != 'disabled' and not wandb.config.resume_from_checkpoint:
+        # if wandb is enabled, use wandb directory
         ckpt_dir = os.path.join(wandb.run.dir, "checkpoints") 
     else:
         ckpt_dir = wandb.config.checkpoint_dir
@@ -453,19 +510,24 @@ def main():
 
     callbacks = init_callbacks(ckpt_dir)
 
-
     # ------------------------
     # 1 INIT BASE CRITERION
     # ------------------------
     if wandb.config.class_weights:
         alpha, epsilon = 3, 0.1
-        class_densities = torch.tensor([0.0702, 0.3287, 0.4226, 0.1495, 0.0046, 0.0244], dtype=torch.float32)
+        if wandb.config.dataset == 'labelec':
+            class_densities = torch.tensor([0.0541, 1.0, 1.0, 0.0006 +0.3098 + 0.6208, 0.0061, 0.0085], dtype=torch.float32)
+        elif wandb.config.dataset == 'ts40k':
+            class_densities = torch.tensor([0.0702, 0.3287, 0.4226, 0.1495, 0.0046, 0.0244], dtype=torch.float32)
         class_weights = torch.max(1 - alpha*class_densities, torch.full_like(class_densities, epsilon))
         # class_weights = 1 / class_densities
-        class_weights[0] = 0.0 # ignore noise class
+        if wandb.config.ignore_index > -1:
+            class_weights[wandb.config.ignore_index] = 0.0 # ignore noise class
         # class_weights = class_weights / class_weights.mean()
     else:
         class_weights = None
+        
+    class_weights = class_weights**3 # cube the weights to increase the importance
 
     criterion = init_criterion(class_weights)
 
@@ -490,14 +552,21 @@ def main():
 
     dataset_name = wandb.config.dataset       
     if dataset_name == 'ts40k':
-        data_path = TS40K_FULL_PATH
         if wandb.config.preprocessed:
-            data_path = TS40K_FULL_PREPROCESSED_PATH
-            if idis_mode:
-                data_path = TS40K_FULL_PREPROCESSED_IDIS_PATH
-            elif smote_mode:
-                data_path = TS40K_FULL_PREPROCESSED_SMOTE_PATH
+            data_path = C.TS40K_FULL_PREPROCESSED_PATH
+        else:
+            data_path = C.TS40K_FULL_PATH
+        # if idis_mode:
+        #     data_path = TS40K_FULL_PREPROCESSED_IDIS_PATH
+        # elif smote_mode:
+        #     data_path = TS40K_FULL_PREPROCESSED_SMOTE_PATH
         data_module = init_ts40k(data_path, wandb.config.preprocessed)
+    elif dataset_name == 'labelec':
+        if wandb.config.preprocessed:
+            data_path  = C.LABELEC_RGB_PREPROCESSED
+        else:
+            data_path = C.LABELEC_RGB_DIR
+        data_module = init_labelec(data_path, wandb.config.preprocessed)
     else:
         raise ValueError(f"Dataset {dataset_name} not supported.")
     
@@ -524,7 +593,7 @@ def main():
         detect_anomaly=False,
         max_epochs=wandb.config.max_epochs,
         accelerator=wandb.config.accelerator,
-        devices=wandb.config.devices,
+        devices='auto',#wandb.config.devices,
         num_nodes=wandb.config.num_nodes,
         strategy=wandb.config.strategy,
         profiler=wandb.config.profiler if wandb.config.profiler else None,
@@ -532,19 +601,27 @@ def main():
         enable_model_summary=True,
         enable_checkpointing=True,
         enable_progress_bar=True,
+        # overfit_batches=0.2, # overfit on 10 batches
         accumulate_grad_batches = wandb.config.accumulate_grad_batches,
     )
 
     if not prediction_mode:
-
         trainer.fit(model, data_module)
 
         print(f"{'='*20} Model ckpt scores {'='*20}")
 
         for ckpt in trainer.callbacks:
             if isinstance(ckpt, pl_callbacks.ModelCheckpoint):
-                print(f"{ckpt.monitor} checkpoint : score {ckpt.best_model_score}")
-            
+                checkpoint_path = ckpt.best_model_path
+        
+                if checkpoint_path: 
+                    print(f"{ckpt.monitor} checkpoint : score {ckpt.best_model_score}")
+
+                    # Initialize artifact to log checkpoint
+                    artifact = wandb.Artifact(name=f"{model_name}_{ckpt.monitor}", type="model")
+                    artifact.add_file(checkpoint_path, name=f"{model_name}_{ckpt.monitor}.ckpt") 
+                    wandb.log_artifact(artifact)
+                    print(f"Checkpoint logged to Wandb: {checkpoint_path}")
             
     # ------------------------
     # 6 TEST
@@ -568,51 +645,53 @@ def main():
                                 ckpt_path='best' if not prediction_mode else None,
                             )
     
+    
+    
     # test_preds = model.test_preds
 
     # test_preds = torch.cat(test_preds, dim=0)
     # torch.save(test_preds, os.path.join(ckpt_dir, 'test_preds.pt'))
-    input("Press Enter to continue...")
-    from tqdm import tqdm
-    batch_size = wandb.config.batch_size
-    model_name = wandb.config.model
-    if model_name == 'pt_transformer':
-        model_name = f"pt_transformer_{wandb.config.model_version}"
+    # input("Press Enter to continue...")
+    # from tqdm import tqdm
+    # batch_size = wandb.config.batch_size
+    # model_name = wandb.config.model
+    # if model_name == 'pt_transformer':
+    #     model_name = f"pt_transformer_{wandb.config.model_version}"
 
-    if torch.no_grad():
-        model = model.to(device)
-        for stage in ['fit', 'test']:
-            data_module.setup(stage=stage)
+    # if torch.no_grad():
+    #     model = model.to(device)
+    #     for stage in ['fit', 'test']:
+    #         data_module.setup(stage=stage)
 
-            dataset = data_module.fit_ds if stage == 'fit' else data_module.test_ds
-            dataloader = data_module._fit_dataloader() if stage == 'fit' else data_module.test_dataloader()
+    #         dataset = data_module.fit_ds if stage == 'fit' else data_module.test_ds
+    #         dataloader = data_module._fit_dataloader() if stage == 'fit' else data_module.test_dataloader()
 
-            for i, batch in tqdm(enumerate(dataloader), desc=f"Predicting {stage} data..."):
-                x, _ = batch
-                batch = (batch[0].to(device), batch[1].to(device))
-                preds = model.evaluate(batch, stage=stage, metric=None, prog_bar=False, logger=False)[1]
+    #         for i, batch in tqdm(enumerate(dataloader), desc=f"Predicting {stage} data..."):
+    #             x, _ = batch
+    #             batch = (batch[0].to(device), batch[1].to(device))
+    #             preds = model.evaluate(batch, stage=stage, metric=None, prog_bar=False, logger=False)[1]
 
-                preds = preds.reshape(x.shape[0], x.shape[1])
+    #             preds = preds.reshape(x.shape[0], x.shape[1])
 
-                assert x.shape[:2] == preds.shape
-                # get dataset index
-                for j in range(x.shape[0]):
-                    idx = batch_size * i + j
+    #             assert x.shape[:2] == preds.shape
+    #             # get dataset index
+    #             for j in range(x.shape[0]):
+    #                 idx = batch_size * i + j
 
-                    dataset_x, _ = dataset[idx]
-                    assert dataset_x.squeeze().shape == x[j].squeeze().shape
+    #                 dataset_x, _ = dataset[idx]
+    #                 assert dataset_x.squeeze().shape == x[j].squeeze().shape
 
-                    file_path = dataset._get_file_path(idx)
-                    file_name =     (file_path) 
-                    preds_file_path = file_path.replace('TS40K-FULL', 'TS40K-FULL-Preds')
-                    preds_file_path = preds_file_path.replace(file_name, f'{file_name.split(".")[0]}/{model_name}.pt')
+    #                 file_path = dataset._get_file_path(idx)
+    #                 file_name =     (file_path) 
+    #                 preds_file_path = file_path.replace('TS40K-FULL', 'TS40K-FULL-Preds')
+    #                 preds_file_path = preds_file_path.replace(file_name, f'{file_name.split(".")[0]}/{model_name}.pt')
 
-                    if torch.randint(0, 10, (1,)).item() >= 9:
-                        print(f"{preds[j].shape}")
-                        print(f"Saving predictions to {preds_file_path}")
+    #                 if torch.randint(0, 10, (1,)).item() >= 9:
+    #                     print(f"{preds[j].shape}")
+    #                     print(f"Saving predictions to {preds_file_path}")
 
-                    os.makedirs(os.path.dirname(preds_file_path), exist_ok=True)
-                    torch.save(preds[j], preds_file_path)
+    #                 os.makedirs(os.path.dirname(preds_file_path), exist_ok=True)
+    #                 torch.save(preds[j], preds_file_path)
 
 
         
@@ -622,7 +701,7 @@ if __name__ == '__main__':
     # --------------------------------
     su.fix_randomness()
     warnings.filterwarnings("ignore")
-    torch.set_float32_matmul_precision('medium')
+    torch.set_float32_matmul_precision('high')
     torch.autograd.set_detect_anomaly(True)
     os.environ['TORCH_CUDA_ARCH_LIST'] = '8.9'
     # --------------------------------
@@ -637,14 +716,14 @@ if __name__ == '__main__':
     
     model_name = main_parser.model
     dataset_name = main_parser.dataset
-    project_name = f"TS40K_SoA"
+    project_name = f"{dataset_name.upper()}_SoA"
 
     prediction_mode = main_parser.predict
     idis_mode = main_parser.idis
     smote_mode = main_parser.smote
 
     # config_path = get_experiment_config_path(model_name, dataset_name)
-    experiment_path = get_experiment_path(model_name, dataset_name)
+    experiment_path = C.get_experiment_dir(model_name, dataset_name)
 
     os.environ["WANDB_DIR"] = os.path.abspath(os.path.join(experiment_path, 'wandb'))
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
@@ -673,8 +752,17 @@ if __name__ == '__main__':
                 name = f'{model_name}_{dataset_name}_{datetime.now().strftime("%Y%m%d-%H%M%S")}',
                 config=sweep_config,
                 mode=main_parser.wandb_mode,
-        )        
+        )
 
+
+    if wandb.config.add_normals:
+        wandb.config.update({'num_data_channels': wandb.config.num_data_channels + 3}, allow_val_change=True) # override data path
+
+    if main_parser.wandb_mode == 'disabled':
+        ckpt_dir = C.get_checkpoint_dir(model_name, dataset_name)
+        wandb.config.update({'checkpoint_dir': ckpt_dir}, allow_val_change=True)
+      
+    # print(f"wandb.config.num_data_channels: {wandb.config.num_data_channels}")
     main()
     
 

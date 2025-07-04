@@ -1,0 +1,180 @@
+_wandb:
+    value:
+        cli_version: 0.18.1
+        m: []
+        python_version: 3.10.14
+        t:
+            "1":
+                - 1
+                - 5
+                - 9
+                - 41
+                - 53
+                - 55
+                - 103
+            "2":
+                - 1
+                - 5
+                - 9
+                - 41
+                - 49
+                - 53
+                - 55
+                - 63
+                - 74
+                - 77
+                - 103
+            "3":
+                - 1
+                - 13
+                - 16
+                - 23
+                - 55
+            "4": 3.10.14
+            "5": 0.18.1
+            "8":
+                - 5
+            "12": 0.18.1
+            "13": linux-x86_64
+accelerator:
+    value: gpu
+accumulate_grad_batches:
+    value: 4
+add_normals:
+    value: false
+auto_lr_find:
+    value: false
+auto_scale_batch_size:
+    value: false
+batch_size:
+    value: 4
+checkpoint_dir:
+    value: ${experiment_path}/checkpoints
+checkpoint_every_n_epochs:
+    value: 1
+checkpoint_every_n_steps:
+    value: 0
+class_weights:
+    value: true
+criterion:
+    value: null
+data_path:
+    value: ""
+dataset:
+    value: scannet
+derived_model_hash:
+    value: stg5_ksize15_r12_s2.0_gibli_gib2_nknn16_ob32
+devices:
+    value: -1
+early_stop_metric:
+    value: val_MulticlassJaccardIndex
+fast_dev_run:
+    value: true
+gib_dict:
+    value:
+        cone: 2
+        cy: 2
+        disk: 2
+        ellip: 2
+        h-cone: 2
+        h-cy: 2
+        h-disk: 2
+        h-ellip: 2
+gibli_params:
+    value:
+        gib_dict:
+            cone: 2
+            cy: 2
+            disk: 2
+            ellip: 2
+            h-cone: 2
+            h-cy: 2
+            h-disk: 2
+            h-ellip: 2
+        kernel_reach: 0.1
+        neighbor_size:
+            - 16
+        num_observers:
+            - 32
+ignore_index:
+    value: -1
+in_channels:
+    value: 3
+init_dim:
+    value: 64
+input_dim:
+    value: 9
+kernel_reach:
+    value: 0.1
+kernel_size:
+    value: 15
+kpconv_radius:
+    value: 12
+kpconv_sigma:
+    value: 2
+kpconv_voxel_size:
+    value: 0.02
+learning_rate:
+    value: 1e-05
+max_epochs:
+    value: 100
+metric_initializer:
+    value: init_metrics
+model:
+    value: null
+model_hash:
+    value: stg5_ksize15_r12_s2.0_gibli_gib2_nknn16_ob32
+model_version:
+    value: kpconv-gibli
+neighbor_limits:
+    value:
+        - 10
+        - 10
+        - 10
+        - 10
+        - 10
+neighbor_size:
+    value:
+        - 16
+num_classes:
+    value: 20
+num_data_channels:
+    value: 9
+num_nodes:
+    value: 1
+num_observers:
+    value:
+        - 32
+num_stages:
+    value: 5
+num_workers:
+    value: 0
+optimizer:
+    value: adam
+optimizer_name:
+    value: adam
+out_channels:
+    value: 8
+output_dir:
+    value: ${experiment_path}/outputs
+precision:
+    value: 32
+profiler:
+    value: false
+project:
+    value: GIBLI-SOA
+resume_checkpoint_name:
+    value: MulticlassJaccardIndex-v1
+resume_from_checkpoint:
+    value: false
+save_onnx:
+    value: false
+segmentation_losses:
+    value:
+        focal: 0.2
+        lovasz: 0.8
+        tversky: 0.2
+strategy:
+    value: auto
+voxel_size:
+    value: 0.02

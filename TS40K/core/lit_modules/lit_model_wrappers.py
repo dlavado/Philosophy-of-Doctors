@@ -78,7 +78,7 @@ class LitWrapperModel(pl.LightningModule):
                 for metric_name, metric_val in metric.items():
                     met = metric_val(preds, y)
                     if isinstance(met, torch.Tensor):
-                        met = met.mean()
+                        met = met.cpu().detach().item()
                     self.log(f"{stage}_{metric_name}", met, on_epoch=True, on_step=on_step, prog_bar=True, logger=True)
 
         return loss, preds, y  

@@ -67,6 +67,64 @@ class EDP_Labels:
         # print(f"labels NEW unique: {torch.unique(new_labels)}, labels shape: {new_labels.shape}")
         return new_labels
     
+    
+class Add_Normal_Vector:
+
+    def __call__(self, sample) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Add the normal vector to the point cloud
+        """
+        if isinstance(sample, torch.Tensor):
+            pointcloud = sample
+            normals = self.calc_normals(pointcloud)
+            pointcloud = torch.cat([pointcloud, normals], dim=-1)
+            return pointcloud
+        else:
+            pointcloud, *args = sample
+            normals = self.calc_normals(pointcloud)
+            pointcloud = torch.cat([pointcloud, normals], dim=-1)
+
+            return pointcloud, *args
+    
+    def calc_normals(self, pointcloud:torch.Tensor) -> torch.Tensor:
+        """
+        Calculate the normal vector of the point cloud
+        """
+        normals = eda.estimate_normals(pointcloud.numpy(force=True))
+        normals = torch.from_numpy(normals).to(pointcloud.device).to(pointcloud.dtype)
+        return normals
+
+
+class Repeat_Points:
+
+    def __init__(self, num_points:int) -> None:
+        """
+        Repeat the points in the point cloud until the number of points is equal to the number of points to sample;
+
+        Useful for batch training.
+        """
+        self.num_points = num_points
+
+    def __call__(self, sample) -> Any:
+
+        pointcloud, labels = sample
+        if pointcloud.ndim == 3: # batched point clouds
+           point_dim = 1
+        else:
+            point_dim = 0
+        if pointcloud.shape[point_dim] < self.num_points:
+            # duplicate the points until the number of points is equal to the number of points to sample
+            random_indices = torch.randint(0, pointcloud.shape[point_dim] - 1, size=(self.num_points - pointcloud.shape[point_dim],))
+
+            if pointcloud.ndim == 3:    
+                pointcloud = torch.cat([pointcloud, pointcloud[:, random_indices]], dim=point_dim)
+                labels = torch.cat([labels, labels[:, random_indices]], dim=point_dim)
+            else:
+                pointcloud = torch.cat([pointcloud, pointcloud[random_indices]], dim=point_dim)
+                labels = torch.cat([labels, labels[random_indices]], dim=point_dim)
+
+        return pointcloud, labels
+    
 
 class Normalize_Labels:
 
@@ -120,132 +178,51 @@ class Ignore_Label:
         labels[mask] = -1 # ignore the points with the ignore label
 
         return pointcloud, labels   
-
-class Random_Point_Sampling:
-
-    def __init__(self, num_points: Union[int, torch.Tensor]) -> None:
-        self.num_points = num_points
-
-    def __call__(self, sample) -> Tuple[torch.Tensor, torch.Tensor]:
-        """
-        Randomly sample `num_points` from the point cloud
-        """
-
-        if isinstance(sample, tuple):
-            pointcloud, labels = sample
-        else:
-            pointcloud, labels = sample[:, :, :-1], sample[:, :, -1]
-
-        if pointcloud.shape[1] < self.num_points:
-            random_indices = torch.randint(0, pointcloud.shape[1] - 1, size=(self.num_points - pointcloud.shape[1],))
-
-            pointcloud = torch.cat([pointcloud, pointcloud[:, random_indices]], dim=1)
-            labels = torch.cat([labels, labels[:, random_indices]], dim=1)
-        
-        else:
-            random_indices = torch.randperm(pointcloud.shape[1])[:self.num_points]
-            pointcloud = pointcloud[:, random_indices]
-            labels = labels[:, random_indices]
-
-
-        return pointcloud, labels
-    
-
-class Inverse_Density_Sampling:
-    """
-    Inverse Density Sampling:
-    1. calcule the neighbors of each 3D point within a ball of radius `ball_radius`
-    2. order the point indices by the number of neighbors
-    3. the `num_points` points with the least number of neighbors are sampled
-    """
-
-    def __init__(self, num_points, ball_radius) -> None:
-        self.num_points = num_points
-        self.ball_radius = ball_radius
-
-    def __call__(self, sample) -> Tuple[torch.Tensor, torch.Tensor]:
-
-        if isinstance(sample, tuple):
-            pointcloud, labels = sample
-        else: # torch tensor
-            if sample.ndim == 3: # batched point clouds
-                pointcloud, labels = sample[:, :, :-1], sample[:, :, -1]
-            else:
-                pointcloud, labels = sample[:, :-1], sample[:, -1] # preprocessed sample
-
-        idis_pointcloud = torch.empty((pointcloud.shape[0], self.num_points, pointcloud.shape[2]), device=pointcloud.device)
-        idis_labels = torch.empty((pointcloud.shape[0], self.num_points), dtype=torch.long, device=pointcloud.device)
-
-        if pointcloud.ndim == 3: # batched point clouds
-            for i in range(pointcloud.shape[0]):
-                knn_indices = self.inverse_density_sampling(pointcloud[i], self.num_points, self.ball_radius)
-                idis_pointcloud[i] = pointcloud[i, knn_indices]
-                idis_labels[i] = labels[i, knn_indices]
-        else:
-            # print(f"pointcloud shape: {pointcloud.shape}, labels shape: {labels.shape}")
-            knn_indices = self.inverse_density_sampling(pointcloud, self.num_points, self.ball_radius)
-            idis_pointcloud = pointcloud[:, knn_indices]
-            idis_labels = labels[:, knn_indices]
-
-        # print(f"idis_pointcloud shape: {idis_pointcloud.shape}, idis_labels shape: {idis_labels.shape}")
-
-        return idis_pointcloud.squeeze(), idis_labels.squeeze()
-    
-    def inverse_density_sampling(self, pointcloud:torch.Tensor, num_points:int, ball_radius:float) -> torch.Tensor:
-        from torch_cluster import radius
-
-        pointcloud = pointcloud.squeeze() # shape = (B, P, 3) -> (P, 3)
-        # print(f"pointcloud shape: {pointcloud.shape}")
-
-        indices = radius(pointcloud, pointcloud, r=ball_radius, max_num_neighbors=pointcloud.shape[0]) # shape = (2, P^2)
-
-        #print(f"indices shape: {indices.shape}")
-        #print(f"indices: {indices}")
-        
-        # count the number of neighbors for each point
-        num_neighbors = torch.bincount(indices[0], minlength=pointcloud.shape[0]) # shape = (P,)
-
-        #print(f"num_neighbors shape: {num_neighbors.shape}; \nnum_neighbors: {num_neighbors}")
-
-        # select the `num_points` points with the least number of neighbors
-        knn_indices = torch.argsort(num_neighbors, dim=-1)[:num_points]
-
-        #print(f"knn_indices shape: {knn_indices.shape}; \nknn_indices: {knn_indices}")
-
-        return knn_indices
-
         
 
         
 class Normalize_PCD:
 
+    def __init__(self, range=[0,1]) -> None:
+        
+        assert len(range) == 2
+        assert range[0] < range[1]
+
+        self.range = range
+
+
+
     def __call__(self, sample) -> torch.Tensor:
         """
         Normalize the point cloud to have zero mean and unit variance.
         """
+
         pointcloud, labels = sample
-        pointcloud = self.normalize(pointcloud)
+        with torch.no_grad():
+            pointcloud = self.normalize(pointcloud, self.range[0], self.range[1])
+        
         return pointcloud, labels
     
 
-    def normalize(self, pointcloud:torch.Tensor) -> torch.Tensor:
+    @torch.jit.script
+    def normalize(pointcloud: torch.Tensor, range_min: float, range_max: float) -> torch.Tensor:
         """
-         (x - min(x)) / (max(x) - min(x))
+        Normalize xyz coordinates to the range [range_min, range_max].
         """
+        point_dim = 1 if pointcloud.dim() == 3 else 0
+        xyz = pointcloud[..., :3]
 
-        pointcloud = pointcloud.float()
+        min_x = xyz.amin(dim=point_dim, keepdim=True)
+        max_x = xyz.amax(dim=point_dim, keepdim=True)
 
-        if pointcloud.dim() == 3: # batched point clouds
-            min_x = pointcloud.min(dim=1, keepdim=True).values
-            max_x = pointcloud.max(dim=1, keepdim=True).values
-            pointcloud = (pointcloud - min_x) / (max_x - min_x)
-        
-        else: # single point cloud
-            min_x = pointcloud.min(dim=0, keepdim=True).values
-            max_x = pointcloud.max(dim=0, keepdim=True).values
-            pointcloud = (pointcloud - min_x) / (max_x - min_x)
+        range_diff = torch.clamp(max_x - min_x, min=1e-6)  # prevent division by zero
 
-        return pointcloud
+        range_scale = range_max - range_min
+        xyz = ((xyz - min_x) / range_diff) * range_scale + range_min
+
+        if pointcloud.shape[-1] > 3:
+            return torch.cat([xyz, pointcloud[..., 3:]], dim=-1).to(pointcloud.device)
+        return xyz.to(pointcloud.device)
 
     def standardize(self, pointcloud:torch.Tensor) -> torch.Tensor:
         """

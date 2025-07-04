@@ -7,15 +7,11 @@ import random
 import pytorch_lightning as pl
 import sys
 
-from torchmetrics import MetricCollection, JaccardIndex, F1Score, Accuracy, Precision, Recall
+from torchmetrics import MetricCollection, JaccardIndex, F1Score, Precision, Recall, FBetaScore
 import wandb
 import cloudpickle  
 
 sys.path.insert(0, '..')
-
-from core.criterions.dice_loss import BinaryDiceLoss, BinaryDiceLoss_BCE
-from core.criterions.tversky_loss import FocalTverskyLoss, TverskyLoss
-from core.criterions.w_mse import WeightedMSE
 
 
 class ParseKwargs(argparse.Action):
@@ -43,32 +39,23 @@ def main_arg_parser():
 
     parser.add_argument('--dataset', type=str, default='ts40k', help='Dataset to use')
 
-    parser.add_argument('--model', type=str, default='scenenet', help='Model to use')
+    parser.add_argument('--model', type=str, default='gibli', help='Model to use')
 
+    parser.add_argument('--predict', action='store_true', default=False, help='If True, the script is in prediction mode')
+    
+    parser.add_argument('--job-id', type=int, default=-1, help='Job ID for the current run')
+    
+    parser.add_argument('--resumable', action='store_true', default=None, help='If True, the script is resumable')
+    
     return parser
-
-
-
-def resolve_criterion_class(criterion_name) -> torch.nn.Module:
-    criterion_name = criterion_name.lower()
-    if criterion_name == 'mse':
-        return WeightedMSE
-    elif criterion_name == 'dice':
-        return BinaryDiceLoss
-    elif criterion_name == 'dice_bce':
-        return BinaryDiceLoss_BCE
-    elif criterion_name == 'tversky':
-        return TverskyLoss
-    elif criterion_name == 'focal_tversky':
-        return FocalTverskyLoss
-    else:
-        raise NotImplementedError(f'Criterion {criterion_name} not implemented')
     
 
-def resolve_optimizer(optimizer_name:str, model, learning_rate) -> torch.optim.Optimizer:
+def resolve_optimizer(optimizer_name:str, model:torch.nn.Module, learning_rate) -> torch.optim.Optimizer:
     optimizer_name = optimizer_name.lower()
     if  optimizer_name == 'adam':
         return torch.optim.Adam(model.parameters(), lr=learning_rate)
+    elif optimizer_name == 'adamw':
+        return torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=5e-3)
     elif optimizer_name == 'sgd':
         return torch.optim.SGD(model.parameters(), lr=learning_rate)
     elif optimizer_name == 'rmsprop':
@@ -80,16 +67,16 @@ def resolve_optimizer(optimizer_name:str, model, learning_rate) -> torch.optim.O
     
 
 def init_metrics(task='multiclass', tau=0.5, num_classes=2, ignore_index=-1):
-
     params = {'task': task, 'num_classes': num_classes, 'ignore_index': ignore_index, 'threshold': tau}
     # 'multidim_average': 'global'
     return MetricCollection([
         JaccardIndex(**params, average=None),
         # JaccardIndex(**params, average=None),
+        # ConfusionMatrix(**params, normalize='true'),
         F1Score(**params, average='macro'),
-        Precision(**params, average='micro'),
-        Recall(**params, average='micro'),
-        Accuracy(**params, average='micro'),
+        FBetaScore(**params, average=None, beta=2.0), # F2 Score, prioritizes recall
+        Precision(**params, average=None),
+        Recall(**params, average=None),
     ])
 
 

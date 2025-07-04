@@ -5,7 +5,7 @@ wandb sweep ../experiments/admm_ts40k/sweep_config.yml
 
 rsync -Prav .  d.lavado@dicluster:PhD-Shenanigans
 
-rsync -Prav ./SceneNet-Project/  d.lavado@dicluster:PhD-Shenanigans/SceneNet-Project/
+rsync -Prav . d.lavado@dicluster:~/PhD-Shenanigans/TS40K
 
 oarsub -I -t besteffort -l {"host in ('sudowoodo-1')"}/nodes=1,walltime=8:00
 
@@ -15,12 +15,27 @@ rsync -Prav /media/didi/TOSHIBA\ EXT/SemKITTI/samples/ d.lavado@dicluster:~/SemK
 
 rsync -Prav /media/didi/TOSHIBA\ EXT/TS40K-NEW/  d.lavado@dicluster:~/TS40K-NEW/
 
-gcloud compute ssh --zone "europe-west1-c" "diogo-dl-1-vm" --project "test-dltrust"
-
-gcloud compute ssh --zone "europe-west4-c" "diogo-dl-2-vm" --project "test-dltrust"
 
 Clip pwd : 
 7AvTmxlxb7qr!2
 
 wandb API key:
 0ad19b7a569604f4a354725a3115d0bac000b1c6
+
+
+----- vulpix 
+
+ssh d.lavado@vulpix-1
+
+sbatch ~/run_slurm_40.sh ts40k main.py ensemble
+
+squeue
+
+scancel $JOB-ID
+
+tail -f log_file.txt
+
+squeue -O, --Format=JobId,Name,UserName,TimeUsed,tres-alloc:-1
+
+sinfo -o "%50N  %10c  %20m  %1000G"
+

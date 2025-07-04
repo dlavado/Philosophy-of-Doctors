@@ -1,0 +1,50 @@
+%!TEX root = ../template.tex
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% chapter1.tex
+%% NOVA thesis document file
+%%
+%% Chapter with introduction
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\typeout{NT FILE 04_workplan.tex}%
+
+\chapter{Work Plan}\label{cha:work_plan}
+
+This thesis investigates how geometric inductive biases (GIBs) can be used to
+build interpretable, efficient, and reliable machine learning systems for 3D
+scene understanding and power grid inspection. The central hypothesis is that
+embedding geometric structure into learning models not only improves
+transparency and performance but also supports the development of decision
+support tools suited for high-stakes environments.
+%
+The contributions span three main lines of work. The first is the development
+of TS40K, a large-scale benchmark tailored to rural power grid inspection. The
+second includes SCENE-Net and SCENE-Net v2, which explore the integration of
+GIBs into white-box and grey-box semantic segmentation models. The third
+focuses on cost-aware machine learning for inspection automation, proposing how
+risk-sensitive pipelines can be deployed with human-in-the-loop validation.
+%
+The final stage of the thesis is the development of GIBLy, a modular and
+scalable GIB-based feature extractor for raw point clouds. GIBLy aims to align
+geometric reasoning with modern point-based architectures and will be tested
+across several 3D benchmarks to assess its generalization and effectiveness.
+
+Table~\ref{tab:workplan} outlines the remaining work scheduled through the
+dissertation submission in October 2025. The immediate focus is on finalizing
+GIBLy and integrating it into point-based networks. This will be
+followed by benchmarking, paper submission, and the writing of the final
+dissertation.
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{lp{0.65\textwidth}}
+        \hline
+        \textbf{Time Interval} & \textbf{Work}                                                                          \\ \hline
+        May -- June 2025        & Finalize design and implementation of GIBLy.            \\ \hline
+        June -- July 2025       & Integrate GIBLy into SOTA models and evaluate it on benchmarks. \\ \hline
+        July -- August 2025     & Prepare GIBLy manuscript for submission to a top-tier venue.   \\ \hline
+        August -- October 2025  & Write and revise the PhD dissertation. \\ \hline
+    \end{tabular}
+    \caption{Tentative plan for the remaining work.}
+    \label{tab:workplan}
+\end{table}

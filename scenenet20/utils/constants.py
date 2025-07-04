@@ -7,11 +7,14 @@ import torch
 def get_project_root() -> Path:
     return Path(__file__).parent.parent
 
-def get_experiment_path(model, dataset) -> Path:
+def get_experiment_dir(model, dataset) -> Path:
     return os.path.join(get_project_root(), 'experiments', f"{model}_{dataset}")
 
+def get_checkpoint_dir(model, dataset) -> Path:
+    return os.path.join(get_experiment_dir(model, dataset), 'checkpoints')
+
 def get_experiment_config_path(model, dataset) -> Path:
-    return os.path.join(get_experiment_path(model, dataset), 'defaults_config.yml')
+    return os.path.join(get_experiment_dir(model, dataset), 'defaults_config.yml')
 
 
 ROOT_PROJECT = get_project_root()
@@ -29,10 +32,11 @@ if "didi" in str(ROOT_PROJECT):
     else:
         EXT_PATH = "/home/didi/DATASETS/" # google cluster data dir
         # TOSH_PATH = "/home/didi/DATASETS/"
-elif 'vulpix' in str(ROOT_PROJECT):
-    EXT_PATH = "/data/d.lavado/"
 else:
-    EXT_PATH = "/home/d.lavado/" #cluster data dir
+    EXT_PATH = "/data/d.lavado/"
+    
+if not os.path.exists(EXT_PATH): # cluster data dir
+    EXT_PATH = "/home/d.lavado/"
 
 TS40K_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/')
 TS40K_FULL_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-FULL/')
@@ -40,8 +44,13 @@ TS40K_FULL_PREPROCESSED_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-FULL-
 TS40K_FULL_PREPROCESSED_VOXELIZED_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-FULL-Preprocessed-Voxelized/')
 TS40K_FULL_PREPROCESSED_IDIS_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-FULL-Preprocessed-IDIS/')
 TS40K_FULL_PREPROCESSED_SMOTE_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-FULL-Preprocessed-SMOTE/')
+TS40K_FULL_PREPROCESSED_NORMALS_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-FULL-Preprocessed-Normals/')
+
+TS40K_FULL_PREPROCESSED_NORMALIZE10_PATH = os.path.join(EXT_PATH, 'TS40K-Dataset/TS40K-FULL-Preprocessed-0-10/')
 # TS40K_PATH = os.path.join(EXT_PATH, "TS40K-NEW/TS40K-Sample/")
 
+LABELEC_RGB_DIR = os.path.join(TS40K_PATH, 'Labelec_LAS_RGB_2024')
+LABELEC_RGB_PREPROCESSED = os.path.join(LABELEC_RGB_DIR, 'Preprocessed/')
 
 LAS_RGB_PROCESSED = os.path.join(SSD_PATH, 'TS40K-Dataset/Labelec_LAS_RGB_2024/Processados/')
 LAS_RGB_ORIGINALS = os.path.join(SSD_PATH, 'TS40K-Dataset/Labelec_LAS_RGB_2024/Originais/')

@@ -23,6 +23,7 @@ class LitPointNet(LitWrapperModel):
                  num_classes = 10,
                  num_channels=3,
                  learning_rate=0.01, 
+                 ignore_index=-1,
                  metric_initializer=None, 
                  **kwargs):
         
@@ -39,8 +40,8 @@ class LitPointNet(LitWrapperModel):
         
         super().__init__(model, criterion, optimizer_name, learning_rate, None)
 
-        self.train_metrics = metric_initializer(num_classes=num_classes, ignore_index=0)
-        self.val_metrics = metric_initializer(num_classes=num_classes, ignore_index=0)
+        self.train_metrics = metric_initializer(num_classes=num_classes, ignore_index=ignore_index)
+        self.val_metrics = metric_initializer(num_classes=num_classes)
         self.test_metrics = metric_initializer(num_classes=num_classes)
 
         self.save_hyperparameters()

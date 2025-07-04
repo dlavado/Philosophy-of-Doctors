@@ -29,6 +29,7 @@ class LitKPConv(LitWrapperModel):
                  kernel_size=15,
                  num_classes=10,
                  learning_rate=0.001, 
+                 ignore_index=-1,
                  metric_initializer=None, 
                  **kwargs
             ):
@@ -51,33 +52,31 @@ class LitKPConv(LitWrapperModel):
         super().__init__(model, criterion, optimizer_name, learning_rate, metric_initializer, **kwargs)
 
 
-        self.train_metrics = metric_initializer(num_classes=num_classes, ignore_index=0)
-        self.val_metrics = metric_initializer(num_classes=num_classes, ignore_index=0)
+        self.train_metrics = metric_initializer(num_classes=num_classes, ignore_index=ignore_index)
+        self.val_metrics = metric_initializer(num_classes=num_classes)
         self.test_metrics = metric_initializer(num_classes=num_classes)
 
         self.save_hyperparameters()
 
-
-
     def forward(self, x:torch.Tensor):
         points, lengths = batch_to_pack(x)
-        if x.shape[-1] > 3:
-            feats = points[:, 3:]
+        if points.shape[-1] > 3:
+            points, feats = points[:, :3], points
         else:
-            feats = torch.ones_like(points[:, :2])
+            feats = points
 
         return self.model(points, feats, lengths)
     
     def prediction(self, model_output:torch.Tensor) -> torch.Tensor:
-        return torch.argmax(model_output, dim=1)
+        return torch.argmax(model_output, dim=-1)
     
     def forward_model_output(self, x:torch.Tensor) -> torch.Tensor:
         # runs the model and returns the model output in (B, N, C) format
         points, lengths = batch_to_pack(x)
         if x.shape[-1] > 3:
-            feats = points[:, 3:]
+            points, feats = points[:, :3], points
         else:
-            feats = torch.ones_like(points[:, :2])
+            feats = points
 
         model_dict = self.model(points, feats, lengths)
 
@@ -92,10 +91,17 @@ class LitKPConv(LitWrapperModel):
         scores = out_dict["scores"]
         # flat targets
         y = y.reshape(-1).to(torch.long)
-        # print("scores: ", scores.shape, "targets: ", batch_to_pack(y)[0].shape)
+        
+        # print("scores: ", scores.shape, "targets: ", y.shape)
+        # print(torch.max(scores), torch.min(scores))
 
         loss = self.criterion(scores, y)
         preds = self.prediction(scores)
+
+        # print(f"{loss=}")
+        # print(f"{preds.shape=}")
+        # print(f"{torch.unique(y)=}")
+        # print(f"{torch.unique(preds)=}")
 
         if stage:
             on_step = stage == "train" 

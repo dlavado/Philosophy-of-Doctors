@@ -15,7 +15,10 @@ preprocessed:
   value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
+  value: False
+add_normals:
   value: True
+  description: 'If True, adds normals to the dataset'
 data_path:
   value: ''
 num_classes:
@@ -23,12 +26,8 @@ num_classes:
 num_data_channels:
   value: 3
   description: 'Number of channels in the dataset'
-voxel_grid_size:
-  value: (64, 64, 64)
-voxel_size:
-  value: None
 batch_size:
-  value: 8
+  value: 2
 ignore_index:
   value: -1 # noise
 num_workers: 
@@ -51,8 +50,8 @@ in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input''${experiment_path}/wandb/ptv2_resume' # v2
 model_version:
-  value: 'v1' # 'v1' or 'v2'
-  description: 'PointNet version'
+  value: 'v3' # 'v1' or 'v2' or 'v3'
+  description: 'Point Transformer version'
 # ------------------ #
 # training config
 # ------------------ #
@@ -61,7 +60,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 40 # -1 for infinite
+  value: 1 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -87,7 +86,7 @@ class_weights:
 fast_dev_run:
   value: True
 precision: # 16 or 32 FPU precision
-  value: 16
+  value: 32
   description: 'FPU precision'
 auto_lr_find:
   value: False
@@ -106,13 +105,11 @@ save_onnx:
 # Checkpoint config
 # ------------------ #
 resume_from_checkpoint:
-  value: True
+  value: False
 checkpoint_dir:
-  # value: '${experiment_path}/wandb/ptv2_resume' # v2
-  value: '${experiment_path}/wandb/ptv1_resume/files/checkpoints/'
-  #value: '${experiment_path}/wandb/run-20240510_143031-p82umf3x/files/checkpoints/' # '${experiment_path}/wandb/ptv2_resume' # v2
+  value: '${experiment_path}/checkpoints/' # v2
 resume_checkpoint_name:
-  value: MulticlassJaccardIndex-v1 # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+  value: ptv3_normlas_val_MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:

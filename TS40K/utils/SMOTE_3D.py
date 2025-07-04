@@ -1,5 +1,5 @@
 
-# %%
+
 import torch
 import numpy as np
 from torch_cluster import knn
@@ -9,8 +9,6 @@ import sys
 sys.path.insert(0, '..')
 sys.path.insert(1, '../..')
 from utils.torch_knn import torch_knn
-
-# %%
 
 class SMOTE3D:
     def __init__(self, k_neighbors=5, sampling_strategy=1.0, smote_label=None, num_points_resampled=None):
