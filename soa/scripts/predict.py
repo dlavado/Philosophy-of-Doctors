@@ -56,32 +56,28 @@ def predict(model:pl.LightningModule, data_module:pl.LightningDataModule):
     ).to(consts.device)
 
     for i, batch in enumerate(test_loader):
-        # batch to device
-        if i < 29:
-            continue
+        # # batch to device
+        # if i < 29:
+        #     continue
         
-        batch = tuple([s.to(consts.device) for s in batch])
-    
+        for key in batch.keys():
+            batch[key] = batch[key].to(consts.device)
+
         loss, pred, y = model.evaluate(batch, stage='test', metric=metrics)
-        
+
         # skip samples with less whan 100 tower points, as they are not useful for evaluation
         uq, counts = torch.unique(y, return_counts=True)
         if 4 not in uq or counts[uq == 4] < 100:
             print(torch.unique(y, return_counts=True)[1])
             continue
-                    
-        
       
         pred = pred.reshape(y.shape) # reshape to match y
 
-        xyz = batch[0][..., :3] # get xyz
+        xyz = batch['coord'][..., :3] # get xyz
 
         print(f"batch {i}; sample 0")
         print(f"Cross Entropy loss: {loss.item()}")
         print(f"{xyz.shape=} {pred.shape=} {y.shape=}")
-        print(f"pred unique: {pred.unique()}")
-        print(f"y unique: {y.unique()}")
-
         # if loss.item() > 0.5:
         #     continue
 
@@ -90,6 +86,10 @@ def predict(model:pl.LightningModule, data_module:pl.LightningDataModule):
         for key, value in metrics.items():
             print(f"{key}: {value.compute()}")
 
+        jac_index = metrics['MulticlassJaccardIndex'].compute()
+        mean_jac_index = jac_index.mean().item()
+        print(f"Mean Jaccard Index: {mean_jac_index}")
+    
         metrics.reset()
 
         # if loss.item() > 0.5 or loss.item() < 0.2: # visualize the interesting cases
@@ -121,15 +121,12 @@ def main():
     # 0 INIT CKPT PATH
     # ------------------------
 
-    if not wandb.config.resume_from_checkpoint:
-        ckpt_dir = os.path.join(wandb.run.dir, "checkpoints") 
-    else:
-        ckpt_dir = wandb.config.checkpoint_dir
+    ckpt_dir = wandb.config.checkpoint_dir
 
     ckpt_path = os.path.join(ckpt_dir, wandb.config.resume_checkpoint_name + '.ckpt')
-
-    ckpt_dir = replace_variables(ckpt_dir)
     ckpt_path = replace_variables(ckpt_path)
+    print(f"Checkpoint path: {ckpt_path}")
+    
 
     # ------------------------
     # 1 INIT BASE CRITERION
@@ -144,9 +141,7 @@ def main():
     # 2 INIT MODEL
     # ------------------------
     model = m.init_model(wandb.config.model, criterion)
-    if wandb.config.get('geneo_criterion', False):
-        m.init_GENEO_loss(model, base_criterion=criterion)
-    model = m.resume_from_checkpoint(ckpt_path, model, class_weights)
+    model, _ = m.resume_from_checkpoint(ckpt_path, model, class_weights)
     model = model.to(consts.device)
     model.eval()
 
@@ -154,30 +149,10 @@ def main():
     # 3 INIT DATA MODULE
     # ------------------------
 
-    dataset_name = wandb.config.dataset       
-    if dataset_name == 'ts40k':
-        data_path = consts.TS40K_FULL_PATH
-        if wandb.config.preprocessed:
-            data_path = consts.TS40K_FULL_PREPROCESSED_PATH
-            if idis_mode:
-                data_path = consts.TS40K_FULL_PREPROCESSED_IDIS_PATH
-            elif smote_mode:
-                data_path = consts.TS40K_FULL_PREPROCESSED_SMOTE_PATH
-        data_module = m.init_ts40k(data_path, wandb.config.preprocessed)
-    elif dataset_name == 'labelec':
-        if wandb.config.preprocessed:
-            data_path  = consts.LABELEC_RGB_PREPROCESSED
-        else:
-            data_path = consts.LABELEC_RGB_DIR
-        data_module = m.init_labelec(data_path, wandb.config.preprocessed)
-    else:
-        raise ValueError(f"Dataset {dataset_name} not supported.")
-    
-    wandb.config.update({'data_path': data_path}, allow_val_change=True) # override data path
+    data_module = m.init_dataset(wandb.config.dataset)
 
-    print(f"\n=== Data Module {dataset_name.upper()} initialized. ===\n")
+    print(f"\n=== Data Module {wandb.config.dataset.upper()} initialized. ===\n")
     print(f"{data_module}")
-    print(data_path)
     
 
     ####### if Pytorch Lightning Trainer is not called, setup() needs to be called manually
@@ -212,17 +187,17 @@ if __name__ == "__main__":
     dataset_name = main_parser.dataset
     project_name = f"TS40K_SoA"
 
-    idis_mode = main_parser.idis
-    smote_mode = main_parser.smote
-
     # config_path = get_experiment_config_path(model_name, dataset_name)
     experiment_path = consts.get_experiment_dir(model_name, dataset_name)
 
     os.environ["WANDB_DIR"] = os.path.abspath(os.path.join(experiment_path, 'wandb'))
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1' # idk man
 
-    # default mode
-    sweep_config = os.path.join(experiment_path, 'defaults_config.yml')
+    if main_parser.arch in ['ptv1', 'ptv2', 'ptv3', 'kpconv', 'pointnet', 'pointnet2']:
+        sweep_config = os.path.join(experiment_path, f'{main_parser.arch}_config.yml')
+    else:
+        sweep_config = os.path.join(experiment_path, 'defaults_config.yml')
+
 
     print("wandb init.")
 

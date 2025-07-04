@@ -102,6 +102,85 @@ plt.show()
 
 
 # %%
+
+import matplotlib.pyplot as plt
+
+# X-axis values (noise scale or sigma)
+sigmas = [0.01, 0.05, 0.1]
+
+# Precision data
+normal_precision = [81.1, 50.4, 0.0]
+laplace_precision = [79.7, 47.2, 0.0]
+cauchy_precision = [72.1, 14.4, 0.0]
+baseline_precision = 82.0
+
+# Recall data
+normal_recall = [11.6, 2.7, 0.0]
+laplace_recall = [9.3, 1.0, 0.0]
+cauchy_recall = [6.2, 1.8, 0.0]
+baseline_recall = 13.0
+
+# Plot
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 7), sharex=True)
+
+# --- Precision subplot ---
+ax1.plot(sigmas, normal_precision, marker='o', label='Normal')
+ax1.plot(sigmas, laplace_precision, marker='s', label='Laplace')
+ax1.plot(sigmas, cauchy_precision, marker='^', label='Cauchy')
+ax1.axhline(baseline_precision, color='gray', linestyle=':', linewidth=1, label='Baseline')
+ax1.set_ylabel('Precision (%)')
+ax1.set_title('SCENE-Net Precision under Additive Noise')
+ax1.grid(True)
+ax1.legend()
+
+# --- Recall subplot ---
+ax2.plot(sigmas, normal_recall, marker='o', label='Normal')
+ax2.plot(sigmas, laplace_recall, marker='s', label='Laplace')
+ax2.plot(sigmas, cauchy_recall, marker='^', label='Cauchy')
+ax2.axhline(baseline_recall, color='gray', linewidth=1, label='Baseline')
+ax2.set_xlabel('Noise Scale / σ')
+ax2.set_ylabel('Recall (%)')
+ax2.set_title('SCENE-Net Recall under Additive Noise')
+ax2.grid(True)
+ax2.legend()
+
+plt.tight_layout()
+plt.show()
+# %%
+import matplotlib.pyplot as plt
+
+# Dropout probabilities
+dropout_rates = [0, 5, 10, 30, 50]
+
+# Metrics
+precision = [82.0, 81.0, 81.0, 80.8, 80.0]
+recall = [13.0, 13.0, 13.0, 12.5, 12.0]
+
+# Plot
+fig, ax1 = plt.subplots(figsize=(8, 5))
+
+color1 = 'tab:blue'
+ax1.set_xlabel('Dropout Probability (%)')
+ax1.set_ylabel('Precision (%)', color=color1)
+ax1.plot(dropout_rates, precision, marker='o', color=color1, label='Precision')
+ax1.tick_params(axis='y', labelcolor=color1)
+ax1.set_ylim(75, 85)  # Focused range for precision
+ax1.grid(True)
+# Secondary y-axis
+ax2 = ax1.twinx()
+color2 = 'tab:orange'
+ax2.set_ylabel('Recall (%)', color=color2)
+ax2.plot(dropout_rates, recall, marker='s', linestyle='--', color=color2, label='Recall')
+ax2.tick_params(axis='y', labelcolor=color2)
+ax2.set_ylim(10, 14)  # Focused range for recall
+
+
+# Title and layout
+plt.title('SCENE-Net Performance under Dropout (Precision & Recall)')
+fig.tight_layout()
+plt.show()
+
+# %%
 import sys
 sys.path.append('../')
 import utils.constants as C

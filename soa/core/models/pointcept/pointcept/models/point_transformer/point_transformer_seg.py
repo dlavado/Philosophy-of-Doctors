@@ -413,7 +413,7 @@ class GIBLiPointTransformerSeg(nn.Module):
         self.kernel_reach = kernel_reach
         self.num_observers = num_observers
         
-        self.enc1 = self._make_enc(
+        self.enc1 = self._make_gibli_enc(
             block,
             planes[0],
             blocks[0],
@@ -474,6 +474,18 @@ class GIBLiPointTransformerSeg(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(planes[0], num_classes),
         )
+        
+    def _make_gibli_enc(self, block, planes, blocks, share_planes=8, stride=1, nsample=16):
+        layers = [
+            TransitionDown(self.in_planes, planes * block.expansion, stride, nsample)
+        ]
+        self.in_planes = planes * block.expansion
+        for _ in range(blocks):
+            layers.append(
+                GIBLiBottleneck(self.in_planes, self.in_planes, share_planes, nsample=nsample, gib_dict=self.gib_dict, num_observers=self.num_observers, kernel_reach=self.kernel_reach, neighbor_size=self.neighbor_size
+                      )
+            )
+        return nn.Sequential(*layers)
 
     def _make_enc(self, block, planes, blocks, share_planes=8, stride=1, nsample=16):
         layers = [
@@ -482,7 +494,8 @@ class GIBLiPointTransformerSeg(nn.Module):
         self.in_planes = planes * block.expansion
         for _ in range(blocks):
             layers.append(
-                block(self.in_planes, self.in_planes, share_planes, nsample=nsample, gib_dict=self.gib_dict, num_observers=self.num_observers, kernel_reach=self.kernel_reach, neighbor_size=self.neighbor_size)
+                block(self.in_planes, self.in_planes, share_planes, nsample=nsample, # gib_dict=self.gib_dict, num_observers=self.num_observers, kernel_reach=self.kernel_reach, neighbor_size=self.neighbor_size
+                      )
             )
         return nn.Sequential(*layers)
 
@@ -495,7 +508,8 @@ class GIBLiPointTransformerSeg(nn.Module):
         self.in_planes = planes * block.expansion
         for _ in range(blocks):
             layers.append(
-                block(self.in_planes, self.in_planes, share_planes, nsample=nsample, gib_dict=self.gib_dict, num_observers=self.num_observers, kernel_reach=self.kernel_reach, neighbor_size=self.neighbor_size)
+                block(self.in_planes, self.in_planes, share_planes, nsample=nsample, # gib_dict=self.gib_dict, num_observers=self.num_observers, kernel_reach=self.kernel_reach, neighbor_size=self.neighbor_size
+                      )
             )
         return nn.Sequential(*layers)
     
@@ -519,22 +533,6 @@ class GIBLiPointTransformerSeg(nn.Module):
         x = self.cls(x1)
         return x
 
-
-@MODELS.register_module("GIBLiPointTransformer-Seg26")
-class GIBLiPointTransformerSeg26(GIBLiPointTransformerSeg):
-    def __init__(self, **kwargs):
-        super(GIBLiPointTransformerSeg26, self).__init__(
-            GIBLiBottleneck, [1, 1, 1, 1, 1], **kwargs
-        )
-        
-        
-@MODELS.register_module("GIBLiPointTransformer-Seg38")
-class GIBLiPointTransformerSeg38(GIBLiPointTransformerSeg):
-    def __init__(self, **kwargs):
-        super(GIBLiPointTransformerSeg38, self).__init__(
-            GIBLiBottleneck, [1, 2, 2, 2, 2], **kwargs
-        )
-        
 
 @MODELS.register_module("GIBLiPointTransformer-Seg50")
 class GIBLiPointTransformerSeg50(GIBLiPointTransformerSeg):

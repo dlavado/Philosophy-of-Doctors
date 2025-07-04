@@ -433,6 +433,23 @@ def init_waymo(data_path):
                     )
     return data_module
 
+def init_dataset(dataset_name):
+    if dataset_name == 'ts40k':
+        data_path = C.TS40K_FULL_PREPROCESSED_PATH  if wandb.config.preprocessed else C.TS40K_FULL_PATH
+        return init_ts40k(data_path, wandb.config.preprocessed)
+    elif dataset_name == 'semantickitti':
+        return init_semantickitti(C.SEMANTIC_KITTI_PATH)
+    elif dataset_name == 'nuscenes':
+        return init_nuscenes(C.NUSCENES_PATH)
+    elif dataset_name == 'scannet':
+        return init_scannet(C.SCANNET_PATH)
+    elif dataset_name == 's3dis':
+        return init_s3dis(C.S3DIS_PATH)
+    elif dataset_name == 'waymo':
+        return init_waymo(C.WAYMO_PATH)
+    else:
+        raise ValueError(f"Dataset {dataset_name} not supported.")
+
 #####################################################################
 # INIT MODELS
 #####################################################################
@@ -593,21 +610,7 @@ def main():
     # ------------------------
 
     dataset_name = wandb.config.dataset       
-    if dataset_name == 'ts40k':
-        data_path = C.TS40K_FULL_PREPROCESSED_PATH  if wandb.config.preprocessed else C.TS40K_FULL_PATH
-        data_module = init_ts40k(data_path, wandb.config.preprocessed)
-    elif dataset_name == 'semantickitti':
-        data_module = init_semantickitti(C.SEMANTIC_KITTI_PATH)
-    elif dataset_name == 'nuscenes':
-        data_module = init_nuscenes(C.NUSCENES_PATH)
-    elif dataset_name == 'scannet':
-        data_module = init_scannet(C.SCANNET_PATH)
-    elif dataset_name == 's3dis':
-        data_module = init_s3dis(C.S3DIS_PATH)
-    elif dataset_name == 'waymo':
-        data_module = init_waymo(C.WAYMO_PATH)
-    else:
-        raise ValueError(f"Dataset {dataset_name} not supported.")
+    data_module = init_dataset(dataset_name)
     
 
     print(f"\n=== Data Module {dataset_name.upper()} initialized. ===\n")

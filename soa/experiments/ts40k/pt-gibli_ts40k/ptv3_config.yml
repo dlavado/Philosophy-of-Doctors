@@ -15,7 +15,7 @@ preprocessed:
   value: True
   description: 'If True, uses the preprocessed the dataset'
 load_into_memory:
-  value: True
+  value: False
 add_normals:
   value: False
   description: 'If True, adds normals to the dataset'
@@ -27,7 +27,7 @@ num_data_channels:
   value: 3
   description: 'Number of channels in the dataset'
 batch_size:
-  value: 6
+  value: 1
 ignore_index:
   value: -1 # noise
 num_workers: 
@@ -40,7 +40,7 @@ val_split:
 model:
   value: 'pt_transformer'
 model_hash:
-  value: 'ptv3-gibli-gib16-nknn16'
+  value: 'ptv3-gibli-gib2-nknn16-ob16'
 in_channels:
   value: 3 # xyz coords
   description: 'Number of channels in the input'
@@ -64,13 +64,13 @@ gib_dict:
   }
   description: 'Dictionary of GIBs'
 num_observers:
-  value: [4]
+  value: [16]
   description: 'Number of observers'
 kernel_reach:
   value: 0.1
   description: 'Kernel reach of GIBs'
 neighbor_size:
-  value: [4]
+  value: [16]
   description: 'Number of neighbors'
 out_channels:
   value: 8
@@ -83,7 +83,7 @@ optimizer:
 learning_rate:
   value: 0.0001
 max_epochs:
-  value: 100 # -1 for infinite
+  value: 300 # -1 for infinite
 accelerator:
   value: 'gpu' # 'ddp' or 'dp'
 devices:
@@ -117,12 +117,12 @@ precision: # 16 or 32 FPU precision
 auto_lr_find:
   value: False
 auto_scale_batch_size:
-  value: True
+  value: False
 profiler:
   value: False
   description: 'PyTorch Lightning profiler'
 accumulate_grad_batches:
-  value: 16
+  value: 1
   description: 'Accumulate gradients on k batches before performing a backward pass'
 save_onnx:
   value: False
@@ -133,9 +133,10 @@ save_onnx:
 resume_from_checkpoint:
   value: False
 checkpoint_dir:
-  value: '${experiment_path}/checkpoints/' # v2
+  value: '${experiment_path}/checkpoints/'
 resume_checkpoint_name:
-  value: MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+  value: gibli_ptv3_MulticlassJaccardIndex
+  # value: MulticlassJaccardIndex_v1
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:

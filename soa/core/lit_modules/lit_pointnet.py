@@ -32,7 +32,7 @@ class LitPointNet(LitWrapperModel):
             if 'gibli' in model:
                 model = pointnet2.get_gibli_model(num_classes, num_channels=3 + num_channels, gibli_params=kwargs['gibli_params'])
             else:
-                model = pointnet2.get_model(num_classes, num_channels=num_channels)
+                model = pointnet2.get_model(num_classes, num_channels=3+num_channels)
         elif 'pointnet' in model:
             if criterion is None:
                 criterion = pointnet.get_loss()
@@ -40,7 +40,7 @@ class LitPointNet(LitWrapperModel):
             if 'gibli' in model:
                 model = pointnet.get_gibli_model(num_classes, num_channels=3 + num_channels, gibli_params=kwargs['gibli_params'])
             else:
-                model = pointnet.get_model(num_classes, num_channels=num_channels)
+                model = pointnet.get_model(num_classes, num_channels=3+num_channels)
         else:
             raise ValueError(f"Unknown model {model}")
         

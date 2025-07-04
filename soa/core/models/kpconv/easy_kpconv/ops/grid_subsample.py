@@ -94,6 +94,6 @@ def grid_subsample_pack_mode(points, lengths, voxel_size):
     s_lengths = torch.bincount(s_batch_indices, minlength=batch_size)
     assert (
         s_lengths.shape[0] == batch_size
-    ), f"Invalid length of s_lengths ({batch_size} expected, {s_lengths.shape} got)."
+    ), f"Invalid length of s_lengths ({batch_size} expected, {s_lengths.shape} got). initial {lengths} sampled {s_lengths}."
 
     return s_points, s_lengths

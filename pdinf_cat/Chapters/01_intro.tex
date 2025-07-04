@@ -58,7 +58,7 @@ inputs like point clouds or raw sensor data.
 While traditional signal and image processing have laid strong foundations,
 introducing a third spatial dimension brings both unique advantages and
 non-trivial challenges. On the upside, 3D data captures spatial geometry and
-structural information more faithfully than 2D projectionsm enabling accurate
+structural information more faithfully than 2D projections, enabling accurate
 depth perception, size and shape estimation, and precise spatial localization,
 all of which are crucial in dynamic environments such as traffic scenes.
 %
@@ -66,11 +66,11 @@ Moreover, 3D data is less susceptible to environmental conditions like lighting
 changes or motion blur, which often degrade 2D image quality.
 %
 However, the benefits of 3D come with substantial complexity. Point clouds,
-despite being one of the most common formats, lack regular structure, suffer
+despite being one of the most common formats of 3D data, lack regular structure, suffer
 from non-uniform sampling, and are permutation invariant, making them difficult
 to process with standard convolutional architectures that thrive on grid-like
 data. In turn, volumetric representations impose structure through voxelization
-but suffer from extreme memory and compute costs, especially in large-scale
+but face significant memory and computational costs, especially in large-scale
 scenes, due to their cubic scaling.
 %
 Meshes introduce yet another layer of complexity, with irregular topologies
@@ -93,10 +93,10 @@ just 1–3\% in mean IoU across major
 benchmarks~\cite{behley2019semantickitti,dai2017scannet,caesar2020nuscenes}.
 These models also depend on resource-heavy training pipelines, such as
 multi-dataset point prompt training (PPT)~\cite{wu2024towards}, which demand
-access to diverse datasets and large-scale compute infrastructure.
+access to diverse datasets and large-scale computational infrastructure.
 
 This pattern poses a critical question: \textit{can we design better-performing
-    models without simply scaling up data and model size?}
+      models without simply scaling up data and model size?}
 
 To ground this, consider the paradigm shift that occurred in 2D vision with the
 rise of convolutional neural networks (CNNs). CNNs outperformed multi-layer
@@ -143,16 +143,26 @@ Recently, attention-based models emerged as the new frontier. Inspired by the
 Transformer architecture~\cite{vaswani2017attention}, recent works adapted
 self-attention to 3D data, achieving strong benchmark
 performance~\cite{zhao2021point,wu2022point,lai2022stratified,park2022fast,wang2023octformer,lai2023spherical,wu2023ptv3}.
-But attention mechanisms, like MLPs, lack inductive biases, treating all inputs
-uniformly without any geometric assumptions.
+Despite being a general-purpose architecture, transformers tend to exhibit
+symmetry with respect to permutations in sequence
+space~\cite{lavie2024towards}.
 %
-This brings us to a key insight: \textbf{3D data is inherently geometric}. It
-encodes local distances, angles, orientations, and curvature, all of which are
-lost in 2D projections. Yet current state-of-the-art models often ignore this
-rich structure in favor of generic function approximation.
+However, these biases are not inherently geometric and do not explicitly encode
+the spatial structure present in 3D data.
+%
+
+This brings us to a key insight: \textbf{3D data is inherently geometric}, and
+it provides the most accurate representation of our physical reality, which is
+fundamentally three-dimensional. While 2D data also encodes geometric
+properties, it offers only a flattened or partial view in which essential
+spatial relationships --- such as depth, orientation, and curvature --- are
+often distorted or obscured.
+%
+Yet current state-of-the-art models often ignore this rich structure in favor
+of generic function approximation.
 %
 In this thesis, we explore a different path. We argue that \textbf{geometric
-    inductive biases}, the kind of domain-specific assumptions that powered CNNs in
+      inductive biases}, the kind of domain-specific assumptions that powered CNNs in
 2D vision, can and should be brought into 3D scene understanding. By explicitly
 modeling local geometric relationships, we aim to guide feature learning in a
 way that improves generalization, reduces reliance on massive datasets, and
@@ -163,7 +173,7 @@ has centered around benchmark-rich domains like autonomous driving or indoor
 mapping, critical real-world applications remain vastly underexplored.
 %
 A prime example is power grid inspection, a safety critical task where the gap
-between state-of-the-art research and industrical needs is particularly acute.
+between state-of-the-art research and industrial needs is particularly acute.
 %
 Despite the maturity of 3D processing techniques, power grid monitoring still
 relies heavily on manual inspection, requiring human operators to inspect
@@ -226,20 +236,22 @@ transformations.
 %
 For instance, a convolutional kernel is a specific instance of GENEOs, it is
 equivariant to translations in Euclidean space. A GENEO can show equivariance
-to any group of transformation in topological spaces, which encompass the
+to any group of transformations in topological spaces, which encompass the
 Euclidean space.
+
 %
 
-A crucial aspect of the GENEO framework is their convexity and non-expansivity
-guarantees. The convex combination of GENEOs is also a
-GENEO~\cite{bergomi2019towards}, and non-expansivity ensures that the output
-space of GENEOs is compact.
-%
-In turn, compactness ensures that any operator can be approximated by a finite
-set of operators sampled in the same space.
+A crucial aspect of the GENEO framework is their capacity to inherit
+convexity and compactness properties by the space of the data.
+In the context of GENEOs, data are represented as functions.
+If the functional space of data is compact and convex, then the space of GENEOs
+is also compact and convex~\cite{bergomi2019towards}, such properties ensure 
+that any operator can be approximated by convex combination of a finite
+set of operators, forming a basis in the same space.
 %
 Therefore, these results prove that any GENEO can be efficiently approximated
-by a certain number of other GENEOs in the same space.
+by a certain number of other GENEOs in the same space provided that a
+suitable data representatiion is chosen.
 %
 Moreover, their application to computer vision tasks has been shown
 in~\cite{bergomi2019towards,bocchi2022geneonet} to be effective.
@@ -265,9 +277,9 @@ feature extraction strategies.
 Thus, incorporating GIBs into these frameworks requires careful architectural
 design: they must be introduced in a way that complements existing modules
 without introducing excessive computational overhead. This calls for modular,
-differentiable GIB layers that can seamlessly plug into a variety of backbones,
-while preserving key inductive properties like locality, symmetry, and spatial
-continuity.
+differentiable GIB layers that can seamlessly plug into a variety of backbones
+(e.g., CNN-based models like KPConv~\cite{thomas2019kpconv} or
+transformer-based models like Point Transformer V3~\cite{wu2023ptv3}).
 %
 Achieving this balance can lead to more efficient training, more robust
 inference, and better explainability of the learned features.
@@ -288,7 +300,7 @@ of scenarios.
 On the other end, architectures built solely from high-capacity SOTA components
 often suffer from long training times, overfitting, and poor generalization to
 unseen scenarios. They also tend to behave like black boxes, limiting trust and
-debuggability in safety-critical environments.
+transparency during troubleshooting in safety-critical environments.
 %
 
 To bridge this gap, we propose a hybrid approach that combines the
@@ -341,7 +353,7 @@ Moreover, any automated solution must be both scalable and reliable to ensure
 that potential failures in analysis do not lead to disastrous consequences.
 %
 Overcoming these challenges requires not only the adaptation of
-state-of-the-art mdoels, but also the development of tailored pipelines and
+state-of-the-art models, but also the development of tailored pipelines and
 benchmarks specifically designed to meet the demands of high-risk power grid
 inspections.
 
@@ -352,32 +364,27 @@ To tackle the specific challenges of power grid inspections, we propose a
 two-phase approach focused on building dedicated resources and evaluating
 tailored solutions.
 
-\textbf{Phase 1: Benchmark Dataset Development.}
-We will construct a publicly available
-benchmark dataset of 3D point clouds specifically curated for power grid
-inspections. Existing scan annotations, provided by maintenance personnel, are
-intended for safety validation rather than machine learning, and often contain
-inconsistent or imprecise labels. This poses a major issue for supervised
-training, which we aim to mitigate through label refinement strategies and
-robustness-driven training approaches.
+\textbf{Phase 1: Benchmark Dataset Development.} The work
+aims to construct a publicly available benchmark dataset of 3D point clouds
+specifically curated for power grid inspections. Existing scan annotations,
+provided by maintenance personnel, are intended for safety validation rather
+than machine learning, and often contain inconsistent or imprecise labels. This
+poses a major issue for supervised training, which is addressed through label
+refinement strategies and robustness-driven training approaches.
 %
 Another critical concern is data privacy. The topology of power grids is
-sensitive infrastructure information that must be protected. We will explore
-anonymization techniques that preserve structural patterns relevant for model
+sensitive infrastructure information that must be protected. Anonymization
+techniques are explored to preserve structural patterns relevant for model
 training while preventing exposure of sensitive layout information.
 
 \textbf{Phase 2: Evaluation and Deployment Feasibility}.
-With the benchmark in place, we will train and evaluate both SOTA architectures
-and our proposed GIB-integrated models on this dataset.
-Our goal is not only to assess performance, but also to
-understand how geometric inductive biases can improve robustness and
-explainability in this high-risk setting.
+With the benchmark in place, both SOTA architectures and the proposed GIB-integrated models are trained and evaluated on this dataset.
+The goal is not only to assess performance, but also to understand how geometric inductive biases can improve robustness and explainability in this high-risk setting.
 %
-Finally, we will examine the feasibility of developing a practical tool for
-automated power grid inspection. This tool would be designed for seamless
-integration into existing maintenance workflows, supporting human inspectors
-with automated scene analysis while ensuring reliability and usability in the
-field.
+Finally, the feasibility of developing a practical tool for automated power
+grid inspection is examined. This tool is designed for seamless integration
+into existing maintenance workflows, supporting human inspectors with automated
+scene analysis while ensuring reliability and usability in the field.
 
 \section{Main Expected Contributions}
 
@@ -385,38 +392,38 @@ In summary, and considering the challenges identified above, we expect the main
 contributions of this thesis to be the following:
 
 \begin{enumerate}
-    \item \textbf{A formalization of Geometric Inductive Biases
-    for 3D scene understanding.} \\
-          We propose a novel formulation of GIBs as spatially-aware, 
-          differentiable modules that encode meaningful geometric structure
-          into neural representations. 
-          These modules act as interpretable feature extractors, 
-          bridging the gap between handcrafted geometric priors and 
-          learned representations in 3D space.
+      \item \textbf{A formalization of Geometric Inductive Biases
+                  for 3D scene understanding.} \\
+            We propose a novel formulation of GIBs as spatially-aware,
+            differentiable modules that encode meaningful geometric structure
+            into neural representations.
+            These modules act as interpretable feature extractors,
+            bridging the gap between handcrafted geometric priors and
+            learned representations in 3D space.
 
-    \item \textbf{A modular integration of GIBs within state-of-the-art architectures.} \\
-          We integrate GIBs into a wide range of existing architectures, 
-          such as transformer-based and convolutional models. 
-          We explore different trade-offs 
-          between interpretability, performance, and computational cost,
-          aiming for a hybrid model that is both practical 
-          and theoretically grounded.
+      \item \textbf{A modular integration of GIBs within state-of-the-art architectures.} \\
+            We integrate GIBs into a wide range of existing architectures,
+            such as transformer-based and convolutional models.
+            We explore different trade-offs
+            between interpretability, performance, and computational cost,
+            aiming for a hybrid model that is both practical
+            and theoretically grounded.
 
-    \item \textbf{A public benchmark dataset tailored for power grid inspections in 3D.} \\
-          To support research in high-risk applications, 
-          we develop a curated benchmark dataset of drone-based 3D scans of 
-          power grid infrastructure. This dataset reflects real-world conditions, 
-          including noisy human-labeled annotations and the need for 
-          anonymization due to security concerns. 
-          It is designed not only to serve as a benchmark for evaluating 
-          GIB-enhanced models, but also to promote reproducibility and 
-          further work in this domain.
+      \item \textbf{A public benchmark dataset tailored for power grid inspections in 3D.} \\
+            To support research in high-risk applications,
+            we develop a curated benchmark dataset of drone-based 3D scans of
+            power grid infrastructure. This dataset reflects real-world conditions,
+            including noisy human-labeled annotations and the need for
+            anonymization due to security concerns.
+            It is designed not only to serve as a benchmark for evaluating
+            GIB-enhanced models, but also to promote reproducibility and
+            further work in this domain.
 
-    \item \textbf{A prototype inspection pipeline with industry application.} \\
-          We implement and evaluate a practical 3D scene understanding 
-          pipeline for automated power grid inspection. 
-          Our goal is to show how GIBs can enhance the robustness and explainability
-          of models in real-world scenarios.
+      \item \textbf{A prototype inspection pipeline with industry application.} \\
+            We implement and evaluate a practical 3D scene understanding
+            pipeline for automated power grid inspection.
+            Our goal is to show how GIBs can enhance the robustness and explainability
+            of models in real-world scenarios.
 \end{enumerate}
 
 \section{Document Structure}
@@ -425,13 +432,12 @@ The remainder of the document is structured as follows:
 %
 Chapter~\ref{cha:sota} provides a comprehensive review of the research
 landscape for this thesis, by discussing the state-of-the-art in 3D scene
-undertanding, group equivariant methodologies in machine learning, and 
-the current techniques for power grid inspection.
+undertanding, group equivariant methodologies in machine learning, and the
+current techniques for power grid inspection.
 %
-Chapter~\ref{cha:statement} presents our research statement, where
-we outline the proposed apporach for each contribution, and the expected
-outcomes.
+Chapter~\ref{cha:statement} presents our research statement, where we outline
+the proposed apporach for each contribution, and the expected outcomes.
 %
-Lastly, Chapter~\ref{cha:work_plan} presents the work plan
-for the remaining work of the thesis, detailing a timeline for the
-completion of each contribution.
+Lastly, Chapter~\ref{cha:work_plan} presents the work plan for the remaining
+work of the thesis, detailing a timeline for the completion of each
+contribution.

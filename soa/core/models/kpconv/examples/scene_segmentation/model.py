@@ -214,10 +214,10 @@ class GIBLi_KPFCNN(nn.Module):
         self.encoder5_1 = KPResidualBlock(
             first_dim * 16, first_dim * 16, kernel_size, first_radius * 8, first_sigma * 8, strided=True, # gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size
         )
-        self.encoder5_2 = GIBLiKPResidualBlock(
+        self.encoder5_2 = KPResidualBlock(
             first_dim * 16, first_dim * 32, kernel_size, first_radius * 16, first_sigma * 16, # gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size
         )
-        self.encoder5_3 = GIBLiKPResidualBlock(
+        self.encoder5_3 = KPResidualBlock(
             first_dim * 32, first_dim * 32, kernel_size, first_radius * 16, first_sigma * 16, # gib_dict=gib_dict, num_observers=num_observers, kernel_reach=kernel_reach, neighbor_size=neighbor_size
         )
 
@@ -254,21 +254,21 @@ class GIBLi_KPFCNN(nn.Module):
         feats_s1 = self.encoder1_1(points_list[0], points_list[0], feats_s1, neighbors_list[0])
         feats_s1 = self.encoder1_2(points_list[0], points_list[0], feats_s1, neighbors_list[0], lengths_list[0])
 
-        feats_s2 = self.encoder2_1(points_list[1], points_list[0], feats_s1, subsampling_list[0], lengths_list[0])
-        feats_s2 = self.encoder2_2(points_list[1], points_list[1], feats_s2, neighbors_list[1], lengths_list[1])
-        feats_s2 = self.encoder2_3(points_list[1], points_list[1], feats_s2, neighbors_list[1], lengths_list[1])
+        feats_s2 = self.encoder2_1(points_list[1], points_list[0], feats_s1, subsampling_list[0])
+        feats_s2 = self.encoder2_2(points_list[1], points_list[1], feats_s2, neighbors_list[1])
+        feats_s2 = self.encoder2_3(points_list[1], points_list[1], feats_s2, neighbors_list[1])
 
-        feats_s3 = self.encoder3_1(points_list[2], points_list[1], feats_s2, subsampling_list[1], lengths_list[1])
-        feats_s3 = self.encoder3_2(points_list[2], points_list[2], feats_s3, neighbors_list[2], lengths_list[2])
-        feats_s3 = self.encoder3_3(points_list[2], points_list[2], feats_s3, neighbors_list[2], lengths_list[2])
+        feats_s3 = self.encoder3_1(points_list[2], points_list[1], feats_s2, subsampling_list[1])
+        feats_s3 = self.encoder3_2(points_list[2], points_list[2], feats_s3, neighbors_list[2])
+        feats_s3 = self.encoder3_3(points_list[2], points_list[2], feats_s3, neighbors_list[2])
 
-        feats_s4 = self.encoder4_1(points_list[3], points_list[2], feats_s3, subsampling_list[2], lengths_list[2])
-        feats_s4 = self.encoder4_2(points_list[3], points_list[3], feats_s4, neighbors_list[3], lengths_list[3])
-        feats_s4 = self.encoder4_3(points_list[3], points_list[3], feats_s4, neighbors_list[3], lengths_list[3])
+        feats_s4 = self.encoder4_1(points_list[3], points_list[2], feats_s3, subsampling_list[2])
+        feats_s4 = self.encoder4_2(points_list[3], points_list[3], feats_s4, neighbors_list[3])
+        feats_s4 = self.encoder4_3(points_list[3], points_list[3], feats_s4, neighbors_list[3])
 
-        feats_s5 = self.encoder5_1(points_list[4], points_list[3], feats_s4, subsampling_list[3], lengths_list[3])
-        feats_s5 = self.encoder5_2(points_list[4], points_list[4], feats_s5, neighbors_list[4], lengths_list[4])
-        feats_s5 = self.encoder5_3(points_list[4], points_list[4], feats_s5, neighbors_list[4], lengths_list[4])
+        feats_s5 = self.encoder5_1(points_list[4], points_list[3], feats_s4, subsampling_list[3])
+        feats_s5 = self.encoder5_2(points_list[4], points_list[4], feats_s5, neighbors_list[4])
+        feats_s5 = self.encoder5_3(points_list[4], points_list[4], feats_s5, neighbors_list[4])
 
         latent_s5 = feats_s5
 

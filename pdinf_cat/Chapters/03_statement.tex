@@ -21,57 +21,50 @@
 
 \begin{figure}[ht]
       \centering
-      % First column: Full width figure and subfigures
-      \begin{minipage}[t]{0.51\textwidth} % First column
-            \begin{subfigure}[b]{\textwidth}
-                  \includegraphics[width=\linewidth]{ts40k/Teaser/raw_sample.png}
-                  \caption{Raw TS40K sample}
-                  \label{fig:teaser-raw-sample}
-            \end{subfigure}
-            \vfill
-            \begin{subfigure}[b]{0.33\textwidth}
-                  \includegraphics[width=\linewidth]{ts40k/Teaser/tower_radius.png}
-                  \caption{Tower-radius}
-                  \label{fig:teaser-tower-radius}
-            \end{subfigure}
-            \hfill
-            \begin{subfigure}[b]{0.33\textwidth}
-                  \includegraphics[width=\linewidth]{ts40k/Teaser/2_towers.png}
-                  \caption{Power-line}
-                  \label{fig:teaser-power-line}
-            \end{subfigure}
-            \hfill
-            \begin{subfigure}[b]{0.30\textwidth}
-                  \includegraphics[width=\linewidth]{ts40k/Teaser/no_ts.png}
-                  \caption{No-tower}
-                  \label{fig:teaser-no-ts}
-            \end{subfigure}
-            \vfill
-            % Legend below subfigures
-            \includegraphics[width=\linewidth]{ts40k/legend_classes.png}
-      \end{minipage}
-      \quad
-      % Second column: Two additional figures
-      \begin{minipage}[t]{0.45\textwidth} % Second column
-            \begin{subfigure}[b]{1.0\textwidth}
-                  \includegraphics[width=\linewidth]{ts40k/Teaser/ts40k_class_densities.png}
-                  \caption{Sample type density}
-                  \label{fig:density1}
-            \end{subfigure}
-            \hfill
-            \begin{subfigure}[b]{1.0\textwidth}
-                  \includegraphics[width=\linewidth]{ts40k/Teaser/ts40k_train_test_distribution.png}
-                  \caption{Overall train/test class density}
-                  \label{fig:density2}
-            \end{subfigure}
-      \end{minipage}
 
-      \caption[TS40K dataset overview]{The TS40K dataset is derived from raw 3D scans illustrated in Figure~\ref{fig:teaser-raw-sample} and processed into three different sample types: \textit{(1) Tower-radius} focuses on the towers that support power lines and its environment (Fig.~\ref{fig:teaser-tower-radius}). \textit{(2) Power-line} samples have power lines as their main focus in the 3D scenes (Fig.~\ref{fig:teaser-power-line}). \textit{(3) No-tower} samples represent rural terrain where the transmission system is located, excluding supporting towers but potentially including power lines (Fig.~\ref{fig:teaser-no-ts}).
-            %
-            In Figures~\ref{fig:density1} and~\ref{fig:density2}, we showcase the semantic
-            class densities of the TS40K dataset. Figure~\ref{fig:density1} illustrates the
-            class density for each of the sample types and Figure~\ref{fig:density2} shows
-            the overall class density in the TS40K train and test sets.} \label{fig:teaser}
+      % Top: wide raw sample
+      \begin{subfigure}[b]{\textwidth}
+            \includegraphics[width=\linewidth]{ts40k/Teaser/raw_sample.png}
+            \caption{Raw TS40K sample}
+            \label{fig:teaser-raw-sample}
+      \end{subfigure}
+
+      \vspace{0.5em}
+
+      % Three smaller sample type images
+      \begin{subfigure}[b]{0.32\textwidth}
+            \includegraphics[width=\linewidth]{ts40k/Teaser/tower_radius.png}
+            \caption{Tower-radius}
+            \label{fig:teaser-tower-radius}
+      \end{subfigure}
+      \hfill
+      \begin{subfigure}[b]{0.32\textwidth}
+            \includegraphics[width=\linewidth]{ts40k/Teaser/2_towers.png}
+            \caption{Power-line}
+            \label{fig:teaser-power-line}
+      \end{subfigure}
+      \hfill
+      \begin{subfigure}[b]{0.32\textwidth}
+            \includegraphics[width=\linewidth]{ts40k/Teaser/no_ts.png}
+            \caption{No-tower}
+            \label{fig:teaser-no-ts}
+      \end{subfigure}
+
+      \vspace{0.5em}
+
+      % Legend
+      \includegraphics[width=\linewidth]{ts40k/legend_classes.png}
+
+      \caption[TS40K dataset overview]{The TS40K dataset is derived from raw 3D scans
+            illustrated in Figure~\ref{fig:teaser-raw-sample} and processed into
+            three different sample types: \textit{(1) Tower-radius} focuses on the
+            towers that support power lines and their surrounding environment
+            (Fig.~\ref{fig:teaser-tower-radius}). \textit{(2) Power-line} samples
+            focus on the power lines in the 3D scene (Fig.~\ref{fig:teaser-power-line}).
+            \textit{(3) No-tower} samples represent rural terrain with transmission lines
+            but without the supporting towers (Fig.~\ref{fig:teaser-no-ts}).
+            The legend illustrates the semantic class colors used in these samples.}
+      \label{fig:teaser}
 \end{figure}
 
 \subsection{Problem Statement and Motivation}
@@ -121,7 +114,7 @@ Several design considerations were prioritized during dataset creation
             The dataset was curated from real-world inspection missions conducted by
             EDP NEW and Labelec in past years. Annotations were produced by maintenance
             personnel with a focus on inspection, not machine learning
-            optimization.
+            use.
             As a result, the dataset includes noisy labels and class ambiguities.
             To still allow for ML model training, we introduce a mapping from inpection
             annotations to semantically meaningful classes. The semantic classes were defined
@@ -300,15 +293,27 @@ voxel:
 \begin{equation}
       m(x) = {\left(\tanh(\gamma(x))\right)}_+,
 \end{equation}
-
-where ${(\cdot)}_+$ denotes the ReLU activation function.
 %
+where ${(\cdot)}_+$ denotes the ReLU activation function. The hyperbolic
+tangent is defined as $\tanh(x) = \frac{e^x - e^{-x}}{e^x + e^{-x}}$ and compresses the
+observer’s output into the range $[-1, 1]$.
+% 
 Negative signals in $\gamma(x)$ represent patterns that do not exhibit the
 desired geometric properties. Conversely, positive values quantify their
-presence. Therefore, $\tanh$ compresses the observer’s value distribution into
-$[-1, 1]$, and the ReLU is then applied to enforce a zero probability for
+presence. The ReLU is applied after the $\tanh$ to enforce a zero probability for
 negative signals. Lastly, a probability threshold $\tau \in [0, 1]$ is defined
 through hyperparameter fine-tuning and applied to $m(x)$.
+%
+Figure~\ref{fig:tanh-relu-plot}
+illustrates both the $\tanh$ function and its ReLU-clipped form, highlighting
+how negative signals are suppressed.
+%
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.6\textwidth]{scenenet/tanh_relu_plot.png}
+    \caption{Visualization of the hyperbolic tangent function $\tanh(x)$ (solid blue) and its ReLU-clipped form $(\tanh(x))_+$ (dashed red).}
+    \label{fig:tanh-relu-plot}
+\end{figure}
 
 \subsection{Results}
 
@@ -481,26 +486,27 @@ balance between interpretability and performance. By repositioning geometric
 inductive biases as feature extractors, our model offers a scalable and
 explainable path forward for 3D semantic segmentation.
 
-\section{Geometric Inductive Bias Library for Efficient 3D Scene Understanding (GIBLi)}\label{sec:gibli}
+\section{GIBLy: A Lightweight Geometric Inductive Bias Layer for Architecture-Agnostic 3D Semantic Segmentation}\label{sec:gibli}
 
 \begin{figure}[ht]
       \centering
       \begin{subfigure}[t]{0.48\columnwidth}
-          \centering
-          \includegraphics[width=\linewidth]{gibli/ICCV_GIBLi_Cy_GIB.pdf}
-          \caption{Illustration of the Cylinder geometric inductive bias (GIB) applied to a local neighborhood.}
-          \label{fig:gib_cy}
+            \centering
+            \includegraphics[width=\linewidth]{gibli/gibli_cy_gib_v2.pdf}
+            \caption{Illustration of the Cylinder geometric inductive bias (GIB) applied to a local neighborhood.}
+            \label{fig:gib_cy}
       \end{subfigure}
       \hfill
       \begin{subfigure}[t]{0.48\columnwidth}
-          \centering
-          \includegraphics[width=\linewidth]{gibli/ICCV_GIBLi_GIBLiLayer.pdf}
-          \caption{Illustration of the GIBLi-Layer.}
-          \label{fig:gibli-layer}
+            \centering
+            \includegraphics[width=\linewidth]{gibli/ICCV_GIBLi_GIBLiLayer.pdf}
+            \caption{Illustration of GIBLy.}
+            \label{fig:gibli-layer}
       \end{subfigure}
-      \caption[GIBLi Overview]{(Left) Cylinder GIB computing alignment scores. (Right) GIBLi-Layer extracting geometric features from a local neighborhood.}
+      \caption[GIBLi Overview]{(Left) Cylinder GIB computing an alignment score. 
+      (Right) GIB-Layer (GIBLy) extracting geometric features from a local neighborhood.}
       \label{fig:gib_pair}
-  \end{figure}
+\end{figure}
 
 \subsection{Problem Statement and Motivation}
 
@@ -517,11 +523,11 @@ state-of-the-art (SOTA) 3D learning architectures operate directly on raw point
 clouds. To fully integrate geometric priors into modern pipelines, GIBs must
 also act directly in the point cloud domain.
 %
-We propose a new framework, GIBLi, to address these limitations. It extends
+We propose a new framework, GIBLy, to address these limitations. It extends
 geometric inductive biases to raw point clouds by treating them as geometric
 graphs, enabling modular and scalable integration with any backbone
 architecture. By providing structured geometric information at the feature
-level, GIBLi aims to accelerate convergence, improve robustness, and reduce the
+level, GIBLy aims to accelerate convergence, improve robustness, and reduce the
 burden on black-box models, which otherwise must learn geometric structure
 purely from data.
 
@@ -532,12 +538,12 @@ pipelines while preserving interpretability in feature extraction.
 
 \subsection{Current Methodology}
 
-The goal of GIBLi is to develop a modular GIBLi-Layer that can be inserted into
-any point-based network architecture. The GIBLi-Layer operates as follows:
+The goal of GIBLy is to develop a modular layer that can be inserted into
+any point-based network architecture. It operates as follows:
 
 Input point clouds are interpreted as geometric graphs, with local
 neighborhoods defined through $k$-nearest neighbors or radius-based queries. To
-capture structures at multiple scales, our GIBLi-Layer considers multiple
+capture structures at multiple scales, GIBLy considers multiple
 neighborhoods per point, operating with varying radius or $k$ values.
 %
 For each neighborhood, multiple geometric inductive biases (GIBs) are applied.
@@ -558,7 +564,7 @@ across all neighborhood scales are concatenated with the existing features of
 each point, forming an enriched representation.
 %
 This enriched feature tensor is then passed to downstream modules (e.g., SOTA
-backbones) for further processing. Thus, GIBLi provides a grey-box feature
+backbones) for further processing. Thus, GIBLy provides a grey-box feature
 extraction stage that enhances SOTA models without disrupting their core
 architectures.
 
@@ -570,7 +576,7 @@ on point clouds. Here, we outline the main challenges encountered so far and
 the current progress toward addressing them:
 
 \textbf{Efficient Implementation on Point Clouds.} \;
-Developing GIBLi requires non-trivial extensions to standard point cloud processing.
+Developing GIBLy requires non-trivial extensions to standard point cloud processing.
 Unlike grid-based convolutions, there are currently no native operations in
 mainstream machine learning libraries (e.g., PyTorch, TensorFlow) that support
 GIB-based operations over local geometric graphs. This demands custom operator
@@ -579,7 +585,7 @@ design to achieve acceptable efficiency at scale.
 \textbf{Interpretability-Performance Trade-off.} \;
 As backbone models grow in complexity, the overall interpretability of the
 system diminishes compared to previous white-box designs.
-Nonetheless, GIBLi preserves interpretability at the feature extraction stage:
+Nonetheless, GIBLy preserves interpretability at the feature extraction stage:
 each enriched feature vector can be traced back to specific GIB activations,
 enabling post hoc analysis of how geometric priors contribute to individual predictions.
 
@@ -588,10 +594,10 @@ Without the regular structure of voxel grids, defining efficient, expressive,
 and differentiable geometric operators on irregular point clouds presents new
 challenges.
 
-Currently, our work focuses on refining the efficiency of GIBLi-Layers,
+Currently, our work focuses on refining the efficiency of GIBLy,
 expanding the library of inductive biases, and evaluating their integration
 into diverse SOTA architectures in several 3D benchmarks. A key research goal
-is to assess whether GIBLi can systematically improve convergence, robustness,
+is to assess whether GIBLy can systematically improve convergence, robustness,
 and final accuracy in large-scale 3D semantic segmentation tasks.
 
 % ------------------------------------
@@ -615,10 +621,10 @@ available 3D dataset focused on rural power grid inspection. TS40K captures the
 operational complexities of real-world transmission systems, including label
 noise, structural variability, and severe class imbalance.
 %
-Building on these insights, GIBLi represents the next step: generalizing GIBs
+Building on these insights, GIBLy represents the next step: generalizing GIBs
 to operate directly on raw point clouds without voxelization. By treating point
 clouds as geometric graphs and equipping GIBs with learnable rotations and
-hollowed variants, GIBLi aims to unify geometric reasoning with
+hollowed variants, GIBLy aims to unify geometric reasoning with
 state-of-the-art 3D learning practices. The goal is to provide structured,
 interpretable features that accelerate convergence, improve robustness, and
 enhance segmentation performance across large-scale benchmarks such as TS40K

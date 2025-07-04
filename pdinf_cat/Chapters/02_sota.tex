@@ -50,7 +50,7 @@ projection-based, discretization-based (voxel), and point-based methods. More
 recently, hybrid approaches have emerged to leverage the advantages of each
 individual class.
 
-\subsection{Introducting 3D Point Clouds}
+\subsection{Introducing 3D Point Clouds}
 
 Point clouds have become a standard representation for capturing and analyzing
 three-dimensional environments. At their core, point clouds are unordered sets
@@ -77,14 +77,14 @@ to their irregular, unordered, and variable-density nature:
 \textbf{Irregular Sampling and Heterogeneous Density:} Unlike images that
 present uniform pixel spacing, point clouds may exhibit uneven sampling densities across different
 parts of a scene. Objects can have both dense and sparse regions depending on
-occlusions, sensor perspective, or reflectivity, as shown in~\ref{fig:pcd_props}~(a).
+occlusions, sensor perspective, or reflectivity, as shown in Fig.~\ref{fig:pcd_props}~(a).
 This irregularity complicates local feature extraction and challenges models
 reliant on fixed-size neighborhoods (e.g., k-NN), which can either miss fine-grained details or
 incorporate irrelevant context.
 
 \textbf{Lack of Structure:} Point clouds are inherently unstructured.
 They do not lie on a regular grid, and there is no implicit ordering or spatial
-adjacency like in image pixels, as illustrated in~\ref{fig:pcd_props}~(b).
+adjacency like in image pixels, as illustrated in Fig.~\ref{fig:pcd_props}~(b).
 This absence of structure means that traditional convolutional architectures
 are not directly applicable.
 Instead, learning effective point-wise representations requires custom
@@ -93,7 +93,7 @@ and long-range dependencies.
 
 \textbf{Permutation Invariance:} Point clouds are independent of the order
 in which they are stored, as it does not change the represented scene.
-This is depicted~\ref{fig:pcd_props}~(c).
+This is depicted Fig.~\ref{fig:pcd_props}~(c).
 Deep learning methods often correlate the order of the input to the
 intended output. However, invariance to permutations clashes with this
 behavior. As a result, state-of-the-art methods often show additional
@@ -156,8 +156,8 @@ voxel-based methods, such as OctNet~\cite{riegler2017octnet} and
 O-CNN~\cite{wang2017cnn}, mitigate these issues by leveraging hierarchical
 spatial structures (e.g., octrees) that selectively refine voxels only in
 occupied regions. Nonetheless, 3D convolutions remain computationally more
-expensive than their 2D counterparts, making voxel-based methods less efficient
-for real-time applications.
+expensive than their 2D counterparts (with a relative cost 3 times higher), 
+making voxel-based methods less efficient for real-time applications.
 
 \subsection{Point-based Methods}
 Rather than altering the input structure, point-based methods operate directly
@@ -248,8 +248,8 @@ space.
 \subsection{Understanding Inductive Biases}
 % Define inductive bias in ML. Give classic 2D examples (e.g., translation equivariance in CNNs) and motivate why they matter in data-scarce or noisy regimes.
 
-Inductive biases refer to the assumptions a model makes to generalize beyond
-the training data.
+Inductive biases are the assumptions underlying a model's design that guide its
+ability to generalize beyond the training data.
 %
 While machine learning frameworks aim to learn patterns directly from data, no
 single learning algorithm can succeed at all possible tasks without constraints
@@ -316,7 +316,7 @@ is approximated by a discrete sums. For an image $I \in \mathbb{R}^{H \times W
 becomes:
 
 \begin{equation}\label{eq:discrete-conv}
-    (I * K)[i, j] = \sum_{m}^{k-1} \sum_{n}^{k-1} I[i - m, j - n] \cdot K[m,n].
+    (I * K)[i, j] = \sum_{m}^{k-1} \sum_{n}^{k-1} I[i + m, j + n] \cdot K[m,n].
 \end{equation}
 
 This sums over a local neighborhood centered at pixel $[i, j]$, producing an
@@ -334,7 +334,7 @@ into a structured grid, allowing 2D and 3D CNNs methods to be employed.
 The convolution operator extends naturally to 3D tensors:
 
 \begin{equation}\label{eq:3d-discrete-conv}
-    (I * K)[i, j, k] = \sum_{m}^{k-1} \sum_{n}^{k-1} \sum_{p}^{k-1} I[i - m, j - n, k - p] \cdot K[m,n,p].
+    (I * K)[i, j, k] = \sum_{m}^{k-1} \sum_{n}^{k-1} \sum_{p}^{k-1} I[i + m, j + n, k + p] \cdot K[m,n,p].
 \end{equation}
 
 This 3D convolution operates over a cubic neighborhood and is used in models
@@ -380,7 +380,7 @@ the local geometry, rather than relying on a fixed grid.
 \subsection{Group Equivariant Methodologies}
 % Discuss works that explicitly build equivariant architectures (e.g., Tensor Field Networks, SE(3)-Transformers, EGNN). 
 
-3D scene undetanding often entails reasoning about objects that appear in arbitrary
+3D scene understanding often entails reasoning about objects that appear in arbitrary
 orientations and positions. This poses a challenge for traditional models
 because they are typically sensitive to such transformations unless explicitly
 trained to account for them.
@@ -391,32 +391,31 @@ equivariance into neural networks.
 % allows models to learn representations that are invariant to specific transformations,
 % such as rotations and translations, by leveraging the underlying symmetries of the data.
 
-Equivariance is a property of a function that preserves the structure of the
+Equivariance is a property of a function or an operator that preserves the structure of the
 input space under a specific group of transformations.
 %
-Formally, a function $f: \mathcal{X} \rightarrow \mathcal{Y}$ is said to be
+Formally, an operator $f: \mathcal{X} \rightarrow \mathcal{Y}$ is said to be
 \emph{equivariant} with respect to a group of transformations $G$ if for every
 transformation $g \in G$, the following holds:
 \begin{equation}\label{eq:equivariance}
     f(g \cdot x) = \rho(g) \cdot f(x), \quad \forall x \in \mathcal{X},
 \end{equation}
-
+%
 where $g \cdot x$ denotes the action of $g$ on the input $x$, and $\rho(g)$ is
 a (possibly different) representation of $g$ acting on the output space
 $\mathcal{Y}$.
 %
 For example, consider standard 2D convolutions in image processing. These are
 translation-equivariant, meaning that if the input image is shifted in space,
-the resulting feature maps shift in the same way:
+the resulting feature maps the shift in the same way:
 \begin{equation}\label{eq:translation-equivariance}
     \text{Conv}(T_{\Delta x} x) = T_{\Delta x}(\text{Conv}(x)),
 \end{equation}
-
 where $T_{\Delta x}$ denotes a translation by $\Delta x$.
 
 In 3D scene understanding, transformations of interest include translations,
 rotations and reflections, typically represented by the Euclidean group E(n) or
-the special Eucliden group SE(n).
+the special Euclidean group SE(n).
 %
 Designing models that are equivariant to such groups allows them to reason
 about objects and structures in a way that mirrors the physical symmetries of
@@ -448,7 +447,7 @@ SE(3)-Transformers~\cite{fuchs2020se} extend the attention mechanism to be
 equivariant to rotations and translations, enabling the model to learn
 relationships between points in a way that respects the symmetries of the data.
 %
-Graph Neural Networks (EGNN)~\cite{satorras2021n}, on the other hand, employ a
+Graph Neural Networks (GNN)~\cite{satorras2021n}, on the other hand, employ a
 graph-based approach to learn equivariant representations by iteratively
 updating node features based on local neighborhoods, ensuring that the updates
 are equivariant to rotations and translations.
@@ -502,7 +501,7 @@ assumed to vary, such as translations, rotations, or more general isometries.
 Crucially, it is assumed that this group acts on $\Phi$ via function
 composition: for any transformation $g \in G$ and any function $\phi \in \Phi$,
 the transformed function $\phi \circ g$ must also lie within $\Phi$. This
-requirement ensures that the space $\Phi$ is stable under the action of $G$,
+requirement ensures that the space $\Phi$ is closed with respect to $G$,
 and enables us to encode prior knowledge about data invariances or
 equivariances directly into the functional representation.
 
@@ -532,9 +531,11 @@ spaces under reasonable conditions.
 Non-expansivity and convexity are essential for the applicability of GENEOs in
 machine learning. When $\Phi$ and $\Psi$ are compact spaces, non-expansivity
 guarantees that the set of all GENEOs is also compact. This compactness ensures
-that any GENEO can be approximated by a finite number of others within the same
-space. Moreover, if $\Psi$ is convex, then the set of GENEOs is also
-convex~\cite{bergomi2019towards}, meaning that linear combinations of GENEOs
+that any GENEO can be approximated by linear combination of a finite number of 
+other GENEOs within the same space. 
+%
+Moreover, if $\Psi$ is convex, then the set of GENEOs is also
+convex~\cite{bergomi2019towards}, meaning that convex combinations of GENEOs
 yield new valid GENEOs. Together, these properties allow the construction of
 efficient and expressive models through a finite and combinable basis of
 operators.

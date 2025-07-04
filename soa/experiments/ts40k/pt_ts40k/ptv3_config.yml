@@ -17,7 +17,7 @@ preprocessed:
 load_into_memory:
   value: False
 add_normals:
-  value: True
+  value: False
   description: 'If True, adds normals to the dataset'
 data_path:
   value: ''
@@ -114,7 +114,7 @@ resume_from_checkpoint:
 checkpoint_dir:
   value: '${experiment_path}/checkpoints/' # v2
 resume_checkpoint_name:
-  value: ptv3_normlas_val_MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
+  value: ptv3_MulticlassJaccardIndex # 'FbetaScore', 'train_loss', last, 'best', 'F1Score'
 checkpoint_every_n_epochs: # This parameter and the next one are mutually exclusive
   value: 1 # every n epochs
 checkpoint_every_n_steps:
